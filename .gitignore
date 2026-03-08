@@ -1,0 +1,125 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.lock
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.dev
+.env.production
+.env.staging
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres_data/
+redis_data/
+minio_data/
+
+# Audio files (stored in S3)
+*.wav
+*.flac
+*.mp3
+*.ogg
+*.webm
+uploads/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Generated
+*.g.dart
+*.freezed.dart
+
+# Claude related files
+.claudeignore
+CLAUDE.md
+.claude/
+
+# Backend
+**/client_secret.json
+**/client_secret*.json
+
+# OAuth Tokens
+user_tokens.json
+tokens/
+
+# GCP Service Account Keys (NEVER commit!)
+*-sa.json
+*-sa-*.json
+service-account*.json
+*credentials*.json
+gcp-key*.json
+keyfile*.json
+
+# SSL / TLS Certificates
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+ssl/
+certs/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfvars
+!*.tfvars.example
+
+# Next.js build output
+.next/
+out/
+
+# Meilisearch local data
+meili_data/
+
+temp/
+private/
+docs/
+keys/
+
+# parent-website
+parent-website/docs/
+parent-website/qa-tool/
+parent-website/.next/
+parent-website/node_modules/
+parent-website/.env.local
+
+# Sensitive
+#MEMORY.md
+task_log.csv
