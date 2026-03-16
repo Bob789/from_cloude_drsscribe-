@@ -59,7 +59,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   const Icon(Icons.local_hospital, size: 72, color: Color(0xFF1565C0)),
                   const SizedBox(height: 16),
-                  Text('MedScribe AI', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('Doctor Scribe AI', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text('login.subtitle'.tr(), style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600])),
                   const SizedBox(height: 40),

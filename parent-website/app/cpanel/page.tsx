@@ -1,0 +1,700 @@
+// NOTE: This is the system admin panel. URL is not published anywhere.
+// Access is restricted to the system administrator only.
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import Script from 'next/script'
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
+const GOOGLE_CLIENT_ID = '459295230393-a7tahndgdhses9shhg0oue74ealf009r.apps.googleusercontent.com'
+const ADMIN_EMAIL = 'yossil1306@gmail.com'
+
+type Tab = 'stats' | 'users' | 'messages' | 'errors'
+
+function useAdminData(token: string | null) {
+  const [stats, setStats] = useState<any>(null)
+  const [users, setUsers] = useState<any[]>([])
+  const [threads, setThreads] = useState<any[]>([])
+  const [errors, setErrors] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const fetchAll = useCallback(async () => {
+    if (!token) return
+    const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    setLoading(true)
+    try {
+      const [s, u, t, e] = await Promise.all([
+        fetch(`${API}/admin/stats`, { headers: h }).then(r => r.json()),
+        fetch(`${API}/admin/users`, { headers: h }).then(r => r.json()),
+        fetch(`${API}/admin/messages/threads`, { headers: h }).then(r => r.json()),
+        fetch(`${API}/admin/activity-logs?error_only=true&per_page=50`, { headers: h }).then(r => r.json()),
+      ])
+      setStats(s)
+      setUsers(Array.isArray(u) ? u : [])
+      setThreads(Array.isArray(t) ? t : [])
+      setErrors(e?.items || [])
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
+  }, [token])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+  return { stats, users, threads, errors, loading, refetch: fetchAll }
+}
+
+export default function CpanelPage() {
+  const [token, setToken] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [tab, setTab] = useState<Tab>('stats')
+  const [searchUser, setSearchUser] = useState('')
+  const [impersonateUrl, setImpersonateUrl] = useState<string | null>(null)
+  const { stats, users, threads, errors, loading, refetch } = useAdminData(token)
+
+  // Messages state
+  const [selectedThread, setSelectedThread] = useState<any>(null)
+  const [threadMessages, setThreadMessages] = useState<any[]>([])
+  const [threadLoading, setThreadLoading] = useState(false)
+  const [replyBody, setReplyBody] = useState('')
+  const [replySending, setReplySending] = useState(false)
+  const [replyAttachments, setReplyAttachments] = useState<any[]>([])
+  const [showCompose, setShowCompose] = useState(false)
+  const [composeSubject, setComposeSubject] = useState('')
+  const [composeBody, setComposeBody] = useState('')
+  const [composeRecipients, setComposeRecipients] = useState<string[]>([])
+  const [composeSending, setComposeSending] = useState(false)
+  const [composeResult, setComposeResult] = useState('')
+  const [recipientSearch, setRecipientSearch] = useState('')
+  const [composeAttachments, setComposeAttachments] = useState<any[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
+
+  const handleGoogleLogin = async () => {
+    setLoginError('')
+    setLoginLoading(true)
+    try {
+      const google = (window as any).google
+      if (!google?.accounts?.oauth2) {
+        setLoginError('שגיאה בטעינת שירות Google — נסה לרענן את הדף')
+        setLoginLoading(false)
+        return
+      }
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'email profile openid',
+        callback: async (tokenResponse: any) => {
+          if (tokenResponse.error) { setLoginError('הכניסה עם Google נכשלה — נסה שוב'); setLoginLoading(false); return }
+          try {
+            const res = await fetch(`${API}/auth/google`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: tokenResponse.access_token, token_type: 'access_token' }),
+            })
+            if (!res.ok) { setLoginError('הכניסה נכשלה — נסה שוב'); setLoginLoading(false); return }
+            const data = await res.json()
+            if (data.user?.email !== ADMIN_EMAIL && data.user?.role !== 'admin') { setLoginError('אין לך הרשאה לגשת ללוח הבקרה'); setLoginLoading(false); return }
+            setToken(data.access_token)
+          } catch { setLoginError('שגיאת חיבור לשרת — נסה שוב') }
+          finally { setLoginLoading(false) }
+        },
+      })
+      client.requestAccessToken()
+    } catch { setLoginError('שגיאה בכניסה — נסה שוב'); setLoginLoading(false) }
+  }
+
+  const toggleBlock = async (userId: string, active: boolean) => {
+    if (!token) return
+    await fetch(`${API}/admin/users/${userId}/active?active=${!active}`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } })
+    refetch()
+  }
+
+  const impersonate = async (userId: string) => {
+    if (!token) return
+    const res = await fetch(`${API}/admin/impersonate/${userId}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    setImpersonateUrl(`https://app.drsscribe.com/dashboard?impersonate=${data.access_token}`)
+  }
+
+  // ── Messages functions ──────────────────────────────────────────────────────
+
+  const openThread = async (thread: any) => {
+    if (!token) return
+    setSelectedThread(thread)
+    setThreadLoading(true)
+    setReplyBody('')
+    try {
+      const res = await fetch(`${API}/admin/messages/thread/${thread.thread_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const msgs = await res.json()
+      setThreadMessages(Array.isArray(msgs) ? msgs : [])
+    } catch { setThreadMessages([]) }
+    finally { setThreadLoading(false) }
+  }
+
+  const sendReply = async () => {
+    if (!token || !selectedThread || !replyBody.trim()) return
+    setReplySending(true)
+    try {
+      await fetch(`${API}/admin/messages/compose`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: `תגובה: ${selectedThread.subject}`,
+          body: replyBody.trim(),
+          recipient_ids: [selectedThread.user_id],
+          thread_id: selectedThread.thread_id,
+          attachments: replyAttachments,
+        }),
+      })
+      setReplyBody('')
+      setReplyAttachments([])
+      openThread(selectedThread)
+      refetch()
+    } catch (err) { console.error(err) }
+    finally { setReplySending(false) }
+  }
+
+  const handleReplyFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !token) return
+    if (file.size > 10 * 1024 * 1024) { alert('קובץ גדול מדי — מקסימום 10MB'); return }
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${API}/messages/upload-attachment`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
+      })
+      if (!res.ok) { const err = await res.json(); alert(err.message || 'שגיאה'); setUploading(false); return }
+      const data = await res.json()
+      setReplyAttachments(prev => [...prev, { key: data.key, name: data.name, url: data.url, size: data.size }])
+    } catch { alert('שגיאה בהעלאת הקובץ') }
+    finally { setUploading(false); e.target.value = '' }
+  }
+
+  // Avatar colors by user
+  const AVATAR_COLORS = ['#34d399', '#38bdf8', '#a78bfa', '#f472b6', '#fb923c', '#facc15', '#4ade80', '#f87171', '#22d3ee', '#e879f9']
+  const getUserColor = (name: string) => {
+    let hash = 0
+    for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+  }
+  const getInitial = (name: string) => (name || '?')[0].toUpperCase()
+
+  const toggleUserExpand = (userId: string) => {
+    setExpandedUsers(prev => {
+      const next = new Set(prev)
+      next.has(userId) ? next.delete(userId) : next.add(userId)
+      return next
+    })
+  }
+
+  // Group threads by user
+  const threadsByUser = threads.reduce((acc: Record<string, any[]>, t: any) => {
+    const uid = t.user_id || t.user_email || 'unknown'
+    if (!acc[uid]) acc[uid] = []
+    acc[uid].push(t)
+    return acc
+  }, {} as Record<string, any[]>)
+
+  const formatDateTime = (iso: string) => {
+    const d = new Date(iso)
+    return d.toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const sendCompose = async () => {
+    if (!token || !composeSubject.trim() || !composeBody.trim() || composeRecipients.length === 0) return
+    setComposeSending(true)
+    try {
+      const res = await fetch(`${API}/admin/messages/compose`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: composeSubject.trim(),
+          body: composeBody.trim(),
+          recipient_ids: composeRecipients,
+          attachments: composeAttachments,
+        }),
+      })
+      const data = await res.json()
+      setComposeResult(`ההודעה נשלחה ל-${data.sent_to} משתמשים`)
+      setComposeSubject('')
+      setComposeBody('')
+      setComposeRecipients([])
+      setComposeAttachments([])
+      setTimeout(() => { setComposeResult(''); setShowCompose(false) }, 2000)
+      refetch()
+    } catch (err) { console.error(err) }
+    finally { setComposeSending(false) }
+  }
+
+  const toggleRecipient = (userId: string) => {
+    if (userId === 'all') {
+      setComposeRecipients(prev => prev.includes('all') ? [] : ['all'])
+      return
+    }
+    setComposeRecipients(prev => {
+      const filtered = prev.filter(id => id !== 'all')
+      return filtered.includes(userId) ? filtered.filter(id => id !== userId) : [...filtered, userId]
+    })
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !token) return
+    if (file.size > 10 * 1024 * 1024) { alert('קובץ גדול מדי — מקסימום 10MB'); return }
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${API}/messages/upload-attachment`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      if (!res.ok) { const err = await res.json(); alert(err.message || 'שגיאה בהעלאת הקובץ'); setUploading(false); return }
+      const data = await res.json()
+      setComposeAttachments(prev => [...prev, { key: data.key, name: data.name, url: data.url, size: data.size }])
+    } catch { alert('שגיאה בהעלאת הקובץ') }
+    finally { setUploading(false); e.target.value = '' }
+  }
+
+  const activeUsers = users.filter(u => u.is_active)
+  const filteredUsers = users.filter(u => u.name?.includes(searchUser) || u.email?.includes(searchUser))
+  const filteredRecipients = activeUsers.filter(u =>
+    !recipientSearch || u.name?.toLowerCase().includes(recipientSearch.toLowerCase()) || u.email?.toLowerCase().includes(recipientSearch.toLowerCase())
+  )
+
+  // ── Login screen ────────────────────────────────────────────────────────────
+  if (!token) {
+    return (
+      <>
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+        <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, #0b1020, #060a15)', padding: 24 }}>
+          <div style={{ width: '100%', maxWidth: 400, background: 'rgba(18,26,51,0.85)', border: '1px solid var(--border)', borderRadius: 24, padding: 48 }}>
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+              <img src="/favicon.png" alt="" width={64} height={64} style={{ borderRadius: 16, marginBottom: 16 }} />
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: '#e0f2fe' }}>כניסה למערכת</h1>
+            </div>
+            {loginError && (
+              <div role="alert" style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.1)', color: '#fca5a5', fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
+                {loginError}
+              </div>
+            )}
+            <button onClick={handleGoogleLogin} disabled={loginLoading} style={{ width: '100%', padding: '15px 20px', fontSize: 16, fontWeight: 700, textAlign: 'center', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: 12, cursor: loginLoading ? 'not-allowed' : 'pointer', opacity: loginLoading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, transition: 'box-shadow 0.2s, background 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#1557b0'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(26,115,232,0.4)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#1a73e8'; e.currentTarget.style.boxShadow = 'none' }}
+            >
+              {!loginLoading && (
+                <svg width="20" height="20" viewBox="0 0 48 48" style={{ background: '#fff', borderRadius: 4, padding: 2 }}>
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                </svg>
+              )}
+              {loginLoading ? '⏳ מתחבר...' : 'התחבר באמצעות Google'}
+            </button>
+          </div>
+        </main>
+      </>
+    )
+  }
+
+  // ── Dashboard ───────────────────────────────────────────────────────────────
+  const unreadCount = threads.reduce((sum: number, t: any) => sum + (t.unread_count || 0), 0)
+
+  return (
+    <main style={{ background: 'var(--bg)', minHeight: '100vh', padding: '24px 20px' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: 26, fontWeight: 700, color: '#e0f2fe' }}>⚙️ לוח בקרה</h1>
+            <p style={{ color: 'var(--muted)', fontSize: 14 }}>Doctor Scribe AI</p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={refetch} className="btn btn-secondary" style={{ padding: '10px 20px' }}>🔄 רענן</button>
+            <button onClick={() => setToken(null)} className="btn btn-secondary" style={{ padding: '10px 20px' }}>יציאה</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+          {([
+            { key: 'stats', label: '📊 סטטיסטיקות' },
+            { key: 'users', label: `👥 משתמשים (${users.length})` },
+            { key: 'messages', label: `✉️ הודעות${unreadCount > 0 ? ` (${unreadCount})` : ''}` },
+            { key: 'errors', label: `🚨 שגיאות (${errors.length})` },
+          ] as { key: Tab; label: string }[]).map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`btn ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '10px 20px', fontWeight: tab === t.key ? 700 : 400 }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {loading && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 40 }}>טוען...</div>}
+
+        {/* ══ STATS ══ */}
+        {!loading && tab === 'stats' && stats && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            {[
+              { label: 'משתמשים פעילים', value: stats.users?.active, icon: '👤', color: '#34d399' },
+              { label: 'משתמשים חסומים', value: stats.users?.blocked, icon: '🚫', color: '#f87171' },
+              { label: 'מטופלים', value: stats.patients, icon: '🏥', color: '#38bdf8' },
+              { label: 'ביקורים', value: stats.visits, icon: '🩺', color: '#a78bfa' },
+              { label: 'הקלטות', value: stats.recordings, icon: '🎤', color: '#fb923c' },
+              { label: 'תמלולים', value: stats.transcriptions, icon: '📝', color: '#facc15' },
+              { label: 'סיכומים', value: stats.summaries, icon: '🧠', color: '#4ade80' },
+              { label: 'הודעות חדשות', value: stats.messages_unread, icon: '✉️', color: '#f472b6' },
+              { label: 'שגיאות', value: stats.errors_total, icon: '🚨', color: '#ef4444' },
+            ].map(s => (
+              <div key={s.label} className="card" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                <span style={{ fontSize: 36 }}>{s.icon}</span>
+                <div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>{s.value ?? '—'}</div>
+                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>{s.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ══ USERS ══ */}
+        {!loading && tab === 'users' && (
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <input type="search" placeholder="חיפוש לפי שם / אימייל..." value={searchUser} onChange={e => setSearchUser(e.target.value)} className="search-input" style={{ width: '100%', padding: '10px 14px', fontSize: 14 }} />
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ background: 'rgba(56,189,248,0.05)', borderBottom: '1px solid var(--border)' }}>
+                    {['שם', 'אימייל', 'תפקיד', 'סטטוס', 'נרשם', 'פעולות'].map(h => (
+                      <th key={h} style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map(u => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 600 }}>{u.name}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>{u.email}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '3px 10px', borderRadius: 20, background: u.role === 'admin' ? 'rgba(167,139,250,0.15)' : 'rgba(56,189,248,0.1)', color: u.role === 'admin' ? '#a78bfa' : '#38bdf8', fontSize: 12 }}>{u.role}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '3px 10px', borderRadius: 20, background: u.is_active ? 'rgba(52,211,153,0.1)' : 'rgba(239,68,68,0.1)', color: u.is_active ? '#34d399' : '#f87171', fontSize: 12 }}>{u.is_active ? 'פעיל' : 'חסום'}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{u.created_at ? new Date(u.created_at).toLocaleDateString('he-IL') : '—'}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => toggleBlock(u.id, u.is_active)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }}>{u.is_active ? '🚫 חסום' : '✅ שחרר'}</button>
+                          <button onClick={() => impersonate(u.id)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }}>👁 צפה</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ══ MESSAGES — Outlook-style ══ */}
+        {!loading && tab === 'messages' && (
+          <div style={{ display: 'flex', gap: 0, height: 'calc(100vh - 200px)', minHeight: 500, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+
+            {/* Right panel — thread list grouped by user */}
+            <div style={{ width: 380, borderLeft: '1px solid var(--border)', background: 'var(--card)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+              {/* Toolbar */}
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+                <button onClick={() => { setShowCompose(true); setSelectedThread(null); setComposeRecipients([]); setComposeSubject(''); setComposeBody(''); setComposeAttachments([]) }} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 13, fontWeight: 700, flex: 1 }}>
+                  ✏️ הודעה חדשה
+                </button>
+              </div>
+
+              {/* Thread list grouped by user with collapse */}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {Object.keys(threadsByUser).length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 40, fontSize: 14 }}>אין הודעות</div>}
+                {Object.entries(threadsByUser).map(([uid, userThreads]: [string, any[]]) => {
+                  const firstThread = userThreads[0]
+                  const userName = firstThread.user_name || firstThread.user_email || '?'
+                  const userEmail = firstThread.user_email || ''
+                  const isExpanded = expandedUsers.has(uid)
+                  const totalUnread = userThreads.reduce((s: number, t: any) => s + (t.unread_count || 0), 0)
+                  const color = getUserColor(userName)
+
+                  return (
+                    <div key={uid}>
+                      {/* User header row */}
+                      <div
+                        onClick={() => toggleUserExpand(uid)}
+                        style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)', transition: 'background 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                      >
+                        {/* Expand/collapse +/- */}
+                        <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--muted)', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                          {isExpanded ? '−' : '+'}
+                        </span>
+                        {/* Avatar circle */}
+                        <span style={{ width: 36, height: 36, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0, border: `2px solid ${color}44` }}>
+                          {getInitial(userName)}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          {totalUnread > 0 && (
+                            <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>
+                              {totalUnread}
+                            </span>
+                          )}
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{userThreads.length}</span>
+                        </div>
+                      </div>
+
+                      {/* Expanded threads for this user */}
+                      {isExpanded && userThreads.map((t: any) => (
+                        <div
+                          key={t.thread_id}
+                          onClick={() => { openThread(t); setShowCompose(false) }}
+                          style={{
+                            padding: '10px 14px 10px 52px',
+                            borderBottom: '1px solid rgba(255,255,255,0.03)',
+                            cursor: 'pointer',
+                            background: selectedThread?.thread_id === t.thread_id ? 'rgba(56,189,248,0.08)' : 'transparent',
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => { if (selectedThread?.thread_id !== t.thread_id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+                          onMouseLeave={e => { if (selectedThread?.thread_id !== t.thread_id) e.currentTarget.style.background = 'transparent' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            {t.unread_count > 0 && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#38bdf8', flexShrink: 0 }} />}
+                            <span style={{ fontWeight: t.unread_count > 0 ? 700 : 400, fontSize: 13, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {t.subject}
+                            </span>
+                            <span style={{ fontSize: 10, color: 'var(--muted)', flexShrink: 0 }}>{formatDateTime(t.last_activity)}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t.last_message?.body?.substring(0, 60)}
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
+                            <span style={{ padding: '1px 6px', borderRadius: 10, background: 'rgba(167,139,250,0.12)', color: '#a78bfa', fontSize: 10 }}>{t.category}</span>
+                            {t.message_count > 1 && <span style={{ fontSize: 10, color: 'var(--muted)' }}>{t.message_count} הודעות</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Left panel — conversation or compose */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+
+              {/* Compose new message */}
+              {showCompose && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 24, overflowY: 'auto' }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#e0f2fe' }}>✏️ הודעה חדשה</h3>
+
+                  {/* Recipient picker */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6, display: 'block' }}>אל:</label>
+                    {/* Selected recipients chips */}
+                    {composeRecipients.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                        {composeRecipients.includes('all') ? (
+                          <span style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            כל המשתמשים
+                            <button onClick={() => setComposeRecipients([])} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0, fontSize: 14 }}>✕</button>
+                          </span>
+                        ) : (
+                          composeRecipients.map(id => {
+                            const u = users.find((u: any) => u.id === id)
+                            return u ? (
+                              <span key={id} style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {u.name || u.email}
+                                <button onClick={() => toggleRecipient(id)} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0, fontSize: 14 }}>✕</button>
+                              </span>
+                            ) : null
+                          })
+                        )}
+                      </div>
+                    )}
+                    {/* Recipient search and scrollable list */}
+                    <input type="search" placeholder="חפש משתמש..." value={recipientSearch} onChange={e => setRecipientSearch(e.target.value)} className="search-input" style={{ width: '100%', padding: '7px 12px', fontSize: 13, marginBottom: 6 }} />
+                    <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card)' }}>
+                      <div onClick={() => toggleRecipient('all')} style={{ padding: '7px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)', background: composeRecipients.includes('all') ? 'rgba(56,189,248,0.08)' : 'transparent' }}>
+                        <input type="checkbox" checked={composeRecipients.includes('all')} readOnly style={{ accentColor: '#38bdf8' }} />
+                        <span style={{ fontWeight: 700, fontSize: 13, color: '#38bdf8' }}>כל המשתמשים ({activeUsers.length})</span>
+                      </div>
+                      {filteredRecipients.map((u: any) => (
+                        <div key={u.id} onClick={() => toggleRecipient(u.id)} style={{ padding: '6px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.03)', background: composeRecipients.includes(u.id) ? 'rgba(56,189,248,0.06)' : 'transparent' }}>
+                          <input type="checkbox" checked={composeRecipients.includes(u.id) || composeRecipients.includes('all')} readOnly style={{ accentColor: '#38bdf8' }} />
+                          <span style={{ width: 28, height: 28, borderRadius: '50%', background: getUserColor(u.name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{getInitial(u.name)}</span>
+                          <span style={{ fontSize: 13 }}>{u.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{u.email}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <input type="text" placeholder="נושא..." value={composeSubject} onChange={e => setComposeSubject(e.target.value)} className="search-input" style={{ width: '100%', padding: '7px 14px', fontSize: 14, marginBottom: 12 }} />
+
+                  <textarea placeholder="תוכן ההודעה..." value={composeBody} onChange={e => setComposeBody(e.target.value)} rows={5} className="search-input" style={{ width: '100%', padding: '10px 14px', fontSize: 14, resize: 'vertical', flex: 1, marginBottom: 12 }} />
+
+                  {/* Attachments */}
+                  {composeAttachments.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                      {composeAttachments.map((a: any, i: number) => (
+                        <span key={i} style={{ padding: '4px 10px', borderRadius: 8, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', color: '#38bdf8', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          📎 {a.name}
+                          <button onClick={() => setComposeAttachments(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0, fontSize: 14 }}>✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <label style={{ cursor: uploading ? 'not-allowed' : 'pointer', padding: '8px 14px', fontSize: 13, borderRadius: 10, border: '1px solid var(--border)', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, opacity: uploading ? 0.5 : 1 }}>
+                      {uploading ? '⏳ מעלה...' : '📎 צרף קובץ'}
+                      <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf" disabled={uploading} />
+                    </label>
+                    <button onClick={sendCompose} disabled={composeSending || !composeSubject.trim() || !composeBody.trim() || composeRecipients.length === 0} className="btn btn-primary" style={{ padding: '8px 28px', fontSize: 14, fontWeight: 700, opacity: composeSending ? 0.6 : 1 }}>
+                      {composeSending ? '⏳ שולח...' : '📤 שלח'}
+                    </button>
+                    <button onClick={() => { setShowCompose(false); setComposeAttachments([]) }} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: 14 }}>ביטול</button>
+                    {composeResult && <span style={{ color: '#34d399', fontSize: 13 }}>{composeResult}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Thread conversation view */}
+              {!showCompose && selectedThread && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* Thread header with avatar */}
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--card)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ width: 40, height: 40, borderRadius: '50%', background: getUserColor(selectedThread.user_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
+                      {getInitial(selectedThread.user_name)}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{selectedThread.subject}</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                        {selectedThread.user_name} · {selectedThread.user_email} · {selectedThread.message_count} הודעות
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Messages */}
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+                    {threadLoading && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 40 }}>טוען...</div>}
+                    {!threadLoading && threadMessages.map((m: any) => (
+                      <div key={m.id} style={{ marginBottom: 12, display: 'flex', justifyContent: m.direction === 'outbound' ? 'flex-start' : 'flex-end' }}>
+                        <div style={{
+                          maxWidth: '75%', padding: '12px 16px', borderRadius: 16,
+                          background: m.direction === 'outbound'
+                            ? 'linear-gradient(135deg, rgba(56,189,248,0.12), rgba(56,189,248,0.06))'
+                            : 'rgba(255,255,255,0.05)',
+                          border: `1px solid ${m.direction === 'outbound' ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                        }}>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 600, color: m.direction === 'outbound' ? '#38bdf8' : '#a78bfa' }}>
+                              {m.direction === 'outbound' ? '📤 צוות תמיכה' : `📥 ${m.user_name}`}
+                            </span>
+                            · {formatDateTime(m.created_at)}
+                          </div>
+                          <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{m.body}</div>
+                          {m.attachments?.length > 0 && (
+                            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {m.attachments.map((a: any, i: number) => (
+                                <a key={i} href={a.url} target="_blank" rel="noreferrer" style={{ padding: '4px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.06)', color: '#38bdf8', fontSize: 12, textDecoration: 'none' }}>
+                                  📎 {a.name}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Reply box with attachment support */}
+                  <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
+                    {replyAttachments.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                        {replyAttachments.map((a: any, i: number) => (
+                          <span key={i} style={{ padding: '3px 8px', borderRadius: 8, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', color: '#38bdf8', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            📎 {a.name}
+                            <button onClick={() => setReplyAttachments(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0, fontSize: 12 }}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                      <label style={{ cursor: 'pointer', padding: '8px', borderRadius: 8, color: 'var(--muted)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        📎
+                        <input type="file" onChange={handleReplyFileUpload} style={{ display: 'none' }} accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf" />
+                      </label>
+                      <textarea
+                        placeholder="כתוב תגובה..."
+                        value={replyBody}
+                        onChange={e => setReplyBody(e.target.value)}
+                        rows={2}
+                        className="search-input"
+                        style={{ flex: 1, padding: '8px 14px', fontSize: 14, resize: 'none' }}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+                      />
+                      <button onClick={sendReply} disabled={replySending || !replyBody.trim()} className="btn btn-primary" style={{ padding: '8px 20px', fontSize: 14, fontWeight: 700 }}>
+                        {replySending ? '⏳' : '📤 שלח'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!showCompose && !selectedThread && (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--muted)' }}>
+                  <span style={{ fontSize: 48, marginBottom: 16 }}>✉️</span>
+                  <p style={{ fontSize: 16 }}>בחר שיחה או צור הודעה חדשה</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ══ ERRORS ══ */}
+        {!loading && tab === 'errors' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {errors.length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 40 }}>אין שגיאות 🎉</div>}
+            {errors.map((e: any) => (
+              <div key={e.id} className="card" style={{ padding: '16px 20px', borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.03)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 700, color: '#f87171', fontSize: 13 }}>🚨 {e.action}</span>
+                  {e.error_id && <span style={{ fontSize: 11, color: 'var(--muted)' }}>#{e.error_id}</span>}
+                </div>
+                <p style={{ fontSize: 13, color: 'var(--text)', marginBottom: 4 }}>{e.error_message || e.description}</p>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                  👤 {e.user_name} · {e.entity_type}/{e.entity_id} · {new Date(e.created_at).toLocaleString('he-IL')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {impersonateUrl && (
+          <div style={{ marginTop: 24, padding: '16px 20px', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.4)', borderRadius: 12 }}>
+            <p style={{ fontWeight: 700, marginBottom: 8 }}>🔑 קישור כניסה כמשתמש (תקף 30 דקות):</p>
+            <a href={impersonateUrl} target="_blank" rel="noreferrer" style={{ color: '#fbbf24', wordBreak: 'break-all', fontSize: 13 }}>{impersonateUrl}</a>
+            <button onClick={() => setImpersonateUrl(null)} style={{ marginRight: 12, background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>✕</button>
+          </div>
+        )}
+
+      </div>
+    </main>
+  )
+}

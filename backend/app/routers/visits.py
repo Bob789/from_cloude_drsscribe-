@@ -17,6 +17,7 @@ from app.services.llm_service import normalize_diagnosis
 from app.services.tagging_service import sync_diagnosis_tags
 from app.utils.id_resolver import get_visit_or_404, get_patient_or_404
 from app.exceptions import ForbiddenError
+from app.utils.medical_encryption import decrypt_summary_fields, decrypt_transcription_fields
 
 router = APIRouter(prefix="/visits", tags=["visits"])
 
@@ -47,24 +48,34 @@ async def get_visit(visit_id: str, db: AsyncSession = Depends(get_db), current_u
 async def get_patient_visits(patient_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     patient = await get_patient_or_404(db, patient_id)
 
+    # Doctor isolation: only the doctor who created this patient (or admin) can view
+    if current_user.role != UserRole.admin and patient.created_by != current_user.id:
+        raise ForbiddenError("אין הרשאה לצפות במטופל זה")
+
     result = await db.execute(select(Visit).where(Visit.patient_id == patient.id).order_by(Visit.start_time.desc()))
     visits = result.scalars().all()
 
     visits_data = []
     for visit in visits:
-        summary_result = await db.execute(select(Summary).where(Summary.visit_id == visit.id))
-        summary = summary_result.scalar_one_or_none()
+        summary_result = await db.execute(select(Summary).where(Summary.visit_id == visit.id).order_by(Summary.created_at.desc()))
+        summary = summary_result.scalars().first()
         rec_result = await db.execute(select(Recording).where(Recording.visit_id == visit.id))
-        recording = rec_result.scalar_one_or_none()
+        recording = rec_result.scalars().first()
         transcription = None
         if recording:
             trans_result = await db.execute(select(Transcription).where(Transcription.recording_id == recording.id))
-            transcription = trans_result.scalar_one_or_none()
+            transcription = trans_result.scalars().first()
         tags_result = await db.execute(
             select(Tag).where(Tag.entity_type == "summary", Tag.entity_id == str(summary.id))
         ) if summary else None
         tags = [{"id": str(t.id), "tag_type": t.tag_type, "tag_code": t.tag_code, "tag_label": t.tag_label}
                 for t in (tags_result.scalars().all() if tags_result else [])]
+
+        # Decrypt encrypted medical data before returning
+        if summary:
+            decrypt_summary_fields(summary)
+        if transcription:
+            decrypt_transcription_fields(transcription)
 
         visits_data.append({
             "id": str(visit.id), "display_id": visit.display_id, "doctor_id": str(visit.doctor_id),
@@ -104,8 +115,8 @@ async def update_visit(visit_id: str, data: VisitUpdateWithSummary, db: AsyncSes
     for key, value in visit_updates.items():
         setattr(visit, key, value)
     if summary_updates:
-        summary_result = await db.execute(select(Summary).where(Summary.visit_id == visit.id))
-        summary = summary_result.scalar_one_or_none()
+        summary_result = await db.execute(select(Summary).where(Summary.visit_id == visit.id).order_by(Summary.created_at.desc()))
+        summary = summary_result.scalars().first()
         if summary:
             if "diagnosis" in summary_updates:
                 summary_updates["diagnosis"] = normalize_diagnosis(summary_updates["diagnosis"])

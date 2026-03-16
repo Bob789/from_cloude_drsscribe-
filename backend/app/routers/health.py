@@ -1,9 +1,23 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import text
 from app.config import settings
 from app.database import engine
+import httpx
+import structlog
 
 router = APIRouter(tags=["health"])
+logger = structlog.get_logger()
+
+# Country → app locale mapping
+_COUNTRY_LOCALE = {
+    "IL": "he", "US": "en", "GB": "en", "AU": "en", "CA": "en", "NZ": "en", "IE": "en", "IN": "en",
+    "DE": "de", "AT": "de", "CH": "de",
+    "FR": "fr", "BE": "fr", "LU": "fr", "MC": "fr",
+    "ES": "es", "MX": "es", "AR": "es", "CL": "es", "CO": "es", "PE": "es",
+    "PT": "pt", "BR": "pt",
+    "KR": "ko",
+    "IT": "it",
+}
 
 
 @router.get("/health")
@@ -57,3 +71,25 @@ async def readiness():
     status_code = 200 if overall == "healthy" else 503
     from fastapi.responses import JSONResponse
     return JSONResponse(status_code=status_code, content={"status": overall, "checks": checks})
+
+
+@router.get("/geo-locale")
+async def get_geo_locale(request: Request):
+    """Detect locale based on client IP country. No auth required."""
+    # Get real client IP from proxy headers
+    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.headers.get("X-Real-IP", "") or request.client.host if request.client else ""
+
+    country = ""
+    locale = "he"  # default
+
+    if ip and ip not in ("127.0.0.1", "::1", "localhost"):
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                res = await client.get(f"http://ip-api.com/json/{ip}?fields=countryCode")
+                if res.status_code == 200:
+                    country = res.json().get("countryCode", "")
+                    locale = _COUNTRY_LOCALE.get(country, "en")
+        except Exception as e:
+            logger.debug("geo_locale_lookup_failed", ip=ip, error=str(e))
+
+    return {"locale": locale, "country": country}

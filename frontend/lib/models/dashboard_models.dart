@@ -23,7 +23,7 @@ class ChartDay {
   factory ChartDay.fromJson(Map<String, dynamic> json) => ChartDay(
     date: json['date'] ?? '',
     dayName: json['day_name'] ?? '',
-    count: json['count'] ?? 0,
+    count: (json['count'] as num?)?.toInt() ?? 0,
     patients: (json['patients'] as List?)?.map((p) => ChartPatient.fromJson(p)).toList() ?? [],
   );
 }

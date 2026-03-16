@@ -53,13 +53,13 @@ export default function HomePage() {
           display: 'flex', justifyContent: 'center',
           zIndex: 201, pointerEvents: 'none',
         }}>
-          <img src="/logo.png" alt="MedScribe AI" width={120} height={120} className="logo-animated" style={{ pointerEvents: 'auto' }} />
+          <img src="/logo.png" alt="Doctor Scribe AI" width={120} height={120} className="logo-animated" style={{ pointerEvents: 'auto' }} />
         </div>
 
         {/* Text + buttons — normal z-index, never blocks nav */}
         <section style={{ maxWidth: 1400, margin: '0 auto', padding: '70px 20px 40px', textAlign: 'center' }}>
           <h2 className="hero-title" style={{ fontSize: 48, fontWeight: 700, marginBottom: 24, background: 'linear-gradient(to left, #22d3ee, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            Medical Hub + MedScribe AI
+            Medical Hub + Doctor Scribe AI
           </h2>
           <p style={{ fontSize: 24, marginBottom: 16, color: 'var(--text)' }}>
             פלטפורמה מקיפה: מאמרים • פורום • מומחים • תמלול רפואי חכם
@@ -68,9 +68,24 @@ export default function HomePage() {
             מערכת SaaS לתמלול וסיכום אוטומטי של ביקורים רפואיים בעברית
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/about-medscribe" className="btn btn-primary" style={{ padding: '16px 32px', fontSize: 18, lineHeight: 1.4 }}>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>🎤 גלה את MedScribe AI</div>
+            <Link href="/product" className="btn btn-primary" style={{ padding: '16px 32px', fontSize: 18, lineHeight: 1.4 }}>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>🎤 גלה את Doctor Scribe AI</div>
               <div style={{ fontSize: 14, marginTop: 4, opacity: 0.85 }}>חדש: שירות תמלול לקליניקות</div>
+            </Link>
+          </div>
+          <div style={{ marginTop: 18, fontSize: 14, color: 'var(--muted)' }}>
+            <Link
+              href="/privacy-policy"
+              style={{ color: '#38bdf8', textDecoration: 'underline', textUnderlineOffset: 3 }}
+            >
+              Privacy Policy
+            </Link>
+            {' '}•{' '}
+            <Link
+              href="/privacy-policy"
+              style={{ color: '#38bdf8', textDecoration: 'underline', textUnderlineOffset: 3 }}
+            >
+              מדיניות פרטיות
             </Link>
           </div>
         </section>
@@ -113,7 +128,7 @@ export default function HomePage() {
 
       </div>
 
-      {/* MedScribe AI – full-width horizontal CTA */}
+      {/* Doctor Scribe AI – full-width horizontal CTA */}
       <div style={{ maxWidth: 1400, margin: '0 auto 48px', padding: '0 20px' }}>
         <div style={{
           padding: '32px 40px',
@@ -127,14 +142,14 @@ export default function HomePage() {
         }}>
           <img
             src="/logo.png"
-            alt="MedScribe AI"
+            alt="Doctor Scribe AI"
             width={72}
             height={72}
             style={{ borderRadius: '50%', flexShrink: 0, boxShadow: '0 0 24px rgba(56,189,248,0.4)' }}
           />
           <div style={{ flex: 1, minWidth: 200 }}>
             <h3 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8, color: '#e0f2fe' }}>
-              🎤 MedScribe AI
+              🎤 Doctor Scribe AI
             </h3>
             <p style={{ color: 'var(--text)', fontSize: 16, marginBottom: 6 }}>
               ניהול מטופלים + תמלול אוטומטי + סיכום ביקור + תגיות אבחנה
@@ -144,7 +159,7 @@ export default function HomePage() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
-            <Link href="/about-medscribe" className="btn btn-primary" style={{ padding: '14px 28px', fontSize: 16 }}>
+            <Link href="/product" className="btn btn-primary" style={{ padding: '14px 28px', fontSize: 16 }}>
               למד עוד
             </Link>
             <Link href="/product" className="btn btn-secondary" style={{ padding: '14px 28px', fontSize: 16 }}>
@@ -155,8 +170,24 @@ export default function HomePage() {
       </div>
 
       </main>
-      <footer className="site-footer">
-        <p>© 2026 Medical Hub • <Link href="/privacy" style={{ color: 'inherit' }}>מדיניות פרטיות</Link> • <Link href="/terms" style={{ color: 'inherit' }}>תנאי שימוש</Link></p>
+
+      {/* FOOTER - Google Verification Compliance */}
+      <footer style={{ 
+        borderTop: '1px solid var(--border)', 
+        marginTop: 48, 
+        padding: '32px 20px', 
+        textAlign: 'center', 
+        color: 'var(--muted)',
+        backgroundColor: 'rgba(6, 10, 21, 0.5)' 
+      }}>
+        <div style={{ marginBottom: 16 }}>
+          © 2026 Medical Hub • Doctor Scribe AI Privacy Policy • מדיניות פרטיות • תנאי שימוש
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
+          <a href="/privacy-policy" style={{ color: 'var(--text)', textDecoration: 'none' }}>מדיניות פרטיות</a>
+          <a href="/terms" style={{ color: 'var(--text)', textDecoration: 'none' }}>תנאי שימוש</a>
+          <a href="/contact" style={{ color: 'var(--text)', textDecoration: 'none' }}>צור קשר</a>
+        </div>
       </footer>
     </>
   )

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:medscribe_ai/providers/auth_provider.dart';
+import 'package:medscribe_ai/providers/patients_provider.dart';
 import 'package:medscribe_ai/widgets/patient_form.dart';
 
 class PatientFormScreen extends ConsumerWidget {
@@ -25,7 +26,10 @@ class PatientFormScreen extends ConsumerWidget {
             constraints: const BoxConstraints(maxWidth: 600),
             child: PatientForm(
               patientId: isEditing ? patientId : null,
-              onSaved: () => context.go('/patients'),
+              onSaved: () {
+                ref.invalidate(patientsProvider);
+                context.go('/patients');
+              },
               patientKeyType: keyType,
             ),
           ),

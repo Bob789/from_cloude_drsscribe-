@@ -1,7 +1,7 @@
 from locust import HttpUser, task, between
 
 
-class MedScribeUser(HttpUser):
+class Doctor Scribe AIUser(HttpUser):
     wait_time = between(1, 3)
     host = "http://localhost:8000"
 

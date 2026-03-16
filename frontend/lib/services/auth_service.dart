@@ -9,7 +9,7 @@ class AuthService {
     // שימוש ב-clientId מהסביבה או ערך ברירת מחדל
     clientId: const String.fromEnvironment(
       'GOOGLE_CLIENT_ID',
-      defaultValue: '97162560227-qnd9kiek50ntu4iat3538te3jjpknh0u.apps.googleusercontent.com',
+      defaultValue: '459295230393-a7tahndgdhses9shhg0oue74ealf009r.apps.googleusercontent.com',
     ),
     // ה-Scopes המומלצים לאפליקציה רפואית: מינימום הרשאות הכרחי
     scopes: [
@@ -75,6 +75,8 @@ class AuthService {
   /// שליפת פרטי המשתמש הנוכחי מהשרת
   Future<Map<String, dynamic>?> getCurrentUser() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString('access_token') == null) return null;
       final response = await _dio.get('/auth/me');
       return response.data;
     } catch (_) {

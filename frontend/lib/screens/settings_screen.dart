@@ -10,6 +10,8 @@ import 'package:medscribe_ai/widgets/settings/theme_selector.dart';
 import 'package:medscribe_ai/widgets/settings/preferences_card.dart';
 import 'package:medscribe_ai/widgets/settings/patient_key_selector.dart';
 import 'package:medscribe_ai/widgets/settings/language_selector.dart';
+import 'package:medscribe_ai/services/api_client.dart';
+import 'package:dio/dio.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -40,6 +42,8 @@ class SettingsScreen extends ConsumerWidget {
               const PreferencesCard(),
               const SizedBox(height: 16),
               const PatientKeySelector(),
+              const SizedBox(height: 16),
+              _buildFeedbackButton(context),
               const SizedBox(height: 24),
               _buildLogoutButton(context, ref),
             ]),
@@ -74,6 +78,116 @@ class SettingsScreen extends ConsumerWidget {
           ]),
         ]),
       ]),
+    );
+  }
+
+  Widget _buildFeedbackButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        onPressed: () => _showFeedbackDialog(context),
+        icon: const Icon(Icons.support_agent_rounded, size: 22),
+        label: Text('שלח הודעה לצוות התמיכה', style: GoogleFonts.heebo(fontSize: 15, fontWeight: FontWeight.w700)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+          foregroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          elevation: 0,
+        ),
+      ),
+    );
+  }
+
+  void _showFeedbackDialog(BuildContext context) {
+    final subjectCtrl = TextEditingController();
+    final bodyCtrl = TextEditingController();
+    String category = 'general';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1a2744),
+          title: Text('שלח הודעה לצוות התמיכה', style: GoogleFonts.heebo(fontWeight: FontWeight.w700, color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButtonFormField<String>(
+                value: category,
+                dropdownColor: const Color(0xFF1a2744),
+                style: GoogleFonts.heebo(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'קטגוריה',
+                  labelStyle: GoogleFonts.heebo(color: Colors.white60),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'general', child: Text('כללי')),
+                  DropdownMenuItem(value: 'bug', child: Text('דיווח על תקלה')),
+                  DropdownMenuItem(value: 'feature', child: Text('בקשת תכונה')),
+                  DropdownMenuItem(value: 'improvement', child: Text('הצעה לשיפור')),
+                  DropdownMenuItem(value: 'billing', child: Text('חיוב ותשלום')),
+                ],
+                onChanged: (v) => setState(() => category = v ?? 'general'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: subjectCtrl,
+                style: GoogleFonts.heebo(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'נושא',
+                  labelStyle: GoogleFonts.heebo(color: Colors.white60),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: bodyCtrl,
+                maxLines: 4,
+                style: GoogleFonts.heebo(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'תוכן ההודעה',
+                  labelStyle: GoogleFonts.heebo(color: Colors.white60),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('ביטול', style: GoogleFonts.heebo(color: Colors.white60))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
+              onPressed: () async {
+                if (subjectCtrl.text.trim().isEmpty || bodyCtrl.text.trim().isEmpty) return;
+                try {
+                  final dio = ApiClient().dio;
+                  await dio.post('/admin/messages', data: {
+                    'subject': subjectCtrl.text.trim(),
+                    'body': bodyCtrl.text.trim(),
+                    'category': category,
+                  });
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('ההודעה נשלחה בהצלחה', style: GoogleFonts.heebo()), backgroundColor: Colors.green.shade700),
+                    );
+                  }
+                } on DioException catch (_) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('שגיאה בשליחת ההודעה', style: GoogleFonts.heebo()), backgroundColor: Colors.red.shade700),
+                    );
+                  }
+                }
+              },
+              child: Text('שלח', style: GoogleFonts.heebo(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

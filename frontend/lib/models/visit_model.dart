@@ -43,7 +43,7 @@ class VisitModel {
 
   factory VisitModel.fromJson(Map<String, dynamic> json) => VisitModel(
     id: json['id'],
-    displayId: json['display_id'],
+    displayId: (json['display_id'] as num?)?.toInt(),
     doctorId: json['doctor_id'],
     startTime: json['start_time'],
     endTime: json['end_time'],

@@ -40,7 +40,7 @@ class _VisitsChartState extends State<VisitsChart> {
 
   Widget _buildChart(List<ChartDay> days, int maxCount, MedScribeThemeExtension ext) {
     return LayoutBuilder(builder: (context, constraints) {
-      final barWidth = ((constraints.maxWidth - 6 * 10) / 7).clamp(40.0, 120.0);
+      final barWidth = ((constraints.maxWidth - 6 * 10) / 7).clamp(20.0, 120.0);
       return Column(
         children: [
           SizedBox(

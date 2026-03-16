@@ -30,12 +30,25 @@ class StatsGrid extends StatelessWidget {
       StatData('dashboard.weekly_visits'.tr(), '${stats.visitsThisWeek}', Icons.trending_up_rounded, AppColors.success),
       StatData('dashboard.monthly_transcriptions'.tr(), '${stats.monthlyTranscriptions}', Icons.mic_rounded, const Color(0xFF14B8A6)),
     ];
-    final children = <Widget>[];
-    for (var i = 0; i < items.length; i++) {
-      if (i > 0) children.add(const SizedBox(width: 12));
-      children.add(Expanded(child: _buildCompactCard(context, items[i], ext)));
-    }
-    return Row(children: children);
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 500) {
+        // Narrow: use Wrap instead of Row
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: items.map((item) => SizedBox(
+            width: (constraints.maxWidth - 10) / 2,
+            child: _buildCompactCard(context, item, ext),
+          )).toList(),
+        );
+      }
+      final children = <Widget>[];
+      for (var i = 0; i < items.length; i++) {
+        if (i > 0) children.add(const SizedBox(width: 12));
+        children.add(Expanded(child: _buildCompactCard(context, items[i], ext)));
+      }
+      return Row(children: children);
+    });
   }
 
   Widget _buildCompactCard(BuildContext context, StatData data, MedScribeThemeExtension ext) {

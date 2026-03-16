@@ -1,6 +1,6 @@
 {
-  "name": "MedScribe AI",
-  "short_name": "MedScribe",
+  "name": "Doctor Scribe AI",
+  "short_name": "Doctor Scribe AI",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#F5F7FA",

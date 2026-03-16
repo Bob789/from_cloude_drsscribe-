@@ -80,14 +80,19 @@ async def upload_chunk(
     if len(content) > MAX_CHUNK_SIZE:
         raise ValidationError("הקטע גדול מדי (מקסימום 25MB)")
 
+    # Encrypt chunk audio before storage
+    from app.utils.encryption import encrypt_audio
+    encrypted_content, encrypted_dek = encrypt_audio(content)
+
     key = f"recordings/{visit.id}/chunk_{chunk_index:04d}.webm"
-    await upload_file(content, key, file.content_type or "audio/webm")
+    await upload_file(encrypted_content, key, file.content_type or "audio/webm")
 
     chunk = RecordingChunk(
         visit_id=visit.id,
         chunk_index=chunk_index,
         audio_url=key,
         file_size=len(content),
+        encryption_key=encrypted_dek,
     )
     db.add(chunk)
     await db.commit()

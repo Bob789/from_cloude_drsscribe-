@@ -11,7 +11,10 @@
   --border: #223055;
 }
 
-html, body {
+html {
+  overflow-x: clip;
+}
+body {
   overflow-x: hidden;
 }
 

@@ -2,11 +2,11 @@
 
 import { useRef, useState } from 'react'
 
-interface MedScribeEmbedProps {
+interface MedScribeAIEmbedProps {
   url: string
 }
 
-export default function MedScribeEmbed({ url }: MedScribeEmbedProps) {
+export default function MedScribeAIEmbed({ url }: MedScribeAIEmbedProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -35,7 +35,7 @@ export default function MedScribeEmbed({ url }: MedScribeEmbedProps) {
       {isLoading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 z-10">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-gray-600 font-medium">טוען את MedScribe AI...</p>
+          <p className="text-gray-600 font-medium">טוען את Doctor Scribe AI...</p>
         </div>
       )}
 

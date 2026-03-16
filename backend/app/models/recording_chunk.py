@@ -15,6 +15,7 @@ class RecordingChunk(Base):
     audio_url: Mapped[str] = mapped_column(String(1000), nullable=False)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    encryption_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     visit = relationship("Visit", lazy="selectin")

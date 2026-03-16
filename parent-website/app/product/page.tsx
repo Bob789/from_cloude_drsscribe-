@@ -1,177 +1,172 @@
-'use client'
-
-import { useState } from 'react'
 import Link from 'next/link'
 import Header from '@/components/Header'
 
-const PATIENTS = [
-  { id: 1, name: 'יוסי כהן', age: 54, diagnosis: 'יתר לחץ דם', lastVisit: '22.02.2026', status: 'active' },
-  { id: 2, name: 'מרים לוי', age: 67, diagnosis: 'סוכרת סוג 2', lastVisit: '20.02.2026', status: 'pending' },
-  { id: 3, name: 'דוד אברהם', age: 43, diagnosis: 'כאבי גב כרוניים', lastVisit: '19.02.2026', status: 'active' },
-  { id: 4, name: 'שרה גולדברג', age: 71, diagnosis: 'אי ספיקת לב', lastVisit: '18.02.2026', status: 'active' },
-  { id: 5, name: 'אחמד חסן', age: 38, diagnosis: 'אסתמה', lastVisit: '17.02.2026', status: 'pending' },
-  { id: 6, name: 'רחל שמיר', age: 59, diagnosis: 'ארתריטיס', lastVisit: '16.02.2026', status: 'active' },
-]
+export const metadata = {
+  title: 'Doctor Scribe AI — תמלול רפואי חכם | Medical Hub',
+  description: 'מערכת SaaS לתמלול וסיכום אוטומטי של ביקורים רפואיים בעברית. לקליניקות פרטיות ורופאים עצמאיים.',
+  openGraph: {
+    title: 'Doctor Scribe AI — תמלול רפואי חכם',
+    description: 'מערכת SaaS לתמלול וסיכום אוטומטי של ביקורים רפואיים בעברית',
+    url: 'https://medicalhub.co.il/product',
+    type: 'website',
+  },
+}
 
-const STATS = [
-  { label: 'ביקורים היום', value: '12', icon: '🩺', color: '#38bdf8' },
-  { label: 'מטופלים פעילים', value: '148', icon: '👥', color: '#34d399' },
-  { label: 'תמלולים הושלמו', value: '9', icon: '📝', color: '#a78bfa' },
-  { label: 'ממתינים לסקירה', value: '3', icon: '⏳', color: '#fb923c' },
-]
-
-const SAMPLE_TRANSCRIPT = `שלום, אני ד"ר כהן. המטופל יוסי כהן, בן 54, מגיע עם תלונות על כאבי ראש וסחרחורות לאחרונה. לחץ הדם היום 148/92. המטופל מדווח על שינה לקויה ומתח מוגבר בעבודה. מומלץ להגביר מינון אמלודיפין ל-10 מ"ג, לבצע ניטור לחץ דם ביתי פעמיים ביום, ולחזור לביקור עוד 3 שבועות.`
-
-export default function ProductPage() {
-  const [search, setSearch] = useState('')
-  const [recording, setRecording] = useState(false)
-  const [selectedPatient, setSelectedPatient] = useState(PATIENTS[0])
-
-  const filtered = PATIENTS.filter(p =>
-    p.name.includes(search) || p.diagnosis.includes(search)
-  )
-
+export default function AboutMedScribeAIPage() {
   return (
     <>
-      <Header />
-      <main style={{ background: 'var(--bg)', minHeight: 'calc(100vh - 64px)', padding: '24px 20px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <Header page="about" />
 
-          {/* Page Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#e0f2fe', marginBottom: 4 }}>
-                🎤 MedScribe AI — לוח בקרה
-              </h1>
-              <p style={{ color: 'var(--muted)', fontSize: 14 }}>ניהול מטופלים ותמלול ביקורים רפואיים</p>
+      {/* Hero */}
+      <div style={{ position: 'relative' }}>
+        {/* Logo — floats above the header border line, same technique as homepage */}
+        <div style={{
+          position: 'absolute', top: -60, left: 0, right: 0,
+          display: 'flex', justifyContent: 'center',
+          zIndex: 201, pointerEvents: 'none',
+        }}>
+          <img src="/logo.png" alt="Doctor Scribe AI" width={120} height={120} className="logo-animated" style={{ pointerEvents: 'auto' }} />
+        </div>
+
+        <div className="hero" style={{ maxWidth: 1200, margin: '0 auto', padding: '70px 20px 20px', textAlign: 'center' }}>
+        <h2 style={{ fontSize: 44, fontWeight: 700, marginBottom: 12, background: 'linear-gradient(to left, #22d3ee, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+          Doctor Scribe AI
+        </h2>
+        <p style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>מערכת SaaS לתמלול וסיכום אוטומטי</p>
+        <p style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 0 }}>של ביקורים רפואיים בעברית</p>
+
+        <div style={{ maxWidth: 900, margin: '20px auto', padding: 20, borderRadius: 20, border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(18,26,51,0.5)' }}>
+          <p style={{ fontSize: 16, color: 'var(--muted)', lineHeight: 1.8, margin: 0 }}>
+            רופא מקליט את השיחה עם המטופל בזמן אמת{' '}
+            <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>→</span>{' '}
+            המערכת מתמללת אוטומטית{' '}
+            <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>→</span>{' '}
+            יוצרת סיכום רפואי מובנה{' '}
+            <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>→</span>{' '}
+            שומרת בתיק המטופל
+          </p>
+        </div>
+
+        <div style={{ marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <a href={'https://app.drsscribe.com'} className="btn btn-primary" style={{ padding: '14px 36px', fontSize: 18 }}>
+            🚀 כניסה למערכת תמלול
+          </a>
+          <a href="#demo" className="btn btn-secondary" style={{ padding: '14px 36px', fontSize: 18 }}>
+            📹 צפה בדמו
+          </a>
+        </div>
+      </div>
+      </div>
+
+      {/* How It Works */}
+      <div className="section">
+        <h2 className="section-title">איך זה עובד? 🔄</h2>
+        <div className="steps-grid">
+          {[
+            { num: '1', icon: '🎤', title: 'הקלטה', desc: 'רופא מקליט את השיחה עם המטופל ישירות מהדפדפן. לא צריך אפליקציה.' },
+            { num: '2', icon: '🤖', title: 'תמלול + סיכום', desc: 'Whisper API מתמלל את השיחה, GPT-4.1 יוצר סיכום רפואי מובנה עם תגיות אבחנה.' },
+            { num: '3', icon: '💾', title: 'שמירה', desc: 'הסיכום נשמר בתיק המטופל, ניתן לעריכה ולייצוא ל-PDF.' },
+          ].map((step) => (
+            <div key={step.num} className="step-card">
+              <div className="step-number">{step.num}</div>
+              <div className="step-icon">{step.icon}</div>
+              <h3 className="step-title">{step.title}</h3>
+              <p className="step-desc">{step.desc}</p>
             </div>
-            <button
-              aria-label="record visit"
-              data-testid="record-button"
-              onClick={() => setRecording(r => !r)}
-              className="btn btn-primary"
-              style={{ padding: '12px 24px', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}
-            >
-              {recording ? '⏹ עצור' : '🔴 הקלט ביקור'}
-            </button>
-          </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 32, padding: 32, borderRadius: 24, border: '1px dashed rgba(56,189,248,0.5)', background: 'rgba(56,189,248,0.05)', textAlign: 'center' }}>
+          <p style={{ fontSize: 20, fontWeight: 600, marginBottom: 8, color: '#e0f2fe' }}>⏱️ זמן כולל: 7-15 דקות</p>
+          <p style={{ color: 'var(--muted)' }}>(תלוי באורך ההקלטה - כל העיבוד אוטומטי ברקע)</p>
+        </div>
+      </div>
 
-          {/* Stats Cards */}
-          <div className="summary-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
-            {STATS.map(s => (
-              <div key={s.label} className="card stat-card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '20px 24px' }}>
-                <span style={{ fontSize: 36 }}>{s.icon}</span>
-                <div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
-                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>{s.label}</div>
-                </div>
+      {/* Summary Fields */}
+      <div className="section">
+        <h2 className="section-title">מה כולל הסיכום האוטומטי? 📝</h2>
+        <div className="summary-grid">
+          <div className="fields-grid">
+            {[
+              { label: 'תלונה עיקרית', example: '"כאבי גב תחתון במשך שבועיים"' },
+              { label: 'ממצאים', example: '"טווח תנועה מוגבל, רגישות L4-L5"' },
+              { label: 'אבחנה', example: '"Lumbar strain / פציעת שרירי גב"' },
+              { label: 'תוכנית טיפול', example: '"מנוחה 3 ימים, אדביל 600mg x3"' },
+              { label: 'המלצות', example: '"לשוב בעוד שבוע אם לא חל שיפור"' },
+              { label: 'דחיפות', example: 'רגיל / דחוף / קריטי' },
+            ].map((field) => (
+              <div key={field.label} className="summary-field">
+                <div className="summary-field-label">{field.label}</div>
+                <p className="summary-field-example">{field.example}</p>
               </div>
             ))}
           </div>
-
-          {/* Main content: patient list + transcription */}
-          <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
-
-            {/* Patient List */}
-            <div className="card patient-section" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>👥 רשימת מטופלים</h3>
-                <input
-                  type="search"
-                  placeholder="חיפוש מטופל..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="search-input"
-                  style={{ width: '100%', padding: '10px 14px', fontSize: 14 }}
-                />
-              </div>
-              <div className="patient-list" style={{ maxHeight: 500, overflowY: 'auto' }}>
-                {filtered.map(p => (
-                  <div
-                    key={p.id}
-                    className="patient-card list-item"
-                    data-testid="patient-card"
-                    onClick={() => setSelectedPatient(p)}
-                    style={{
-                      cursor: 'pointer',
-                      borderRadius: 0,
-                      borderLeft: 'none', borderRight: 'none', borderTop: 'none',
-                      borderBottom: '1px solid var(--border)',
-                      background: selectedPatient.id === p.id ? 'rgba(56,189,248,0.08)' : 'transparent',
-                      padding: '14px 20px',
-                    }}
-                  >
-                    <div className="list-item-content">
-                      <div className="list-item-title">{p.name}</div>
-                      <div className="list-item-meta">{p.diagnosis} · גיל {p.age}</div>
-                      <div className="list-item-meta" style={{ marginTop: 3 }}>ביקור אחרון: {p.lastVisit}</div>
-                    </div>
-                    <span className="tag" style={{ background: p.status === 'active' ? 'rgba(52,211,153,0.1)' : 'rgba(251,146,60,0.1)', borderColor: p.status === 'active' ? 'rgba(52,211,153,0.4)' : 'rgba(251,146,60,0.4)', color: p.status === 'active' ? '#6ee7b7' : '#fdba74' }}>
-                      {p.status === 'active' ? 'פעיל' : 'ממתין'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Transcription & Summary */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Patient Header */}
-              <div className="card" style={{ padding: '20px 24px' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{selectedPatient.name}</h3>
-                <p style={{ color: 'var(--muted)', fontSize: 14 }}>{selectedPatient.diagnosis} · גיל {selectedPatient.age} · ביקור אחרון: {selectedPatient.lastVisit}</p>
-              </div>
-
-              {/* Recording Status */}
-              {recording && (
-                <div className="card" style={{ padding: '16px 24px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1s infinite' }} />
-                    <span style={{ color: '#fca5a5', fontWeight: 600 }}>מקליט... מדבר בבירור</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Transcription Area */}
-              <div className="card transcript-section" data-testid="transcript-area">
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>📄 תמלול הביקור</h3>
-                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: '16px', fontSize: 14, lineHeight: 1.7, color: 'var(--text)', minHeight: 120 }}>
-                  {SAMPLE_TRANSCRIPT}
-                </div>
-              </div>
-
-              {/* Medical Summary */}
-              <div className="card summary-section">
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>🧠 סיכום רפואי</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {[
-                    { label: 'אבחנה', value: selectedPatient.diagnosis },
-                    { label: 'ממצאים', value: 'ל"ד 148/92, ניטור ביתי נדרש' },
-                    { label: 'המלצות', value: 'הגברת מינון אמלודיפין ל-10 מ"ג' },
-                    { label: 'מעקב', value: 'ביקור חוזר בעוד 3 שבועות' },
-                  ].map(item => (
-                    <div key={item.label} className="summary-field">
-                      <div className="summary-field-label">{item.label}</div>
-                      <div style={{ color: 'var(--text)', fontSize: 14 }}>{item.value}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
-                  <button className="btn btn-secondary" style={{ flex: 1 }} data-testid="export-pdf">
-                    📥 ייצוא PDF
-                  </button>
-                  <button className="btn btn-primary" style={{ flex: 1 }}>
-                    ✉️ שלח לרשומה
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
+          <p style={{ textAlign: 'center', marginTop: 24, color: 'var(--muted)' }}>✏️ כל השדות ניתנים לעריכה ידנית</p>
         </div>
-      </main>
+      </div>
+
+      {/* Features */}
+      <div className="section">
+        <h2 className="section-title">תכונות עיקריות ⭐</h2>
+        <div className="features-grid">
+          {[
+            { icon: '👥', title: 'ניהול מטופלים', items: ['רשימת מטופלים + חיפוש מהיר', 'היסטוריית ביקורים מלאה', 'מפתח ראשי גמיש (ת"ז/טלפון/אימייל)'] },
+            { icon: '🎙️', title: 'תמלול מתקדם', items: ['זיהוי דוברים (רופא vs מטופל)', 'דיוק גבוה בעברית', 'עריכת תמלול ידנית'] },
+            { icon: '🧠', title: 'AI חכם', items: ['סיכום רפואי מובנה', 'נורמליזציה של אבחנות', 'חילוץ תגיות אוטומטי'] },
+            { icon: '🔍', title: 'חיפוש מתקדם', items: ['Full-text search', 'חיפוש סמנטי', 'סינון לפי תאריכים ותגיות'] },
+            { icon: '🌍', title: '8 שפות', items: ['עברית (RTL)', 'אנגלית, גרמנית, ספרדית', 'צרפתית, פורטוגזית, קוריאנית, איטלקית'] },
+            { icon: '🔒', title: 'אבטחה', items: ['הצפנת PII (AES-256)', 'Google OAuth + JWT', 'Audit log מלא'] },
+          ].map((feature) => (
+            <div key={feature.title} className="feature-card">
+              <div className="feature-icon">{feature.icon}</div>
+              <h3 className="feature-title">{feature.title}</h3>
+              <ul className="feature-list">
+                {feature.items.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Benefits */}
+      <div className="section">
+        <h2 className="section-title">למה Doctor Scribe AI? 💡</h2>
+        <div className="benefits-grid">
+          <div className="benefit-card">
+            <h3>👨‍⚕️ לרופא</h3>
+            <ul className="benefit-list">
+              {['חיסכון 80% בזמן תיעוד', 'סיכומים מקצועיים ואחידים', 'חיפוש מהיר בכל הביקורים', 'גרפים וסטטיסטיקות', 'גישה מכל מקום (רק דפדפן)'].map(i => <li key={i}>{i}</li>)}
+            </ul>
+          </div>
+          <div className="benefit-card">
+            <h3>🤕 למטופל</h3>
+            <ul className="benefit-list">
+              {['יותר זמן פנים אל פנים עם הרופא', 'סיכום ברור ומובן לקחת הביתה', 'פרטיות מוגנת (הצפנה מלאה)', 'גישה למידע רפואי מסודר', 'אין צורך לחזור על המידע'].map(i => <li key={i}>{i}</li>)}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="cta-section">
+        <h2>מוכנים להתחיל? 🚀</h2>
+        <p>התחבר עם Google והתחל להשתמש במערכת התמלול</p>
+        <a href={'https://app.drsscribe.com'} className="btn btn-primary">כניסה למערכת המלאה</a>
+        <p style={{ marginTop: 24, fontSize: 14, color: 'var(--muted)' }}>
+          💡 מצב דמו: 10 מטופלים + 10 דקות תמלול לכל מטופל
+        </p>
+      </div>
+
+      {/* Demo */}
+      <div className="section" id="demo">
+        <h2 className="section-title">צפה איך זה עובד 📹</h2>
+        <div style={{ aspectRatio: '16/9', borderRadius: 24, border: '2px solid var(--border)', background: 'rgba(18,26,51,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 48, marginBottom: 16 }}>🎬</p>
+            <p style={{ fontSize: 24, fontWeight: 600, marginBottom: 8 }}>סרטון הדגמה</p>
+            <p style={{ color: 'var(--muted)' }}>(ניתן להוסיף סרטון YouTube / Vimeo כאן)</p>
+          </div>
+        </div>
+      </div>
     </>
   )
 }

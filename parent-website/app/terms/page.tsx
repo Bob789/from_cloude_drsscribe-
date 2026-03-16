@@ -3,10 +3,10 @@ import Link from 'next/link'
 
 export const metadata = {
   title: 'תנאי שימוש | Medical Hub',
-  description: 'תנאי השימוש של Medical Hub ו-MedScribe AI — תנאים והגבלות לשימוש בשירות.',
+  description: 'תנאי השימוש של Medical Hub ו-Doctor Scribe AI — תנאים והגבלות לשימוש בשירות.',
   openGraph: {
     title: 'תנאי שימוש | Medical Hub',
-    description: 'תנאי השימוש של Medical Hub ו-MedScribe AI',
+    description: 'תנאי השימוש של Medical Hub ו-Doctor Scribe AI',
     type: 'website',
   },
 }
@@ -29,7 +29,7 @@ export default function TermsPage() {
             <section>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>1. הסכמה לתנאים</h2>
               <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
-                בשימוש בשירותי Medical Hub ו-MedScribe AI, הנך מסכים לתנאים אלה. אם אינך מסכים, אנא הימנע משימוש בשירות.
+                בשימוש בשירותי Medical Hub ו-Doctor Scribe AI, הנך מסכים לתנאים אלה. אם אינך מסכים, אנא הימנע משימוש בשירות.
                 אנו שומרים הזכות לעדכן תנאים אלה בכל עת עם הודעה מוקדמת.
               </p>
             </section>
@@ -38,7 +38,7 @@ export default function TermsPage() {
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>2. השירות</h2>
               <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
                 Medical Hub מספק פלטפורמת קהילה רפואית כולל מאמרים, פורום שאלות ותשובות, ורשימת מומחים.
-                MedScribe AI מספק שירות תמלול וסיכום אוטומטי של ביקורים רפואיים.
+                Doctor Scribe AI מספק שירות תמלול וסיכום אוטומטי של ביקורים רפואיים.
               </p>
               <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginTop: 12 }}>
                 <strong style={{ color: '#ef4444' }}>אזהרה רפואית:</strong> המידע באתר הוא למטרות מידע כללי בלבד ואינו מהווה עצה רפואית.
@@ -107,9 +107,6 @@ export default function TermsPage() {
           </div>
         </div>
       </main>
-      <footer className="site-footer">
-        <p>© 2026 Medical Hub • <Link href="/privacy" style={{ color: 'inherit' }}>מדיניות פרטיות</Link> • <Link href="/terms" style={{ color: 'inherit' }}>תנאי שימוש</Link></p>
-      </footer>
     </>
   )
 }

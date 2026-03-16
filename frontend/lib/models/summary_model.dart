@@ -31,7 +31,7 @@ class SummaryModel {
 
   factory SummaryModel.fromJson(Map<String, dynamic> json) => SummaryModel(
     id: json['id'],
-    displayId: json['display_id'],
+    displayId: (json['display_id'] as num?)?.toInt(),
     chiefComplaint: json['chief_complaint'],
     findings: json['findings'],
     diagnosis: json['diagnosis'],

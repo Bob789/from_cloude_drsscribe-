@@ -110,7 +110,7 @@ meili_data/
 
 temp/
 private/
-docs/
+# docs/  <-- Un-commenting this line to allow committing documentation
 keys/
 
 # parent-website

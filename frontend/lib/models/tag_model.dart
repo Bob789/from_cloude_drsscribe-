@@ -12,7 +12,7 @@ class TagModel {
     tagType: json['tag_type'] ?? '',
     tagCode: json['tag_code'] ?? '',
     tagLabel: json['tag_label'] ?? '',
-    count: json['count'],
+    count: (json['count'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => {'tag_type': tagType, 'tag_code': tagCode, 'tag_label': tagLabel};

@@ -5,7 +5,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     ENV_MODE: str = Field(default="dev", description="dev / staging / prod")
-    APP_NAME: str = "MedScribe AI"
+    APP_NAME: str = "Doctor Scribe AI"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
 
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     PARENT_WEBSITE_URL: str = "http://localhost:3001"
 
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:80,http://localhost:3001"
+    CORS_ORIGINS: str = "https://app.drsscribe.com,http://localhost:80,http://localhost:3001"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

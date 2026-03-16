@@ -10,7 +10,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - NEXT_PUBLIC_MEDSCRIBE_URL=http://localhost:3000
+      - NEXT_PUBLIC_MEDSCRIBE_URL=https://app.drsscribe.com
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     networks:
       - medscribe-network

@@ -8,6 +8,9 @@ import 'package:medscribe_ai/models/tag_model.dart';
 import 'package:medscribe_ai/utils/app_theme.dart';
 import 'package:medscribe_ai/utils/themes/medscribe_theme_extension.dart';
 import 'package:medscribe_ai/providers/auth_provider.dart';
+import 'package:medscribe_ai/services/api_client.dart';
+import 'package:dio/dio.dart';
+import 'dart:html' as html;
 
 class VisitCard extends ConsumerWidget {
   final VisitModel visit;
@@ -61,7 +64,7 @@ class VisitCard extends ConsumerWidget {
   Widget _buildTitle(String summarySource, bool canEdit) {
     return Row(children: [
       Expanded(child: Row(children: [
-        Text(_formatDate(visit.startTime), style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        Flexible(child: Text(_formatDate(visit.startTime), style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -69,9 +72,25 @@ class VisitCard extends ConsumerWidget {
           child: Text(summarySource == 'manual' ? 'visit.manual'.tr() : 'AI', style: GoogleFonts.heebo(fontSize: 10, fontWeight: FontWeight.w600, color: summarySource == 'manual' ? Colors.amber.shade800 : AppColors.primary)),
         ),
       ])),
+      if (visit.summary != null)
+        IconButton(icon: Icon(Icons.print_rounded, size: 18, color: AppColors.primary), padding: const EdgeInsets.all(4), constraints: const BoxConstraints(), onPressed: () => _downloadPdf(visit.summary!.id), tooltip: 'הדפס סיכום'),
       if (canEdit)
         IconButton(icon: Icon(Icons.edit_rounded, size: 18, color: AppColors.textSecondary), padding: const EdgeInsets.all(4), constraints: const BoxConstraints(), onPressed: () => onEditVisit(visit.id, visit), tooltip: 'visit.edit'.tr()),
     ]);
+  }
+
+  void _downloadPdf(String summaryId) async {
+    try {
+      final dio = ApiClient().dio;
+      final response = await dio.get(
+        '/summaries/$summaryId/pdf',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final blob = html.Blob([response.data], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.window.open(url, '_blank');
+      html.Url.revokeObjectUrl(url);
+    } catch (_) {}
   }
 
   Widget _buildStatusBadge(bool isCompleted) {

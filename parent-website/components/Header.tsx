@@ -54,8 +54,8 @@ export default function Header({ page = 'home' }: HeaderProps) {
               </>
             ) : (
               <>
-                <Link href="/login" className="btn btn-secondary">התחברות</Link>
-                <Link href="/about-medscribe" className="btn btn-primary">שירות תמלול לקליניקה</Link>
+                <Link href="/login" className="btn btn-secondary">התחברות Medical Hub</Link>
+                <Link href="/product" className="btn btn-primary">שירות תמלול לקליניקה</Link>
               </>
             )}
 

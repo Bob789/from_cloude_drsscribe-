@@ -24,10 +24,10 @@ class PatientFileModel {
 
   factory PatientFileModel.fromJson(Map<String, dynamic> json) {
     return PatientFileModel(
-      id: json['id'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
       patientId: json['patient_id']?.toString() ?? '',
       fileName: json['file_name'] ?? '',
-      fileSize: json['file_size'],
+      fileSize: (json['file_size'] as num?)?.toInt(),
       mimeType: json['mime_type'],
       category: json['category'] ?? 'other',
       description: json['description'],

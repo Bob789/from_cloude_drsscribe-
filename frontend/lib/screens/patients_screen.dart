@@ -19,6 +19,14 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   final _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(patientsProvider.notifier).loadPatients();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

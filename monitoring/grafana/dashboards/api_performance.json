@@ -1,6 +1,6 @@
 {
   "dashboard": {
-    "title": "MedScribe API Performance",
+    "title": "Doctor Scribe AI API Performance",
     "panels": [
       {
         "title": "Request Rate",

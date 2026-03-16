@@ -30,7 +30,7 @@ class PatientModel {
   factory PatientModel.fromJson(Map<String, dynamic> json) {
     return PatientModel(
       id: json['id'],
-      displayId: json['display_id'],
+      displayId: (json['display_id'] as num?)?.toInt() ?? 0,
       name: json['name'],
       idNumber: json['id_number'],
       dob: json['dob'],

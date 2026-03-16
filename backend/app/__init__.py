@@ -1,1 +1,1 @@
-# MedScribe AI Backend
+# Doctor Scribe AI Backend

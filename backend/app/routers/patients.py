@@ -8,7 +8,8 @@ from app.services.patient_service import create_patient, list_patients, update_p
 from app.services.audit_service import log_action
 from app.services.activity_log_service import log_activity
 from app.utils.id_resolver import get_patient_or_404
-from app.exceptions import NotFoundError
+from app.models.user import UserRole
+from app.exceptions import NotFoundError, ForbiddenError
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -57,6 +58,8 @@ async def get_by_id(
     current_user: User = Depends(get_current_user),
 ):
     patient = await get_patient_or_404(db, patient_id)
+    if current_user.role != UserRole.admin and patient.created_by != current_user.id:
+        raise ForbiddenError("אין הרשאה לצפות במטופל זה")
     prepared = prepare_patient(db, patient)
     await log_activity(db, current_user.id, "VIEW", "patient", patient_id, f"צפה בכרטיס מטופל {prepared.name}", request=request)
     return prepared
@@ -71,6 +74,8 @@ async def update(
     current_user: User = Depends(get_current_user),
 ):
     patient = await get_patient_or_404(db, patient_id)
+    if current_user.role != UserRole.admin and patient.created_by != current_user.id:
+        raise ForbiddenError("אין הרשאה לעדכן מטופל זה")
     patient = await update_patient(db, patient.id, data.model_dump(exclude_none=True))
     if not patient:
         raise NotFoundError("מטופל", patient_id)

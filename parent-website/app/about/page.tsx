@@ -20,8 +20,8 @@ export default function AboutPage() {
           הדף בפיתוח — בקרוב!
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link href="/about-medscribe" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: 16 }}>
-            אודות MedScribe AI
+          <Link href="/product" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: 16 }}>
+            אודות Doctor Scribe AI
           </Link>
           <Link href="/" className="btn btn-secondary" style={{ padding: '14px 32px', fontSize: 16 }}>
             חזרה לדף הבית
@@ -29,9 +29,6 @@ export default function AboutPage() {
         </div>
       </div>
       </main>
-      <footer className="site-footer">
-        <p>© 2026 Medical Hub • מדיניות פרטיות • תנאי שימוש</p>
-      </footer>
     </>
   )
 }

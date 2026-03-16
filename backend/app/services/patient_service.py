@@ -16,22 +16,26 @@ def encrypt_patient_pii(data: dict) -> dict:
         data["id_number"] = encrypt_field(data["id_number"])
     if "phone" in data and data["phone"]:
         data["phone"] = encrypt_field(data["phone"])
+    if "name" in data and data["name"]:
+        data["name"] = encrypt_field(data["name"])
+    if "email" in data and data["email"]:
+        data["email"] = encrypt_field(data["email"])
     return data
 
 
 def decrypt_patient_pii(patient: Patient) -> Patient:
-    try:
-        if patient.id_number:
-            patient.id_number = decrypt_field(patient.id_number)
-    except Exception as e:
-        logger.error("decryption_failed", field="id_number", patient_id=str(patient.id), error=str(e))
-        patient.id_number = None
-    try:
-        if patient.phone:
-            patient.phone = decrypt_field(patient.phone)
-    except Exception as e:
-        logger.error("decryption_failed", field="phone", patient_id=str(patient.id), error=str(e))
-        patient.phone = None
+    for field in ("id_number", "phone", "name", "email"):
+        try:
+            val = getattr(patient, field, None)
+            if val and len(val) > 50:  # encrypted values are long base64 strings
+                setattr(patient, field, decrypt_field(val))
+        except Exception as e:
+            logger.error("decryption_failed", field=field, patient_id=str(patient.id), error=str(e))
+            # For name, keep the value as-is (might be unencrypted legacy data)
+            if field in ("name", "email"):
+                pass  # keep original value
+            else:
+                setattr(patient, field, None)
     return patient
 
 
@@ -44,7 +48,8 @@ async def validate_patient_key(db: AsyncSession, data: dict, key_type: str, excl
     FIELD_LABELS = {"national_id": "תעודת זהות", "phone": "טלפון", "email": "אימייל"}
     label = FIELD_LABELS.get(key_type, key_type)
 
-    value = data.get(key_type)
+    field_name = "id_number" if key_type == "national_id" else key_type
+    value = data.get(field_name)
     if not value:
         raise ValueError(f"השדה {label} הוא שדה חובה לפי הגדרות המזהה שלך")
 

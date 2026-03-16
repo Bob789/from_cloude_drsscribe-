@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      { source: '/about-medscribe', destination: '/product', permanent: true },
+      { source: '/about-doctorscribe', destination: '/product', permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

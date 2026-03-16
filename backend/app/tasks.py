@@ -13,6 +13,7 @@ from app.services.llm_service import summarize_medical_visit
 from app.utils.encryption import decrypt_audio
 from app.services.pii_service import mask_pii, restore_pii, post_redact_dict
 from app.services.tagging_service import extract_tags_from_summary, sync_diagnosis_tags
+from app.utils.medical_encryption import encrypt_summary_fields, encrypt_transcription_fields
 from app.config import settings
 from sqlalchemy import select
 
@@ -40,8 +41,14 @@ async def _process_transcription(recording_id: str, task):
         if not recording:
             return
 
-        transcription = Transcription(recording_id=recording.id, status=TranscriptionStatus.processing)
-        db.add(transcription)
+        existing = await db.execute(select(Transcription).where(Transcription.recording_id == recording.id))
+        transcription = existing.scalars().first()
+        if transcription:
+            transcription.status = TranscriptionStatus.processing
+            transcription.error_message = None
+        else:
+            transcription = Transcription(recording_id=recording.id, status=TranscriptionStatus.processing)
+            db.add(transcription)
         await db.commit()
         await db.refresh(transcription)
 
@@ -59,6 +66,7 @@ async def _process_transcription(recording_id: str, task):
             transcription.language = result_data["language"]
             transcription.confidence_score = result_data["confidence"]
             transcription.status = TranscriptionStatus.done
+            encrypt_transcription_fields(transcription)
             await db.commit()
 
             visit_result = await db.execute(select(Visit).join(Recording).where(Recording.id == recording.id))
@@ -94,8 +102,14 @@ async def _process_transcription_chunked(visit_id: str, recording_id: str):
         if not chunks:
             return
 
-        transcription = Transcription(recording_id=rid, status=TranscriptionStatus.processing)
-        db.add(transcription)
+        existing_trans = await db.execute(select(Transcription).where(Transcription.recording_id == rid))
+        transcription = existing_trans.scalars().first()
+        if transcription:
+            transcription.status = TranscriptionStatus.processing
+            transcription.error_message = None
+        else:
+            transcription = Transcription(recording_id=rid, status=TranscriptionStatus.processing)
+            db.add(transcription)
         await db.commit()
         await db.refresh(transcription)
 
@@ -109,6 +123,9 @@ async def _process_transcription_chunked(visit_id: str, recording_id: str):
             for chunk in chunks:
                 response = client.get_object(Bucket=settings.S3_BUCKET, Key=chunk.audio_url)
                 audio_data = response["Body"].read()
+                # Decrypt if encrypted
+                if chunk.encryption_key:
+                    audio_data = decrypt_audio(audio_data, chunk.encryption_key)
 
                 chunk_result = await transcribe_audio(audio_data, filename=f"chunk_{chunk.chunk_index:04d}.webm")
 
@@ -138,6 +155,7 @@ async def _process_transcription_chunked(visit_id: str, recording_id: str):
             transcription.language = "he"
             transcription.confidence_score = total_confidence / len(chunks) if chunks else 0.0
             transcription.status = TranscriptionStatus.done
+            encrypt_transcription_fields(transcription)
             await db.commit()
 
             process_summary.delay(visit_id)
@@ -164,8 +182,14 @@ async def _process_summary(visit_id: str):
         if not transcription or not transcription.full_text:
             return
 
-        summary = Summary(visit_id=vid, status=SummaryStatus.processing)
-        db.add(summary)
+        existing_sum = await db.execute(select(Summary).where(Summary.visit_id == vid))
+        summary = existing_sum.scalars().first()
+        if summary:
+            summary.status = SummaryStatus.processing
+            summary.error_message = None
+        else:
+            summary = Summary(visit_id=vid, status=SummaryStatus.processing)
+            db.add(summary)
         await db.commit()
         await db.refresh(summary)
 
@@ -184,10 +208,13 @@ async def _process_summary(visit_id: str):
             summary.recommendations = restore_pii(llm_result.get("recommendations", ""), pii_map)
             summary.urgency = llm_result.get("urgency", "low")
             summary.status = SummaryStatus.done
+            # Tags need plaintext — extract before encryption
             await db.commit()
-
             await sync_diagnosis_tags(db, summary)
             await extract_tags_from_summary(db, summary)
+            # Now encrypt medical data at rest
+            encrypt_summary_fields(summary)
+            await db.commit()
         except Exception as e:
             summary.status = SummaryStatus.error
             summary.error_message = str(e)

@@ -13,6 +13,7 @@ from app.services.search_indexer import reindex_summary
 from app.utils.id_resolver import get_summary_or_404, get_visit_or_404
 from app.exceptions import NotFoundError, ForbiddenError
 from app.models.user import UserRole
+from app.utils.medical_encryption import decrypt_summary_fields, encrypt_summary_fields
 
 router = APIRouter(prefix="/summaries", tags=["summaries"])
 
@@ -41,6 +42,7 @@ async def get_summary(
     visit = await get_visit_or_404(db, str(summary.visit_id))
     if current_user.role != UserRole.admin and visit.doctor_id != current_user.id:
         raise ForbiddenError("אין הרשאה לצפות בסיכום זה")
+    decrypt_summary_fields(summary)
     return summary
 
 
@@ -57,6 +59,7 @@ async def get_summary_by_visit(
     summary = result.scalar_one_or_none()
     if not summary:
         raise NotFoundError("סיכום", visit_id)
+    decrypt_summary_fields(summary)
     return summary
 
 
@@ -74,10 +77,12 @@ async def update_summary(
         raise ForbiddenError("אין הרשאה לעדכן סיכום זה")
     for key, value in data.model_dump(exclude_none=True).items():
         setattr(summary, key, value)
+    encrypt_summary_fields(summary)
     await db.commit()
     await db.refresh(summary)
     await log_action(db, "update", "summary", str(summary.id), current_user.id)
     await log_activity(db, current_user.id, "UPDATE", "summary", summary.id, "עדכן סיכום", request=request)
+    decrypt_summary_fields(summary)
     await reindex_summary(db, summary)
     return summary
 
@@ -97,6 +102,24 @@ async def export_summary_pdf(
     from app.services.pdf_service import generate_summary_pdf
     from fastapi.responses import Response
 
+    # Decrypt medical data for PDF
+    decrypt_summary_fields(summary)
+
+    # Get patient info for the PDF
+    from app.models.patient import Patient
+    from app.utils.encryption import decrypt_field
+    from app.services.patient_service import decrypt_patient_pii
+    patient_result = await db.execute(select(Patient).where(Patient.id == visit.patient_id))
+    patient = patient_result.scalar_one_or_none()
+
+    # Decrypt id_number
+    id_number = ""
+    if patient and patient.id_number:
+        try:
+            id_number = decrypt_field(patient.id_number)
+        except Exception:
+            id_number = ""
+
     summary_data = {
         "chief_complaint": summary.chief_complaint,
         "findings": summary.findings,
@@ -104,6 +127,24 @@ async def export_summary_pdf(
         "treatment_plan": summary.treatment_plan,
         "recommendations": summary.recommendations,
     }
-    pdf_bytes = generate_summary_pdf(summary_data)
+    # Decrypt patient PII
+    patient_name = ""
+    if patient:
+        try:
+            db.expunge(patient)
+            decrypt_patient_pii(patient)
+            patient_name = patient.name or ""
+        except Exception:
+            patient_name = patient.name or ""
+
+    patient_data = {
+        "name": patient_name,
+        "id_number": id_number,
+    } if patient else None
+    visit_data = {
+        "start_time": visit.start_time.isoformat() if visit.start_time else "",
+        "doctor_name": current_user.name or "",
+    }
+    pdf_bytes = generate_summary_pdf(summary_data, patient=patient_data, visit=visit_data)
     await log_activity(db, current_user.id, "VIEW", "summary", summary.id, "ייצא סיכום ל-PDF", request=request)
     return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=summary_{summary.display_id}.pdf"})

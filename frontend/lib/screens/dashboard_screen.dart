@@ -24,19 +24,32 @@ class DashboardScreen extends ConsumerWidget {
           ? Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5))
           : Padding(
               padding: const EdgeInsets.all(24),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _buildHeader(),
-                const SizedBox(height: 24),
-                StatsGrid(stats: stats),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Expanded(flex: 3, child: TreatmentTimer()),
-                    const SizedBox(width: 20),
-                    Expanded(flex: 7, child: VisitsChart(stats: stats)),
-                  ]),
-                ),
-              ]),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 600;
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    _buildHeader(),
+                    const SizedBox(height: 24),
+                    StatsGrid(stats: stats),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: isNarrow
+                          ? SingleChildScrollView(
+                              child: Column(children: [
+                                const TreatmentTimer(compact: true),
+                                const SizedBox(height: 16),
+                                SizedBox(height: 360, child: VisitsChart(stats: stats)),
+                              ]),
+                            )
+                          : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              const Expanded(flex: 3, child: TreatmentTimer()),
+                              const SizedBox(width: 20),
+                              Expanded(flex: 7, child: VisitsChart(stats: stats)),
+                            ]),
+                    ),
+                  ]);
+                },
+              ),
             ),
     );
   }
@@ -81,6 +94,6 @@ class _DateTimeTextState extends State<_DateTimeText> {
     final dateStr = DateFormat('EEEE, d MMMM yyyy', locale).format(_now);
     final timeStr = DateFormat('HH:mm', locale).format(_now);
 
-    return Text('$dateStr  •  $timeStr', style: GoogleFonts.heebo(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary));
+    return Text('$dateStr  •  $timeStr', style: GoogleFonts.heebo(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 }

@@ -281,13 +281,13 @@ export default function ArticlesPage() {
               </div>
             </div>
 
-            {/* MedScribe CTA */}
+            {/* Doctor Scribe AI CTA */}
             <div className="card cta-card">
-              <h4 style={{ margin: '0 0 8px' }}>🎤 MedScribe AI</h4>
+              <h4 style={{ margin: '0 0 8px' }}>🎤 Doctor Scribe AI</h4>
               <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' }}>
                 תמלול וסיכום אוטומטי של ביקורים רפואיים לקליניקות פרטיות.
               </p>
-              <a href="/about-medscribe" className="btn btn-primary" style={{ display: 'block', textAlign: 'center', padding: '10px' }}>
+              <a href="/product" className="btn btn-primary" style={{ display: 'block', textAlign: 'center', padding: '10px' }}>
                 למד עוד →
               </a>
             </div>
@@ -300,9 +300,6 @@ export default function ArticlesPage() {
       </div>
 
       </main>
-      <footer className="site-footer">
-        <p>© 2026 Medical Hub • מדיניות פרטיות • תנאי שימוש</p>
-      </footer>
     </>
   )
 }
