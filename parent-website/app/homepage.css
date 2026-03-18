@@ -46,7 +46,7 @@
 .hp-hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; background: rgba(252,249,198,0.12); border: 1px solid rgba(252,249,198,0.3); color: #fcf9c6; font-size: 13px; font-weight: 600; margin-bottom: 20px; position: relative; z-index: 1; }
 .hp-hero-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; flex-shrink: 0; animation: hp-pulse 2s infinite; }
 @keyframes hp-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.2)} }
-.hp-hero-title { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900; color: white; line-height: 1.15; margin-bottom: 16px; position: relative; z-index: 1; }
+.hp-hero-title { font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 900; color: white; line-height: 1.15; margin-bottom: 16px; position: relative; z-index: 1; letter-spacing: -0.02em; }
 .hp-hero-title span { background: linear-gradient(135deg, #fcf9c6, #f0d060); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .hp-hero-sub { font-size: 16px; color: rgba(255,255,255,0.7); max-width: 580px; line-height: 1.6; margin-bottom: 32px; position: relative; z-index: 1; }
 .hp-hero-search { display: flex; gap: 10px; max-width: 600px; margin-bottom: 36px; position: relative; z-index: 1; }
