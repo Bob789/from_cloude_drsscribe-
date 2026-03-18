@@ -12,7 +12,7 @@ from app.services.llm_service import summarize_medical_visit
 from app.utils.encryption import decrypt_audio
 from app.services.pii_service import mask_pii, restore_pii, post_redact_dict
 from app.services.tagging_service import extract_tags_from_summary, sync_diagnosis_tags
-from app.utils.medical_encryption import encrypt_summary_fields, encrypt_transcription_fields
+from app.utils.medical_encryption import encrypt_summary_fields, encrypt_transcription_fields, decrypt_transcription_fields
 from app.config import settings
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -214,6 +214,8 @@ async def _process_summary(visit_id: str):
         await db.refresh(summary)
 
         try:
+            # Decrypt transcription before processing
+            decrypt_transcription_fields(transcription)
             masked_text, pii_map = mask_pii(transcription.full_text)
             llm_result = await summarize_medical_visit(masked_text)
 
