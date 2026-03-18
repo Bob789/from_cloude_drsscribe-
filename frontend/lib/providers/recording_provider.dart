@@ -8,6 +8,7 @@ import 'package:medscribe_ai/services/upload_service.dart';
 class RecordingState {
   final String? selectedPatientId;
   final String? patientName;
+  final int? patientDisplayId;
   final String? visitId;
   final double? uploadProgress;
   final bool isComplete;
@@ -22,6 +23,7 @@ class RecordingState {
   const RecordingState({
     this.selectedPatientId,
     this.patientName,
+    this.patientDisplayId,
     this.visitId,
     this.uploadProgress,
     this.isComplete = false,
@@ -37,6 +39,7 @@ class RecordingState {
   RecordingState copyWith({
     String? selectedPatientId,
     String? patientName,
+    int? patientDisplayId,
     String? visitId,
     double? uploadProgress,
     bool? isComplete,
@@ -51,6 +54,7 @@ class RecordingState {
     return RecordingState(
       selectedPatientId: selectedPatientId ?? this.selectedPatientId,
       patientName: patientName ?? this.patientName,
+      patientDisplayId: patientDisplayId ?? this.patientDisplayId,
       visitId: visitId ?? this.visitId,
       uploadProgress: uploadProgress ?? this.uploadProgress,
       isComplete: isComplete ?? this.isComplete,
@@ -106,12 +110,13 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     } catch (_) {}
   }
 
-  Future<void> selectPatient(String patientId, String patientName) async {
+  Future<void> selectPatient(String patientId, String patientName, {int? displayId}) async {
     try {
       final response = await _api.post('/visits', data: {'patient_id': patientId});
       state = RecordingState(
         selectedPatientId: patientId,
         patientName: patientName,
+        patientDisplayId: displayId,
         visitId: response.data['id'],
       );
     } catch (e) {
@@ -162,6 +167,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         state = RecordingState(
           selectedPatientId: state.selectedPatientId,
           patientName: state.patientName,
+          patientDisplayId: state.patientDisplayId,
           visitId: state.visitId,
           isComplete: true,
           chunksUploaded: state.chunksUploaded,
@@ -182,6 +188,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     state = RecordingState(
       selectedPatientId: state.selectedPatientId,
       patientName: state.patientName,
+      patientDisplayId: state.patientDisplayId,
       visitId: state.visitId,
       uploadProgress: 0.0,
     );
@@ -194,6 +201,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
           state = RecordingState(
             selectedPatientId: state.selectedPatientId,
             patientName: state.patientName,
+            patientDisplayId: state.patientDisplayId,
             visitId: state.visitId,
             uploadProgress: progress,
           );
@@ -202,6 +210,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       state = RecordingState(
         selectedPatientId: state.selectedPatientId,
         patientName: state.patientName,
+        patientDisplayId: state.patientDisplayId,
         visitId: state.visitId,
         isComplete: true,
         transcriptionStatus: 'processing',
@@ -211,6 +220,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       state = RecordingState(
         selectedPatientId: state.selectedPatientId,
         patientName: state.patientName,
+        patientDisplayId: state.patientDisplayId,
         visitId: state.visitId,
         error: e.toString(),
       );

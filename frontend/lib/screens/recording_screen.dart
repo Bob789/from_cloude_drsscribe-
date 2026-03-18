@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:medscribe_ai/models/patient_model.dart';
@@ -231,7 +232,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          ref.read(recordingProvider.notifier).selectPatient(patient.id, patient.name);
+          ref.read(recordingProvider.notifier).selectPatient(patient.id, patient.name, displayId: patient.displayId);
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -295,6 +296,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   }
 
   Widget _buildComplete(RecordingState recordingState, MedScribeThemeExtension ext) {
+    final isDone = recordingState.summaryStatus == 'done' || recordingState.transcriptionStatus == 'done';
     return Container(
       padding: const EdgeInsets.all(36),
       decoration: ext.cardDecoration,
@@ -321,20 +323,52 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
           ),
           const SizedBox(height: 16),
           // Status indicators
-          _buildStatusRow(
-            Icons.text_snippet_rounded,
-            'תמלול',
-            recordingState.transcriptionStatus,
-            ext,
-          ),
+          _buildStatusRow(Icons.text_snippet_rounded, 'תמלול', recordingState.transcriptionStatus, ext),
           const SizedBox(height: 8),
-          _buildStatusRow(
-            Icons.auto_awesome_rounded,
-            'סיכום רפואי',
-            recordingState.summaryStatus,
-            ext,
-          ),
-          const SizedBox(height: 24),
+          _buildStatusRow(Icons.auto_awesome_rounded, 'סיכום רפואי', recordingState.summaryStatus, ext),
+          const SizedBox(height: 20),
+          // ── Link to transcription/summary ──
+          if (isDone && recordingState.visitId != null)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  final displayId = recordingState.patientDisplayId;
+                  if (displayId != null) {
+                    context.go('/patients/$displayId');
+                  } else {
+                    context.go('/patients');
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.description_rounded, size: 20, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          'לצפייה בתמלול ובסיכום — לחץ כאן',
+                          style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
           Material(
             color: Colors.transparent,
             child: InkWell(
