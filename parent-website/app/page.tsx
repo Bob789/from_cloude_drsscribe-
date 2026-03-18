@@ -21,6 +21,7 @@ export default function MedicalHub() {
               <div className="hp-brand-sub">מאמרים • פורום • מומחים</div>
             </div>
           </Link>
+          <div style={{ flex: 1 }} />
           <nav className="hp-nav">
             <Link href="/" className="hp-nav-link">דף הבית</Link>
             <Link href="/articles" className="hp-nav-link">מאמרים</Link>
