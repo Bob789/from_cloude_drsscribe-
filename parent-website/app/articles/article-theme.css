@@ -1,6 +1,7 @@
 /* ===== MAIN ===== */
 .article-main {
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+  font-weight: 500;
   flex: 1;
   display: flex !important;
   justify-content: center !important;
@@ -101,11 +102,13 @@
 }
 
 .hero-subtitle {
-  font-size: 14px;
-  color: rgba(255,255,255,0.75);
-  margin-bottom: 18px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.95);
+  margin-bottom: 20px;
   position: relative;
   z-index: 1;
+  line-height: 1.6;
 }
 
 .hero-meta {
@@ -140,13 +143,14 @@
 
 /* ===== ARTICLE CONTENT ===== */
 .article-body {
-  padding: 20px 24px;
-  color: #1a1a2e;
-  line-height: 1.8;
-  font-size: 16px;
+  padding: 24px 32px;
+  color: #0f172a;
+  line-height: 1.85;
+  font-size: 1.1rem;
+  font-weight: 500;
 }
 
-.article-body p { margin-bottom: 20px; }
+.article-body p { margin-bottom: 24px; }
 
 /* Override legacy dark mode if active on body */
 .article-body h2 {
@@ -170,11 +174,11 @@
 .article-body ul {
   list-style-type: disc;
   padding-right: 24px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
-.article-body li { margin-bottom: 8px; color: #333; }
-.article-body strong { color: #001f6b; }
+.article-body li { margin-bottom: 12px; color: #0f172a; font-weight: 500; }
+.article-body strong { color: #001f6b; font-weight: 700; }
 
 /* Info boxes style if used in HTML content */
 .article-body .info-box {
