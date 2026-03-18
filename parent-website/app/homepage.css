@@ -21,7 +21,7 @@
 
 /* ===== HEADER ===== */
 .hp-header { position: sticky; top: 0; z-index: 200; background: linear-gradient(to left, #001030, #001f6b); border-bottom: 2px solid #c8a000; backdrop-filter: blur(12px); }
-.hp-header-inner { max-width: 1200px; margin: 0 auto; padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.hp-header-inner { padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .hp-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
 .hp-logo-circle { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #ffffff, #c8d8ff); display: flex; align-items: center; justify-content: center; color: #001f6b; font-weight: 900; font-size: 14px; flex-shrink: 0; }
 .hp-brand-name { color: white; font-size: 18px; font-weight: 900; }
