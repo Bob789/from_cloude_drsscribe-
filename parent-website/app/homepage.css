@@ -2,10 +2,11 @@
    HOMEPAGE — Yellow Block / Navy Gold Theme
    All classes prefixed with hp- to avoid conflicts
    ═══════════════════════════════════════════════ */
+/* Rubik font loaded via <link> in page.tsx */
 
 /* ===== WRAPPER — overrides body dark bg ===== */
-.hp-wrapper {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+.hp-wrapper, .hp-wrapper * {
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif !important;
   background: linear-gradient(160deg, #001f6b 0%, #4a5a8a 45%, #7a6a3a 100%);
   background-attachment: fixed;
   min-height: 100vh;

@@ -6,6 +6,8 @@ import './homepage.css'
 export default function MedicalHub() {
   return (
     <div className="hp-wrapper">
+      {/* Load Rubik font */}
+      <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       {/* TOP BAR */}
       <div className="hp-top-bar">
         <Link href="/product">חדש: תמלול רפואי אוטומטי לקליניקות — Doctor Scribe AI ←</Link>
