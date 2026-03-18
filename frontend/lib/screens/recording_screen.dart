@@ -73,46 +73,52 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
             _buildHeader(),
             const SizedBox(height: 24),
             Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (recordingState.selectedPatientId == null)
-                        Expanded(child: _buildPatientSelector(recordingState, ext))
-                      else if (recordingState.isComplete)
-                        _buildComplete(recordingState, ext)
-                      else ...[
-                        _buildRecorder(context, recordingState, ext),
-                        const SizedBox(height: 16),
-                        const TreatmentTimer(compact: true),
-                      ],
-                      if (recordingState.error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(ext.cardRadius),
-                              border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.error_outline_rounded, size: 18, color: AppColors.accent),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(recordingState.error!, style: GoogleFonts.heebo(fontSize: 13, color: AppColors.accent)),
+              child: recordingState.selectedPatientId == null
+                ? Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: _buildPatientSelector(recordingState, ext),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: Column(
+                          children: [
+                            if (recordingState.isComplete)
+                              _buildComplete(recordingState, ext)
+                            else ...[
+                              _buildRecorder(context, recordingState, ext),
+                              const SizedBox(height: 16),
+                              const TreatmentTimer(compact: true),
+                            ],
+                            if (recordingState.error != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(ext.cardRadius),
+                                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.error_outline_rounded, size: 18, color: AppColors.accent),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(recordingState.error!, style: GoogleFonts.heebo(fontSize: 13, color: AppColors.accent)),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                          ],
                         ),
-                    ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
             ),
           ],
         ),
