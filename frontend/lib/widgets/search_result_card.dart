@@ -113,7 +113,7 @@ class SearchResultCard extends StatelessWidget {
 
   String _formatDate(String dateStr) {
     try {
-      final date = DateTime.parse(dateStr);
+      final date = DateTime.parse(dateStr).toLocal();
       return '${date.day}/${date.month}/${date.year}';
     } catch (_) {
       return dateStr;
