@@ -17,10 +17,10 @@ TRANSCRIPTION_FIELDS = ("full_text",)
 
 
 def _is_encrypted(value: str | None) -> bool:
-    """Heuristic: encrypted base64 values are always long."""
+    """Heuristic: encrypted base64 values are at least 40 chars (12-byte nonce + 16-byte tag = 28 bytes → 38 base64 chars minimum) and contain no Hebrew spaces."""
     if not value:
         return False
-    return len(value) > 80 and " " not in value[:40]
+    return len(value) > 38 and " " not in value[:40]
 
 
 def encrypt_summary_fields(summary) -> None:
