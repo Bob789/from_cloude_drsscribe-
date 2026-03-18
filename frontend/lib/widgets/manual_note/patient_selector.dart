@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:medscribe_ai/models/patient_model.dart';
 import 'package:medscribe_ai/services/api_client.dart';
-import 'package:medscribe_ai/utils/app_theme.dart';
-import 'package:medscribe_ai/utils/themes/medscribe_theme_extension.dart';
+import 'package:medscribe_ai/screens/manual_note_screen.dart';
 
 class PatientSelector extends StatefulWidget {
   final void Function(String id, String name) onSelected;
@@ -60,61 +59,57 @@ class PatientSelectorState extends State<PatientSelector> {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<MedScribeThemeExtension>()!;
     final hasQuery = _ctrl.text.trim().isNotEmpty && _selectedId == null;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: ext.cardDecoration,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('search.patient_label'.tr(), style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _ctrl,
-          style: GoogleFonts.heebo(color: AppColors.textPrimary, fontSize: 14),
-          decoration: InputDecoration(
-            hintText: 'recording.patient_search_hint'.tr(),
-            prefixIcon: Icon(Icons.person_search_rounded, color: AppColors.textMuted, size: 20),
-            suffixIcon: _selectedId != null ? IconButton(icon: Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted), onPressed: _clear) : null,
-            filled: true, fillColor: AppColors.background,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.cardBorder)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.cardBorder)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          ),
-          readOnly: _selectedId != null,
-          onChanged: _search,
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      TextField(
+        controller: _ctrl,
+        style: GoogleFonts.heebo(color: const Color(0xFF111111), fontSize: 14),
+        decoration: InputDecoration(
+          hintText: 'recording.patient_search_hint'.tr(),
+          hintStyle: GoogleFonts.heebo(color: kMutedText),
+          prefixIcon: const Icon(Icons.person_search_rounded, color: kMutedText, size: 20),
+          suffixIcon: _selectedId != null ? IconButton(icon: const Icon(Icons.close_rounded, size: 18, color: kMutedText), onPressed: _clear) : null,
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.65),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kInputBorder)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kInputBorder)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kNavy, width: 1.5)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
-        if (hasQuery && _results.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 200),
-            decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.cardBorder)),
-            child: ListView.separated(
-              shrinkWrap: true, padding: const EdgeInsets.symmetric(vertical: 4),
-              itemCount: _results.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.cardBorder),
-              itemBuilder: (context, index) {
-                final p = _results[index];
-                return ListTile(
-                  dense: true,
-                  title: Text(p.name, style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                  subtitle: p.phone != null ? Text(p.phone!, style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textMuted)) : null,
-                  onTap: () => _select(p),
-                );
-              },
-            ),
+        readOnly: _selectedId != null,
+        onChanged: _search,
+      ),
+      if (hasQuery && _results.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        Container(
+          constraints: const BoxConstraints(maxHeight: 180),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: kInputBorder)),
+          child: ListView.separated(
+            shrinkWrap: true, padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: _results.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            itemBuilder: (context, index) {
+              final p = _results[index];
+              return ListTile(
+                dense: true,
+                title: Text(p.name, style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF111111))),
+                subtitle: p.phone != null ? Text(p.phone!, style: GoogleFonts.heebo(fontSize: 12, color: kMutedText)) : null,
+                onTap: () => _select(p),
+                hoverColor: const Color(0xFFF0F4FF),
+              );
+            },
           ),
-        ],
-        if (_selectedId != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Row(children: [
-              Icon(Icons.check_circle_rounded, size: 16, color: AppColors.secondary),
-              const SizedBox(width: 6),
-              Text('appointments.selected_patient'.tr(namedArgs: {'name': _selectedName!}), style: GoogleFonts.heebo(fontSize: 13, color: AppColors.secondary, fontWeight: FontWeight.w500)),
-            ]),
-          ),
-      ]),
-    );
+        ),
+      ],
+      if (_selectedId != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(children: [
+            const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
+            const SizedBox(width: 6),
+            Text('appointments.selected_patient'.tr(namedArgs: {'name': _selectedName!}), style: GoogleFonts.heebo(fontSize: 13, color: const Color(0xFF16A34A), fontWeight: FontWeight.w500)),
+          ]),
+        ),
+    ]);
   }
 }

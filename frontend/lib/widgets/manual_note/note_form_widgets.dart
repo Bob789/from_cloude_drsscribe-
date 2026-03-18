@@ -1,8 +1,7 @@
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:medscribe_ai/utils/app_theme.dart';
-import 'package:medscribe_ai/utils/themes/medscribe_theme_extension.dart';
+import 'package:medscribe_ai/screens/manual_note_screen.dart';
 
 class UrgencySelector extends StatelessWidget {
   final String value;
@@ -12,35 +11,31 @@ class UrgencySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<MedScribeThemeExtension>()!;
-    final options = [('low', 'urgency.low'.tr(), Colors.green), ('medium', 'urgency.medium'.tr(), Colors.orange), ('high', 'urgency.high'.tr(), Colors.deepOrange), ('critical', 'urgency.critical'.tr(), Colors.red)];
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: ext.cardDecoration,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('visit.urgency_label'.tr(), style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-        const SizedBox(height: 12),
-        Wrap(spacing: 10, runSpacing: 8, children: options.map((o) {
-          final isSelected = value == o.$1;
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => onChanged(o.$1),
+    final options = [
+      ('low', 'urgency.low'.tr(), const Color(0xFF16A34A)),
+      ('medium', 'urgency.medium'.tr(), const Color(0xFFEA580C)),
+      ('high', 'urgency.high'.tr(), const Color(0xFFDC2626)),
+      ('critical', 'urgency.critical'.tr(), const Color(0xFF9F1239)),
+    ];
+    return Wrap(spacing: 8, runSpacing: 8, children: options.map((o) {
+      final isSelected = value == o.$1;
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onChanged(o.$1),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? o.$3.withValues(alpha: 0.15) : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? o.$3.withValues(alpha: 0.15) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: isSelected ? o.$3 : AppColors.cardBorder, width: isSelected ? 1.5 : 1),
-                ),
-                child: Text(o.$2, style: GoogleFonts.heebo(fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? o.$3 : AppColors.textSecondary)),
-              ),
+              border: Border.all(color: isSelected ? o.$3.withValues(alpha: 0.5) : const Color(0xFFC3C9D4)),
             ),
-          );
-        }).toList()),
-      ]),
-    );
+            child: Text(o.$2, style: GoogleFonts.rubik(fontSize: 13, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400, color: isSelected ? o.$3 : const Color(0xFF555555))),
+          ),
+        ),
+      );
+    }).toList());
   }
 }
 
@@ -53,27 +48,23 @@ class NoteTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<MedScribeThemeExtension>()!;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: ext.cardDecoration,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-        const SizedBox(height: 10),
-        TextField(
-          controller: controller,
-          maxLines: maxLines,
-          style: GoogleFonts.heebo(color: AppColors.textPrimary, fontSize: 14, height: 1.6),
-          decoration: InputDecoration(
-            filled: true, fillColor: AppColors.background,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.cardBorder)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.cardBorder)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
-            contentPadding: const EdgeInsets.all(14),
-          ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w800, color: kNavy)),
+      const SizedBox(height: 8),
+      TextField(
+        controller: controller,
+        maxLines: maxLines,
+        style: GoogleFonts.heebo(color: const Color(0xFF111111), fontSize: 14, height: 1.6),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.65),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kInputBorder)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kInputBorder)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kNavy, width: 1.5)),
+          contentPadding: const EdgeInsets.all(12),
         ),
-      ]),
-    );
+      ),
+    ]);
   }
 }
 
@@ -91,14 +82,22 @@ class NoteSaveButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]), borderRadius: BorderRadius.circular(14)),
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [kNavyLight, kNavy]),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: kNavyLight.withValues(alpha: 0.3), blurRadius: 20)],
+            ),
             child: Center(
               child: isLoading
                   ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text('common.save'.tr(), style: GoogleFonts.heebo(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                  : Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.save_rounded, color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Text('common.save'.tr(), style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                    ]),
             ),
           ),
         ),
