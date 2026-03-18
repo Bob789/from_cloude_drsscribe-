@@ -8,7 +8,6 @@ import 'package:medscribe_ai/providers/recording_provider.dart';
 import 'package:medscribe_ai/utils/app_theme.dart';
 import 'package:medscribe_ai/utils/themes/medscribe_theme_extension.dart';
 import 'package:medscribe_ai/widgets/audio_recorder.dart';
-import 'package:medscribe_ai/widgets/treatment_timer.dart';
 
 class RecordingScreen extends ConsumerStatefulWidget {
   const RecordingScreen({super.key});
@@ -91,8 +90,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                               _buildComplete(recordingState, ext)
                             else ...[
                               _buildRecorder(context, recordingState, ext),
-                              const SizedBox(height: 16),
-                              const TreatmentTimer(compact: true),
                             ],
                             if (recordingState.error != null)
                               Padding(

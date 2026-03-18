@@ -4,6 +4,7 @@ import 'dart:js_interop';
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
+import 'package:google_fonts/google_fonts.dart';
 
 @JS('createVadHelper')
 external _VadHelper _createVadHelper(JSObject stream);
@@ -18,6 +19,8 @@ const _vadCheckMs = 60;
 const _silenceTimeoutSec = 3;
 const _vadThreshold = 0.025;
 const _waveformBars = 32;
+const _defaultMaxMinutes = 20;
+const _maxMinutesOptions = [10, 15, 20, 25, 30, 45, 60];
 
 class AudioRecorder extends StatefulWidget {
   final void Function(Uint8List audioData, String mimeType, int chunkIndex, bool isFinal)? onChunkReady;
@@ -41,6 +44,7 @@ class _AudioRecorderState extends State<AudioRecorder> {
   int _chunkIndex = 0;
   int _chunksUploaded = 0;
   bool _stopping = false;
+  int _maxMinutes = _defaultMaxMinutes;
 
   _VadHelper? _vadHelper;
   Timer? _vadTimer;
@@ -56,6 +60,8 @@ class _AudioRecorderState extends State<AudioRecorder> {
   int get _silenceFramesThreshold => _silenceTimeoutSec * 1000 ~/ _vadCheckMs;
   bool get _isChunkedMode => widget.onChunkReady != null;
   bool get _effectivelyPaused => _isPaused || _autoPausedByVad;
+  Duration get _maxDuration => Duration(minutes: _maxMinutes);
+  double get _progress => _maxDuration.inSeconds > 0 ? (_duration.inSeconds / _maxDuration.inSeconds).clamp(0.0, 1.0) : 0.0;
 
   Future<void> _startRecording() async {
     try {
@@ -249,6 +255,10 @@ class _AudioRecorderState extends State<AudioRecorder> {
           _speakingDuration += const Duration(seconds: 1);
         }
       });
+      // Auto-stop when max time reached
+      if (_duration >= _maxDuration && !_stopping) {
+        _stopRecording();
+      }
     });
   }
 
@@ -275,6 +285,7 @@ class _AudioRecorderState extends State<AudioRecorder> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Mic icon with pulse
             Stack(
               alignment: Alignment.center,
               children: [
@@ -298,10 +309,32 @@ class _AudioRecorderState extends State<AudioRecorder> {
               ],
             ),
             const SizedBox(height: 12),
+            // Timer display
             Text(
               _formatDuration(_duration),
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontFamily: 'monospace'),
             ),
+            if (_isRecording) ...[
+              const SizedBox(height: 4),
+              // Remaining time
+              Text(
+                'נותרו: ${_formatDuration(_maxDuration - _duration)}',
+                style: GoogleFonts.heebo(fontSize: 12, color: _progress > 0.85 ? Colors.red : Colors.grey.shade600, fontWeight: _progress > 0.85 ? FontWeight.w700 : FontWeight.w400),
+              ),
+              const SizedBox(height: 6),
+              // Progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _progress,
+                  minHeight: 4,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    _progress > 0.85 ? Colors.red : Colors.blue.shade400,
+                  ),
+                ),
+              ),
+            ],
             if (_isRecording && _vadEnabled && _vadAvailable) ...[
               const SizedBox(height: 2),
               Text(
@@ -320,6 +353,7 @@ class _AudioRecorderState extends State<AudioRecorder> {
               _buildChunkStatus(),
             ],
             const SizedBox(height: 20),
+            // Record / Pause / Stop buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -343,6 +377,42 @@ class _AudioRecorderState extends State<AudioRecorder> {
                 ],
               ],
             ),
+            // Duration limit selector (below record button)
+            if (!_isRecording) ...[
+              const SizedBox(height: 16),
+              Text('מגבלת הקלטה (דקות)', style: GoogleFonts.heebo(fontSize: 12, color: Colors.grey.shade600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                alignment: WrapAlignment.center,
+                children: _maxMinutesOptions.map((m) {
+                  final selected = _maxMinutes == m;
+                  return GestureDetector(
+                    onTap: () => setState(() => _maxMinutes = m),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected ? Colors.red.withValues(alpha: 0.15) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: selected ? Colors.red : Colors.grey.shade300,
+                          width: selected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        "$m'",
+                        style: GoogleFonts.heebo(
+                          fontSize: 13,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                          color: selected ? Colors.red : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
             if (_isRecording && _vadAvailable) ...[
               const SizedBox(height: 16),
               _buildVadToggle(),
@@ -360,32 +430,18 @@ class _AudioRecorderState extends State<AudioRecorder> {
         children: [
           Icon(Icons.pause_circle_outline, size: 14, color: Colors.orange.shade600),
           const SizedBox(width: 6),
-          Text(
-            'recording.silence_waiting'.tr(),
-            style: TextStyle(fontSize: 12, color: Colors.orange.shade600, fontWeight: FontWeight.w500),
-          ),
+          Text('recording.silence_waiting'.tr(), style: TextStyle(fontSize: 12, color: Colors.orange.shade600, fontWeight: FontWeight.w500)),
         ],
       );
     }
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _isSpeaking ? Colors.green : Colors.grey.shade400,
-          ),
-        ),
+        Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: _isSpeaking ? Colors.green : Colors.grey.shade400)),
         const SizedBox(width: 6),
         Text(
           _isSpeaking ? 'recording.speech_detected'.tr() : 'recording.silence'.tr(),
-          style: TextStyle(
-            fontSize: 12,
-            color: _isSpeaking ? Colors.green.shade700 : Colors.grey.shade500,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(fontSize: 12, color: _isSpeaking ? Colors.green.shade700 : Colors.grey.shade500, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -430,9 +486,7 @@ class _AudioRecorderState extends State<AudioRecorder> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: List.generate(_waveformBars, (i) {
           final level = _waveformData[i];
-          final normalizedHeight = _effectivelyPaused
-              ? 3.0
-              : (3.0 + level * 45.0).clamp(3.0, 48.0);
+          final normalizedHeight = _effectivelyPaused ? 3.0 : (3.0 + level * 45.0).clamp(3.0, 48.0);
 
           Color barColor;
           if (_isPaused) {
@@ -450,10 +504,7 @@ class _AudioRecorderState extends State<AudioRecorder> {
             width: 3,
             height: normalizedHeight,
             margin: const EdgeInsets.symmetric(horizontal: 1),
-            decoration: BoxDecoration(
-              color: barColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
+            decoration: BoxDecoration(color: barColor, borderRadius: BorderRadius.circular(2)),
           );
         }),
       ),
@@ -472,26 +523,15 @@ class _AudioRecorderState extends State<AudioRecorder> {
           children: [
             Icon(Icons.cloud_upload_rounded, size: 14, color: Colors.green.shade600),
             const SizedBox(width: 4),
-            Text(
-              'recording.chunks_uploaded'.tr(namedArgs: {'count': _chunksUploaded.toString()}),
-              style: TextStyle(fontSize: 12, color: Colors.green.shade600, fontWeight: FontWeight.w600),
-            ),
+            Text('recording.chunks_uploaded'.tr(namedArgs: {'count': _chunksUploaded.toString()}), style: TextStyle(fontSize: 12, color: Colors.green.shade600, fontWeight: FontWeight.w600)),
             const SizedBox(width: 12),
-            Text(
-              'recording.current_chunk'.tr(namedArgs: {'count': currentChunk.toString()}),
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
+            Text('recording.current_chunk'.tr(namedArgs: {'count': currentChunk.toString()}), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
           ],
         ),
         const SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: chunkProgress,
-            minHeight: 3,
-            backgroundColor: Colors.grey.shade200,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.red.shade300),
-          ),
+          child: LinearProgressIndicator(value: chunkProgress, minHeight: 3, backgroundColor: Colors.grey.shade200, valueColor: AlwaysStoppedAnimation<Color>(Colors.red.shade300)),
         ),
       ],
     );
