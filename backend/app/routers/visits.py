@@ -44,6 +44,26 @@ async def get_visit(visit_id: str, db: AsyncSession = Depends(get_db), current_u
     return visit
 
 
+@router.get("/{visit_id}/status")
+async def get_visit_status(visit_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    visit = await get_visit_or_404(db, visit_id)
+    if current_user.role != UserRole.admin and visit.doctor_id != current_user.id:
+        raise ForbiddenError("אין הרשאה")
+    rec_q = await db.execute(select(Recording).where(Recording.visit_id == visit.id))
+    recording = rec_q.scalars().first()
+    t_status = s_status = None
+    if recording:
+        t_q = await db.execute(select(Transcription).where(Transcription.recording_id == recording.id))
+        trans = t_q.scalars().first()
+        if trans:
+            t_status = trans.status.value
+    s_q = await db.execute(select(Summary).where(Summary.visit_id == visit.id))
+    summ = s_q.scalars().first()
+    if summ:
+        s_status = summ.status.value
+    return {"transcription_status": t_status, "summary_status": s_status}
+
+
 @router.get("/patient/{patient_id}")
 async def get_patient_visits(patient_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     patient = await get_patient_or_404(db, patient_id)

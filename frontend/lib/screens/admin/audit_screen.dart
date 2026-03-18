@@ -31,7 +31,7 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
       final response = await api.get('/admin/audit', queryParameters: params);
       setState(() {
         _logs = List<Map<String, dynamic>>.from(response.data['items']);
-        _total = response.data['total'];
+        _total = (response.data['total'] as num?)?.toInt() ?? 0;
         _isLoading = false;
       });
     } catch (_) {

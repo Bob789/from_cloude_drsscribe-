@@ -57,7 +57,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     return Scaffold(
       appBar: AppBar(title: Text('admin.users_title'.tr())),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: DataTable(
           columns: [
             DataColumn(label: Text('admin.name'.tr())),

@@ -9,7 +9,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
 const GOOGLE_CLIENT_ID = '459295230393-a7tahndgdhses9shhg0oue74ealf009r.apps.googleusercontent.com'
 const ADMIN_EMAIL = 'yossil1306@gmail.com'
 
-type Tab = 'stats' | 'users' | 'messages' | 'errors'
+type Tab = 'stats' | 'users' | 'messages' | 'errors' | 'content'
 
 function useAdminData(token: string | null) {
   const [stats, setStats] = useState<any>(null)
@@ -67,6 +67,69 @@ export default function CpanelPage() {
   const [composeAttachments, setComposeAttachments] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
+
+  // Content state
+  const [articles, setArticles] = useState<any[]>([])
+  const [articleJobs, setArticleJobs] = useState<any[]>([])
+  const [articleStats, setArticleStats] = useState<any>(null)
+  const [genTopic, setGenTopic] = useState('')
+  const [genConfig, setGenConfig] = useState<any>({ tone: 'professional', audience: 'general', length: 'medium', persona: 'general' })
+  const [generating, setGenerating] = useState(false)
+  const [genResult, setGenResult] = useState<any>(null)
+  const [_editArticle, _setEditArticle] = useState<any>(null) // reserved for future editor
+
+  const fetchContent = useCallback(async () => {
+    if (!token) return
+    const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    try {
+      const [arts, jobs, st] = await Promise.all([
+        fetch(`${API}/admin/articles?per_page=100`, { headers: h }).then(r => r.json()),
+        fetch(`${API}/admin/articles/jobs`, { headers: h }).then(r => r.json()),
+        fetch(`${API}/admin/articles/stats`, { headers: h }).then(r => r.json()),
+      ])
+      setArticles(arts?.items || [])
+      setArticleJobs(Array.isArray(jobs) ? jobs : [])
+      setArticleStats(st)
+    } catch {}
+  }, [token])
+
+  useEffect(() => { if (tab === 'content') fetchContent() }, [tab, fetchContent])
+
+  const generateArticle = async () => {
+    if (!token || !genTopic.trim()) return
+    setGenerating(true)
+    setGenResult(null)
+    try {
+      const res = await fetch(`${API}/admin/articles/generate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: genTopic.trim(), config: genConfig }),
+      })
+      const data = await res.json()
+      setGenResult(data)
+      if (data.ok) { setGenTopic(''); fetchContent() }
+    } catch (e) { setGenResult({ ok: false, error: 'שגיאת חיבור' }) }
+    finally { setGenerating(false) }
+  }
+
+  const changeArticleStatus = async (articleId: string, newStatus: string) => {
+    if (!token) return
+    await fetch(`${API}/admin/articles/${articleId}/status`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_status: newStatus }),
+    })
+    fetchContent()
+  }
+
+  const deleteArticle = async (articleId: string) => {
+    if (!token) return
+    await fetch(`${API}/admin/articles/${articleId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    fetchContent()
+  }
 
   const handleGoogleLogin = async () => {
     setLoginError('')
@@ -324,6 +387,7 @@ export default function CpanelPage() {
             { key: 'users', label: `👥 משתמשים (${users.length})` },
             { key: 'messages', label: `✉️ הודעות${unreadCount > 0 ? ` (${unreadCount})` : ''}` },
             { key: 'errors', label: `🚨 שגיאות (${errors.length})` },
+            { key: 'content', label: '📰 תוכן' },
           ] as { key: Tab; label: string }[]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`btn ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
@@ -683,6 +747,144 @@ export default function CpanelPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ══ CONTENT ══ */}
+        {!loading && tab === 'content' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Stats strip */}
+            {articleStats && (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {[
+                  { label: 'מפורסמים', value: articleStats.published, color: '#34d399' },
+                  { label: 'טיוטות', value: articleStats.drafts, color: '#facc15' },
+                  { label: 'בבדיקה', value: articleStats.review, color: '#38bdf8' },
+                  { label: 'צפיות', value: articleStats.total_views, color: '#e879f9' },
+                  { label: 'לייקים', value: articleStats.total_likes, color: '#f472b6' },
+                ].map(s => (
+                  <div key={s.label} className="card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 120px' }}>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.value ?? 0}</span>
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Generate new article */}
+            <div className="card" style={{ padding: '20px 24px' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, color: '#e0f2fe' }}>✨ יצירת מאמר חדש עם AI</h3>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+                <input type="text" placeholder="נושא המאמר (עברית)..." value={genTopic} onChange={e => setGenTopic(e.target.value)} className="search-input" style={{ flex: 2, padding: '10px 14px', fontSize: 14, minWidth: 200 }} />
+                <select value={genConfig.tone} onChange={e => setGenConfig({...genConfig, tone: e.target.value})} className="search-input" style={{ padding: '8px 12px', fontSize: 13 }}>
+                  <option value="professional">מקצועי</option>
+                  <option value="accessible">נגיש</option>
+                  <option value="clinical">קליני</option>
+                </select>
+                <select value={genConfig.audience} onChange={e => setGenConfig({...genConfig, audience: e.target.value})} className="search-input" style={{ padding: '8px 12px', fontSize: 13 }}>
+                  <option value="general">קהל רחב</option>
+                  <option value="patients">מטופלים</option>
+                  <option value="professionals">מקצוענים</option>
+                </select>
+                <select value={genConfig.length} onChange={e => setGenConfig({...genConfig, length: e.target.value})} className="search-input" style={{ padding: '8px 12px', fontSize: 13 }}>
+                  <option value="short">קצר</option>
+                  <option value="medium">בינוני</option>
+                  <option value="long">ארוך</option>
+                </select>
+                <select value={genConfig.persona} onChange={e => setGenConfig({...genConfig, persona: e.target.value})} className="search-input" style={{ padding: '8px 12px', fontSize: 13 }}>
+                  <option value="general">צוות Medical Hub</option>
+                  <option value="doctor">ד"ר דניאל כהן</option>
+                  <option value="nutritionist">דנה לוי - תזונאית</option>
+                  <option value="physiotherapist">ד"ר מיכל ברק - פיזיו</option>
+                  <option value="psychologist">ד"ר אורן שפירא - פסיכולוג</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button onClick={generateArticle} disabled={generating || !genTopic.trim()} className="btn btn-primary" style={{ padding: '10px 24px', fontSize: 14, fontWeight: 700, opacity: generating ? 0.6 : 1 }}>
+                  {generating ? '⏳ מייצר מאמר...' : '✨ ייצר מאמר'}
+                </button>
+                {genResult && (
+                  <span style={{ fontSize: 13, color: genResult.ok ? '#34d399' : '#f87171' }}>
+                    {genResult.ok ? `✓ ${genResult.title}` : `✕ ${genResult.error}`}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Recent jobs */}
+            {articleJobs.length > 0 && (
+              <div className="card" style={{ padding: '16px 20px' }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: 'var(--muted)' }}>משימות יצירה אחרונות</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {articleJobs.slice(0, 5).map((j: any) => (
+                    <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, background: j.status === 'done' ? 'rgba(52,211,153,0.1)' : j.status === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(56,189,248,0.1)', color: j.status === 'done' ? '#34d399' : j.status === 'error' ? '#f87171' : '#38bdf8' }}>
+                        {j.status}
+                      </span>
+                      <span style={{ flex: 1 }}>{j.topic}</span>
+                      {j.error_message && <span style={{ color: '#f87171', fontSize: 11 }}>{j.error_message.substring(0, 50)}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Articles table */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 15 }}>
+                📰 מאמרים ({articles.length})
+              </div>
+              {articles.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 40 }}>אין מאמרים עדיין — ייצר את הראשון!</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(56,189,248,0.05)', borderBottom: '1px solid var(--border)' }}>
+                        {['כותרת', 'קטגוריה', 'סטטוס', 'בדיקת עובדות', 'צפיות', 'תאריך', 'פעולות'].map(h => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {articles.map((a: any) => {
+                        const statusColors: Record<string, { bg: string; color: string }> = {
+                          draft: { bg: 'rgba(250,204,21,0.1)', color: '#facc15' },
+                          review: { bg: 'rgba(56,189,248,0.1)', color: '#38bdf8' },
+                          published: { bg: 'rgba(52,211,153,0.1)', color: '#34d399' },
+                          archived: { bg: 'rgba(107,107,127,0.1)', color: '#6b6b7f' },
+                        }
+                        const statusLabels: Record<string, string> = { draft: 'טיוטה', review: 'בבדיקה', published: 'מפורסם', archived: 'בארכיון' }
+                        const fcColors: Record<string, string> = { unchecked: '#6b6b7f', flagged: '#f87171', verified: '#34d399' }
+                        const fcLabels: Record<string, string> = { unchecked: '⬜', flagged: '🚩', verified: '✅' }
+                        const sc = statusColors[a.status] || statusColors.draft
+
+                        return (
+                          <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '10px 14px', fontWeight: 600, maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</td>
+                            <td style={{ padding: '10px 14px', color: 'var(--muted)' }}>{a.category}</td>
+                            <td style={{ padding: '10px 14px' }}>
+                              <span style={{ padding: '2px 10px', borderRadius: 20, background: sc.bg, color: sc.color, fontSize: 11 }}>{statusLabels[a.status] || a.status}</span>
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>{fcLabels[a.fact_check_status] || '⬜'}</td>
+                            <td style={{ padding: '10px 14px', color: 'var(--muted)' }}>{a.views}</td>
+                            <td style={{ padding: '10px 14px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{a.created_at?.substring(0, 10)}</td>
+                            <td style={{ padding: '10px 14px' }}>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                {a.status === 'draft' && <button onClick={() => changeArticleStatus(a.id, 'published')} className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}>פרסם</button>}
+                                {a.status === 'published' && <button onClick={() => changeArticleStatus(a.id, 'draft')} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>הסתר</button>}
+                                {a.slug && <a href={`https://drsscribe.com/articles/${a.slug}?preview=1`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11, textDecoration: 'none' }}>👁</a>}
+                                <button onClick={() => deleteArticle(a.id)} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11, color: '#f87171' }}>🗑</button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

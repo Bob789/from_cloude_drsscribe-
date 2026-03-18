@@ -129,7 +129,7 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

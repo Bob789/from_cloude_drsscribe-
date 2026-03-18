@@ -38,7 +38,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
       final response = await api.get('/admin/activity-logs', queryParameters: params);
       setState(() {
         _logs = List<Map<String, dynamic>>.from(response.data['items']);
-        _total = response.data['total'];
+        _total = (response.data['total'] as num?)?.toInt() ?? 0;
         _isLoading = false;
       });
     } catch (_) {
@@ -60,7 +60,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 SizedBox(
-                  width: 160,
+                  width: MediaQuery.of(context).size.width < 500 ? 130 : 160,
                   child: DropdownButtonFormField<String>(
                     value: _actionFilter,
                     decoration: InputDecoration(labelText: 'admin.action'.tr(), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
@@ -72,7 +72,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 160,
+                  width: MediaQuery.of(context).size.width < 500 ? 130 : 160,
                   child: DropdownButtonFormField<String>(
                     value: _entityTypeFilter,
                     decoration: InputDecoration(labelText: 'admin.entity_type'.tr(), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),

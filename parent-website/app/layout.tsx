@@ -25,9 +25,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
-        <footer className="site-footer">
-          <p>© 2026 Medical Hub • <a href="https://drsscribe.com/privacy-policy">Doctor Scribe AI Privacy Policy</a> • <a href="https://drsscribe.com/privacy-policy">מדיניות פרטיות</a> • <a href="https://drsscribe.com/terms">תנאי שימוש</a></p>
-        </footer>
         <CookieBanner />
       </body>
     </html>

@@ -1,7 +1,6 @@
 import asyncio
 import uuid
 from app.celery_app import celery_app
-from app.database import AsyncSessionLocal
 from app.models.transcription import Transcription, TranscriptionStatus
 from app.models.recording import Recording
 from app.models.recording_chunk import RecordingChunk
@@ -16,13 +15,27 @@ from app.services.tagging_service import extract_tags_from_summary, sync_diagnos
 from app.utils.medical_encryption import encrypt_summary_fields, encrypt_transcription_fields
 from app.config import settings
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+
+def _make_session():
+    """Create a fresh engine+session tied to the current event loop (Celery-safe)."""
+    eng = create_async_engine(
+        settings.db_url,
+        pool_size=5,
+        max_overflow=2,
+        pool_pre_ping=True,
+    )
+    return async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False), eng
 
 
 def run_async(coro):
     loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
         return loop.run_until_complete(coro)
     finally:
+        loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
 
 
@@ -35,7 +48,8 @@ def process_transcription(self, recording_id: str):
 
 
 async def _process_transcription(recording_id: str, task):
-    async with AsyncSessionLocal() as db:
+    SessionLocal, engine = _make_session()
+    async with SessionLocal() as db:
         result = await db.execute(select(Recording).where(Recording.id == uuid.UUID(recording_id)))
         recording = result.scalar_one_or_none()
         if not recording:
@@ -78,6 +92,8 @@ async def _process_transcription(recording_id: str, task):
             transcription.error_message = str(e)
             await db.commit()
             raise
+        finally:
+            await engine.dispose()
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
@@ -89,7 +105,8 @@ def process_transcription_chunked(self, visit_id: str, recording_id: str):
 
 
 async def _process_transcription_chunked(visit_id: str, recording_id: str):
-    async with AsyncSessionLocal() as db:
+    SessionLocal, engine = _make_session()
+    async with SessionLocal() as db:
         vid = uuid.UUID(visit_id)
         rid = uuid.UUID(recording_id)
 
@@ -164,6 +181,8 @@ async def _process_transcription_chunked(visit_id: str, recording_id: str):
             transcription.error_message = str(e)
             await db.commit()
             raise
+        finally:
+            await engine.dispose()
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
@@ -175,7 +194,8 @@ def process_summary(self, visit_id: str):
 
 
 async def _process_summary(visit_id: str):
-    async with AsyncSessionLocal() as db:
+    SessionLocal, engine = _make_session()
+    async with SessionLocal() as db:
         vid = uuid.UUID(visit_id)
         result = await db.execute(select(Transcription).join(Recording).join(Visit).where(Visit.id == vid))
         transcription = result.scalar_one_or_none()
@@ -220,3 +240,5 @@ async def _process_summary(visit_id: str):
             summary.error_message = str(e)
             await db.commit()
             raise
+        finally:
+            await engine.dispose()

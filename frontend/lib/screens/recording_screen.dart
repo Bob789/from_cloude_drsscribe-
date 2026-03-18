@@ -18,6 +18,8 @@ class RecordingScreen extends ConsumerStatefulWidget {
 
 class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   final _searchController = TextEditingController();
+  String? _lastTranscriptionStatus;
+  String? _lastSummaryStatus;
 
   @override
   void dispose() {
@@ -25,15 +27,46 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     super.dispose();
   }
 
+  void _checkForStatusPopups(RecordingState s) {
+    if (s.transcriptionStatus == 'done' && _lastTranscriptionStatus != 'done') {
+      _showStatusBalloon(icon: Icons.text_snippet_rounded, text: 'התמלול הושלם בהצלחה', color: AppColors.secondary);
+    }
+    if (s.summaryStatus == 'done' && _lastSummaryStatus != 'done') {
+      _showStatusBalloon(icon: Icons.auto_awesome_rounded, text: 'הסיכום הרפואי מוכן', color: AppColors.primary);
+    }
+    if (s.transcriptionStatus == 'error' && _lastTranscriptionStatus != 'error') {
+      _showStatusBalloon(icon: Icons.error_outline_rounded, text: 'שגיאה בתמלול', color: AppColors.accent);
+    }
+    if (s.summaryStatus == 'error' && _lastSummaryStatus != 'error') {
+      _showStatusBalloon(icon: Icons.error_outline_rounded, text: 'שגיאה בסיכום', color: AppColors.accent);
+    }
+    _lastTranscriptionStatus = s.transcriptionStatus;
+    _lastSummaryStatus = s.summaryStatus;
+  }
+
+  void _showStatusBalloon({required IconData icon, required String text, required Color color}) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(builder: (ctx) {
+      return _StatusBalloon(icon: icon, text: text, color: color, onDismiss: () => entry.remove());
+    });
+    overlay.insert(entry);
+  }
+
   @override
   Widget build(BuildContext context) {
     final recordingState = ref.watch(recordingProvider);
     final ext = Theme.of(context).extension<MedScribeThemeExtension>()!;
 
+    // Check for popup triggers
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForStatusPopups(recordingState);
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -88,12 +121,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   }
 
   Widget _buildHeader() {
+    final isNarrow = MediaQuery.of(context).size.width < 500;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('recording.title'.tr(), style: GoogleFonts.heebo(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        Text('recording.title'.tr(), style: GoogleFonts.heebo(fontSize: isNarrow ? 20 : 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         const SizedBox(height: 4),
-        Text('recording.subtitle'.tr(), style: GoogleFonts.heebo(fontSize: 14, color: AppColors.textMuted)),
+        Text('recording.subtitle'.tr(), style: GoogleFonts.heebo(fontSize: isNarrow ? 12 : 14, color: AppColors.textMuted)),
       ],
     );
   }
@@ -279,6 +313,21 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
             style: GoogleFonts.heebo(fontSize: 13, color: AppColors.textMuted),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 16),
+          // Status indicators
+          _buildStatusRow(
+            Icons.text_snippet_rounded,
+            'תמלול',
+            recordingState.transcriptionStatus,
+            ext,
+          ),
+          const SizedBox(height: 8),
+          _buildStatusRow(
+            Icons.auto_awesome_rounded,
+            'סיכום רפואי',
+            recordingState.summaryStatus,
+            ext,
+          ),
           const SizedBox(height: 24),
           Material(
             color: Colors.transparent,
@@ -303,6 +352,115 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusRow(IconData icon, String label, String? status, MedScribeThemeExtension ext) {
+    Color color;
+    Widget trailing;
+    switch (status) {
+      case 'done':
+        color = ext.success;
+        trailing = Icon(Icons.check_circle_rounded, size: 18, color: ext.success);
+        break;
+      case 'error':
+        color = AppColors.accent;
+        trailing = Icon(Icons.error_rounded, size: 18, color: AppColors.accent);
+        break;
+      case 'processing':
+        color = AppColors.primary;
+        trailing = SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary));
+        break;
+      default:
+        color = AppColors.textMuted;
+        trailing = Icon(Icons.hourglass_empty_rounded, size: 16, color: AppColors.textMuted);
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Text(label, style: GoogleFonts.heebo(fontSize: 13, fontWeight: FontWeight.w500, color: color)),
+        const SizedBox(width: 8),
+        trailing,
+      ],
+    );
+  }
+}
+
+// ── Animated popup balloon ──
+class _StatusBalloon extends StatefulWidget {
+  final IconData icon;
+  final String text;
+  final Color color;
+  final VoidCallback onDismiss;
+
+  const _StatusBalloon({required this.icon, required this.text, required this.color, required this.onDismiss});
+
+  @override
+  State<_StatusBalloon> createState() => _StatusBalloonState();
+}
+
+class _StatusBalloonState extends State<_StatusBalloon> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _slideIn;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _slideIn = Tween<double>(begin: -80, end: 0).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack));
+    _opacity = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _ctrl.forward();
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) {
+        _ctrl.reverse().then((_) {
+          if (mounted) widget.onDismiss();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, child) => Positioned(
+        top: 24 + _slideIn.value,
+        left: 0,
+        right: 0,
+        child: Opacity(
+          opacity: _opacity.value,
+          child: Center(child: child),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: widget.color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: widget.color.withValues(alpha: 0.4)),
+            boxShadow: [BoxShadow(color: widget.color.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 6))],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 20, color: widget.color),
+              const SizedBox(width: 10),
+              Text(widget.text, style: GoogleFonts.heebo(fontSize: 14, fontWeight: FontWeight.w600, color: widget.color)),
+            ],
+          ),
+        ),
       ),
     );
   }

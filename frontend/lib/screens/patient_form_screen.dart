@@ -20,7 +20,7 @@ class PatientFormScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(isEditing ? 'patient_form.edit_title'.tr() : 'patient_form.new_title'.tr())),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),

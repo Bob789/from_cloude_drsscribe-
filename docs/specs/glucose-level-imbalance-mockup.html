@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>חוסר איזון ברמות הגלוקוז | Doctor Scribe AI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(to left, #001f6b 0%, #4a5a8a 40%, #7a6a3a 100%);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ===== MAIN ===== */
+    .main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 40px;
+      min-height: 100vh;
+    }
+
+    .main-wrapper { display: flex; flex-direction: column; width: 780px; }
+
+    /* ===== YELLOW BLOCK ===== */
+    .block {
+      background-color: #fcf9c6;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 40px rgba(252,249,198,0.25), 8px 0 40px rgba(26,37,53,0.4);
+    }
+
+    /* ===== HEADER ===== */
+    .page-header-bar {
+      background: linear-gradient(to left, #2d3a4a, #5a6a5a);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 2px solid #c8a000;
+    }
+
+    .back-btn {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: white; font-size: 16px;
+      transition: background 0.2s; text-decoration: none;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .page-title { font-size: 22px; font-weight: 800; color: white; }
+    .page-subtitle { font-size: 12px; color: rgba(255,255,255,0.7); }
+
+    .title-lines {
+      display: flex; flex-direction: column; gap: 5px;
+      padding: 10px 20px 0;
+    }
+    .title-line { height: 2px; background-color: #ff0000; width: 100%; }
+
+    /* ===== ARTICLE HERO ===== */
+    .article-hero {
+      margin: 20px 20px 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #001f6b 0%, #1a56db 100%);
+      padding: 32px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .article-hero::before {
+      content: '';
+      position: absolute;
+      width: 220px; height: 220px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+      top: -60px; left: -40px;
+    }
+
+    .article-hero::after {
+      content: '';
+      position: absolute;
+      width: 160px; height: 160px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+      bottom: -40px; right: 60px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 5px 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .hero-title {
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      font-weight: 800;
+      color: white;
+      line-height: 1.3;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-subtitle {
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      padding-top: 14px;
+    }
+
+    .hero-meta span { color: rgba(255,255,255,0.85); }
+
+    /* ===== PIPE SHAPE ===== */
+    .divider-section {
+      display: flex; align-items: stretch; margin: 16px 20px 0;
+    }
+
+    .arch { width: 20px; flex-shrink: 0; background: transparent; }
+    .arch-right { border: 2px solid #1a56db; border-left: none; border-radius: 0 50% 50% 0; }
+    .arch-left  { border: 2px solid #1a56db; border-right: none; border-radius: 50% 0 0 50%; }
+
+    .dark-lines-wrapper {
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: space-between; min-height: 9px;
+    }
+    .dark-line { height: 2px; background-color: #1a56db; }
+
+    /* ===== ARTICLE CONTENT ===== */
+    .article-body {
+      padding: 20px 24px;
+      color: #1a1a2e;
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    .article-body p { margin-bottom: 20px; }
+
+    .article-body h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #003399;
+      margin-top: 36px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid rgba(0,51,153,0.15);
+    }
+
+    .article-body h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1a56db;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    .article-body ul {
+      list-style-type: disc;
+      padding-right: 24px;
+      margin-bottom: 20px;
+    }
+
+    .article-body li { margin-bottom: 8px; color: #333; }
+    .article-body strong { color: #001f6b; }
+
+    /* Info boxes */
+    .info-box {
+      background: rgba(255,255,255,0.65);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(26,86,219,0.2);
+    }
+
+    .info-box h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #003399;
+      margin-bottom: 12px;
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-box p { margin-bottom: 8px; color: #222; }
+    .info-box p:last-child { margin-bottom: 0; }
+
+    /* Tips list */
+    .tips-list {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .tips-list li {
+      background: rgba(255,255,255,0.6);
+      border-right: 4px solid #1a56db;
+      padding: 14px 18px;
+      border-radius: 4px 10px 10px 4px;
+    }
+
+    .tips-list li strong {
+      display: block;
+      color: #003399;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .tips-list li span { color: #444; font-size: 13px; }
+
+    /* Legal notice */
+    .legal-notice {
+      background: rgba(255,220,0,0.25);
+      border: 1px solid rgba(200,160,0,0.4);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #5a4000;
+      margin-top: 24px;
+    }
+
+    /* ===== TAGS ===== */
+    .tags-section {
+      padding: 16px 24px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      border-top: 1px solid rgba(0,51,153,0.15);
+    }
+
+    .tag-chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(26,86,219,0.1);
+      color: #1a56db;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(26,86,219,0.2);
+    }
+
+    /* ===== LIKE BUTTON ===== */
+    .like-section {
+      display: flex;
+      justify-content: center;
+      padding: 20px 24px;
+    }
+
+    .like-btn {
+      padding: 12px 36px;
+      border-radius: 50px;
+      border: 1px solid rgba(220,38,38,0.3);
+      background: rgba(220,38,38,0.08);
+      color: #dc2626;
+      font-family: 'Rubik', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+    .like-btn:hover { background: rgba(220,38,38,0.15); transform: scale(1.04); }
+
+    /* ===== RELATED ARTICLES ===== */
+    .related-section {
+      padding: 20px 24px 28px;
+      border-top: 1px solid rgba(0,51,153,0.12);
+    }
+
+    .related-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #003399;
+      margin-bottom: 16px;
+    }
+
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .related-card {
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(26,86,219,0.15);
+      border-radius: 12px;
+      padding: 18px;
+      text-decoration: none;
+      display: block;
+      transition: all 0.2s;
+    }
+    .related-card:hover { background: rgba(255,255,255,0.85); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,51,153,0.1); }
+
+    .related-card h4 { color: #003399; font-weight: 700; margin-bottom: 8px; font-size: 14px; }
+    .related-card p { font-size: 12px; color: #555; margin: 0; line-height: 1.6; }
+
+    /* ===== FOOTER ===== */
+    .main-footer {
+      background: linear-gradient(to left, #2d3a4a, #5a6a5a);
+      padding: 14px;
+      text-align: center;
+      font-size: 13px;
+      color: white;
+      border-top: 2px solid #c8a000;
+    }
+
+    @media (max-width: 900px) {
+      .main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="main-wrapper">
+      <div class="block">
+
+        <!-- Header -->
+        <div class="page-header-bar">
+          <a class="back-btn" href="#"><i class="fas fa-arrow-left"></i></a>
+          <div>
+            <div class="page-title">Medical Hub · מאמר רפואי</div>
+            <div class="page-subtitle">אנדוקרינולוגיה</div>
+          </div>
+        </div>
+        <div class="title-lines">
+          <div class="title-line"></div>
+          <div class="title-line"></div>
+        </div>
+
+        <!-- Hero -->
+        <div class="article-hero">
+          <span class="hero-badge">אנדוקרינולוגיה</span>
+          <h1 class="hero-title">חוסר איזון ברמות הגלוקוז: מה חשוב לדעת וכיצד להתמודד</h1>
+          <p class="hero-subtitle">הבנת חוסר איזון ברמות הגלוקוז ואיך לשמור על איזון בריא</p>
+          <div class="hero-meta">
+            <span>צוות Medical Hub · צוות התוכן הרפואי</span>
+            <span>•</span>
+            <span>2 דקות קריאה</span>
+            <span>•</span>
+            <span>8 צפיות</span>
+            <span>•</span>
+            <span>16.3.2026</span>
+          </div>
+        </div>
+
+        <div class="divider-section">
+          <div class="arch arch-right"></div>
+          <div class="dark-lines-wrapper"><div class="dark-line"></div><div class="dark-line"></div></div>
+          <div class="arch arch-left"></div>
+        </div>
+
+        <!-- Article Body -->
+        <div class="article-body">
+
+          <p>
+            חוסר איזון ברמות הגלוקוז בדם הוא מצב נפוץ המוביל לסיכונים בריאותיים משמעותיים,
+            במיוחד בקרב מבוגרים מעל גיל 40. הבנת הגורמים לחוסר איזון זה וכיצד לשמור על רמות
+            גלוקוז מאוזנות יכולה לשפר את איכות החיים ולמנוע מחלות כרוניות.
+          </p>
+
+          <h2>מהו חוסר איזון ברמות הגלוקוז?</h2>
+          <p>
+            חוסר איזון ברמות הגלוקוז מתייחס למצב שבו רמות הסוכר בדם אינן נשארות בטווח הנורמלי.
+            מצב זה יכול להוביל להיפוגליקמיה (רמות נמוכות מדי) או להיפרגליקמיה (רמות גבוהות מדי),
+            וכל אחד מהם מהווה סיכון לבריאות.
+          </p>
+
+          <h3>היפוגליקמיה: סכנות ורמזים</h3>
+          <ul>
+            <li><strong>סימפטומים:</strong> רעידות, זיעה מוגברת, חולשה, בלבול.</li>
+            <li><strong>סיבות נפוצות:</strong> צריכת יתר של אינסולין, דילוג על ארוחות, פעילות גופנית מופרזת ללא תזונה מספקת.</li>
+          </ul>
+
+          <h3>היפרגליקמיה: הבנת ההשפעות</h3>
+          <ul>
+            <li><strong>סימפטומים:</strong> צמא מוגבר, שתן תכוף, עייפות, ראייה מטושטשת.</li>
+            <li><strong>סיבות:</strong> תזונה עשירה בפחמימות, סטרס, מחסור בפעילות גופנית.</li>
+          </ul>
+
+          <h2>גורמים לחוסר איזון בגלוקוז</h2>
+          <p>
+            חוסר איזון בגלוקוז עלול להיגרם ממספר גורמים, כולל תזונה לא מאוזנת, חוסר פעילות
+            גופנית, סטרס כרוני ומחלות מטבוליות כמו סוכרת.
+          </p>
+
+          <div class="info-box">
+            <h3>🥦 תזונה ותפקידה באיזון הגלוקוז</h3>
+            <p><strong>שימו לב למה שאתם אוכלים:</strong> העדיפו מזונות עשירים בסיבים תזונתיים ודלים בסוכר.</p>
+            <p><strong>ארוחות סדירות:</strong> אכלו ארוחות קטנות ומסודרות לאורך היום כדי לשמור על רמות גלוקוז יציבות.</p>
+          </div>
+
+          <div class="info-box">
+            <h3>🏃‍♂️ פעילות גופנית כמרכיב מפתח</h3>
+            <p><strong>המלצות לפעילות:</strong> התעמלו באופן סדיר לפחות 150 דקות בשבוע.</p>
+            <p><strong>יתרונות:</strong> פעילות גופנית תורמת לשיפור רגישות לאינסולין ומסייעת בשמירה על משקל בריא.</p>
+          </div>
+
+          <h2>טיפים מעשיים לשמירה על איזון</h2>
+          <p>שמירה על איזון ברמות הגלוקוז דורשת מאמץ מתמשך ומודעות. הנה מספר טיפים מעשיים:</p>
+
+          <ul class="tips-list">
+            <li>
+              <strong>מעקב אחר רמות הגלוקוז</strong>
+              <span>השתמשו במד סוכר לניטור קבוע</span>
+            </li>
+            <li>
+              <strong>ניהול סטרס</strong>
+              <span>תרגלו טכניקות הרפיה כמו יוגה או מדיטציה</span>
+            </li>
+            <li>
+              <strong>כמות סוכר מתונה</strong>
+              <span>הימנעו מצריכה מוגזמת של משקאות ממותקים ומאפים מתוקים</span>
+            </li>
+          </ul>
+
+          <h2>סיכום והמלצה לפעולה</h2>
+          <p>
+            חוסר איזון ברמות הגלוקוז הוא אתגר בריאותי שניתן לנהל בעזרת שינויי אורח חיים.
+            חשוב להמשיך ללמוד על הנושא ולפנות לרופא לקבלת ייעוץ מותאם אישית.
+          </p>
+
+          <div class="legal-notice">
+            <strong>הבהרה משפטית:</strong> מאמר זה נועד למטרות מידע כללי בלבד ואינו מהווה תחליף לייעוץ רפואי מקצועי.
+          </div>
+
+        </div>
+
+        <div class="divider-section">
+          <div class="arch arch-right"></div>
+          <div class="dark-lines-wrapper"><div class="dark-line"></div><div class="dark-line"></div></div>
+          <div class="arch arch-left"></div>
+        </div>
+
+        <!-- Tags -->
+        <div class="tags-section">
+          <span class="tag-chip">#גלוקוז</span>
+          <span class="tag-chip">#סוכרת</span>
+          <span class="tag-chip">#תזונה</span>
+          <span class="tag-chip">#בריאות</span>
+        </div>
+
+        <!-- Like -->
+        <div class="like-section">
+          <button class="like-btn" onclick="this.innerHTML = '❤️ אהבתי (1)';">
+            ❤️ אהבתי (0)
+          </button>
+        </div>
+
+        <!-- Related Articles -->
+        <div class="related-section">
+          <div class="related-title">מאמרים נוספים שיעניינו אותך</div>
+          <div class="related-grid">
+            <a class="related-card" href="#">
+              <h4>תזונה נכונה לחולי סוכרת - המדריך המלא</h4>
+              <p>טיפים לבניית תפריט מאוזן ושמירה על רמות סוכר תקינות לאורך היום.</p>
+            </a>
+            <a class="related-card" href="#">
+              <h4>חשיבות הפעילות הגופנית בגיל השלישי</h4>
+              <p>איך לשלב תנועה בחיי היומיום ולשפר את איכות החיים בקלות.</p>
+            </a>
+          </div>
+        </div>
+
+      </div><!-- /.block -->
+
+      <!-- Footer -->
+      <div class="main-footer">
+        Doctor Scribe AI · Medical Hub · כל הזכויות שמורות
+      </div>
+
+    </div><!-- /.main-wrapper -->
+  </main>
+
+</body>
+</html>

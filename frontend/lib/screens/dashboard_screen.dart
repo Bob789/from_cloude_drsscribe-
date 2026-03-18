@@ -22,8 +22,8 @@ class DashboardScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: stats.isLoading
           ? Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5))
-          : Padding(
-              padding: const EdgeInsets.all(24),
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final isNarrow = constraints.maxWidth < 600;
@@ -32,21 +32,20 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
                     StatsGrid(stats: stats),
                     const SizedBox(height: 20),
-                    Expanded(
-                      child: isNarrow
-                          ? SingleChildScrollView(
-                              child: Column(children: [
-                                const TreatmentTimer(compact: true),
-                                const SizedBox(height: 16),
-                                SizedBox(height: 360, child: VisitsChart(stats: stats)),
-                              ]),
-                            )
-                          : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    isNarrow
+                        ? Column(children: [
+                            const TreatmentTimer(compact: true),
+                            const SizedBox(height: 16),
+                            SizedBox(height: 360, child: VisitsChart(stats: stats)),
+                          ])
+                        : SizedBox(
+                            height: 400,
+                            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               const Expanded(flex: 3, child: TreatmentTimer()),
                               const SizedBox(width: 20),
                               Expanded(flex: 7, child: VisitsChart(stats: stats)),
                             ]),
-                    ),
+                          ),
                   ]);
                 },
               ),

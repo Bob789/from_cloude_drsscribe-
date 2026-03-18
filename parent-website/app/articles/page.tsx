@@ -1,33 +1,31 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import Header from '@/components/Header'
 
-type Category = 'all' | 'cardiology' | 'neurology' | 'orthopedics' | 'nutrition' | 'sleep' | 'mental'
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
+
+type Category = 'all' | 'cardiology' | 'neurology' | 'orthopedics' | 'nutrition' | 'sleep' | 'mental' | 'general' | 'dermatology' | 'gastroenterology' | 'urology'
 type Sort = 'hot' | 'new' | 'popular'
 
-interface Article {
-  id: number
-  title: string
-  summary: string
-  category: Exclude<Category, 'all'>
-  tags: string[]
-  author: string
-  authorTitle: string
-  readTime: number
-  date: string
-  icon: string
-  views: number
-  likes: number
+const CATEGORY_META: Record<string, { label: string; color: string; bg: string }> = {
+  cardiology:        { label: 'לב וכלי דם',  color: '#fca5a5', bg: 'rgba(239,68,68,0.1)'   },
+  neurology:         { label: 'נוירולוגיה',  color: '#a78bfa', bg: 'rgba(139,92,246,0.1)'  },
+  orthopedics:       { label: 'אורתופדיה',   color: '#93c5fd', bg: 'rgba(59,130,246,0.1)'  },
+  nutrition:         { label: 'תזונה',        color: '#6ee7b7', bg: 'rgba(16,185,129,0.1)'  },
+  sleep:             { label: 'שינה',         color: '#fde68a', bg: 'rgba(245,158,11,0.1)'  },
+  mental:            { label: 'בריאות נפש',  color: '#f9a8d4', bg: 'rgba(236,72,153,0.1)'  },
+  general:           { label: 'כללי',         color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
+  dermatology:       { label: 'עור',          color: '#fdba74', bg: 'rgba(251,146,60,0.1)'  },
+  gastroenterology:  { label: 'גסטרו',       color: '#86efac', bg: 'rgba(34,197,94,0.1)'   },
+  urology:           { label: 'אורולוגיה',   color: '#7dd3fc', bg: 'rgba(56,189,248,0.1)'  },
 }
 
-const CATEGORY_META: Record<Exclude<Category, 'all'>, { label: string; color: string; bg: string }> = {
-  cardiology:   { label: 'לב וכלי דם',  color: '#fca5a5', bg: 'rgba(239,68,68,0.1)'   },
-  neurology:    { label: 'נוירולוגיה',  color: '#a78bfa', bg: 'rgba(139,92,246,0.1)'  },
-  orthopedics:  { label: 'אורתופדיה',   color: '#93c5fd', bg: 'rgba(59,130,246,0.1)'  },
-  nutrition:    { label: 'תזונה',        color: '#6ee7b7', bg: 'rgba(16,185,129,0.1)'  },
-  sleep:        { label: 'שינה',         color: '#fde68a', bg: 'rgba(245,158,11,0.1)'  },
-  mental:       { label: 'בריאות נפש',  color: '#f9a8d4', bg: 'rgba(236,72,153,0.1)'  },
+const CATEGORY_ICONS: Record<string, string> = {
+  cardiology: '❤️', neurology: '🧠', orthopedics: '🦴', nutrition: '🥗',
+  sleep: '😴', mental: '🧘', general: '📋', dermatology: '🧴',
+  gastroenterology: '🫁', urology: '💊',
 }
 
 const TABS: { id: Category; label: string }[] = [
@@ -40,46 +38,55 @@ const TABS: { id: Category; label: string }[] = [
   { id: 'mental',       label: '🧘 נפש'      },
 ]
 
-const ALL_ARTICLES: Article[] = [
-  { id: 1,  title: 'כאבי גב כרוניים – מדריך מקיף לאבחון וטיפול',         summary: 'סקירה עדכנית של גורמי כאב גב, שיטות אבחון, טיפול פיזיותרפי ותרופתי, ומתי מתייעצים לגבי ניתוח. כל מה שצריך לדעת.', category: 'orthopedics', tags: ['כאבי גב','שיקום','פיזיותרפיה'],   author: 'ד"ר דניאל כהן',      authorTitle: 'אורתופד',          readTime: 4, date: 'לפני 2 ימים',    icon: '🦴', views: 1240, likes: 87  },
-  { id: 2,  title: 'יתר לחץ דם – מה כדאי לדעת בגיל 40+',                 summary: 'גורמי סיכון, טיפול תרופתי לעומת שינוי אורח חיים, ומה החדשות האחרונות בנושא טיפול ביתר לחץ דם.', category: 'cardiology',   tags: ['לחץ דם','לב','מניעה'],           author: 'פרופ׳ ריבה שמש',     authorTitle: 'רפואה פנימית',     readTime: 5, date: 'לפני 3 ימים',    icon: '❤️', views: 2100, likes: 143 },
-  { id: 3,  title: 'עייפות מתמשכת – מתי זה יותר מסתם עייפות?',           summary: 'מחלות שעומדות מאחורי עייפות כרונית: אנמיה, בעיות בלוטת תריס, דיכאון, ומחלות אוטואימוניות. כיצד מאבחנים ומטפלים.', category: 'neurology',    tags: ['עייפות','בלוטת תריס','דם'],      author: 'פרופ׳ מרים לוי',     authorTitle: 'נוירולוגית',       readTime: 6, date: 'לפני 5 ימים',    icon: '🔋', views: 3400, likes: 210 },
-  { id: 4,  title: 'דיאטה ים תיכונית – עדויות מדעיות 2025',               summary: 'מה המחקר אומר על הדיאטה הים-תיכונית ומחלות לב, סוכרת, ודמנציה. נתונים עדכניים ומה לאכול בפועל.', category: 'nutrition',    tags: ['תזונה','לב','מניעה'],            author: 'ד"ר יוסי מזרחי',     authorTitle: 'אנדוקרינולוג',     readTime: 7, date: 'לפני שבוע',      icon: '🥗', views: 1890, likes: 124 },
-  { id: 5,  title: 'שינה בריאה – המדריך המלא לשינה עמוקה',                summary: 'היגיינת שינה, הפרעות שינה נפוצות, טיפול CBT-I, ומתי מתייעצים עם מומחה שינה. כל מה שצריך לדעת.', category: 'sleep',        tags: ['שינה','CBT','נדודי שינה'],       author: 'ד"ר אמיר זקן',       authorTitle: 'פסיכיאטר',         readTime: 3, date: 'לפני שבועיים',   icon: '😴', views: 4200, likes: 312 },
-  { id: 6,  title: 'חרדה חברתית – סימנים, גורמים, וטיפול יעיל',           summary: 'הבנת חרדה חברתית, ההבדל בינה לבין ביישנות, וטיפולים יעילים כולל CBT ותרופות. מדריך מלא.', category: 'mental',       tags: ['חרדה','CBT','בריאות נפש'],       author: 'ד"ר אמיר זקן',       authorTitle: 'פסיכיאטר',         readTime: 5, date: 'לפני 3 שבועות',  icon: '🧘', views: 2700, likes: 198 },
-  { id: 7,  title: 'ספורט בגיל 50+ – כיצד להתאמן בבטחה ובחוכמה',         summary: 'איך לבנות תוכנית אימון מותאמת לגיל, אילו ספורטים כדאי לבחור ואילו להימנע מהם. טיפים מהשדה.', category: 'orthopedics',  tags: ['ספורט','שיקום','גיל מבוגר'],    author: 'ד"ר דניאל כהן',      authorTitle: 'אורתופד',          readTime: 4, date: 'לפני חודש',      icon: '🏃', views: 1560, likes: 96  },
-  { id: 8,  title: 'סוכרת סוג 2 – מניעה ושליטה דרך תזונה נכונה',         summary: 'אסטרטגיות תזונתיות מבוססות מחקר, מדדים חשובים, ומתי תרופות הכרחיות. עדויות מהמחקרים.', category: 'nutrition',    tags: ['סוכרת','תזונה','מניעה'],         author: 'ד"ר יוסי מזרחי',     authorTitle: 'אנדוקרינולוג',     readTime: 8, date: 'לפני חודש',      icon: '🩸', views: 2240, likes: 167 },
-  { id: 9,  title: 'כאבי ראש חוזרים – מיגרנה ומה מעבר לה',               summary: 'טריגרים נפוצים, אבחנה מבדלת, טיפולים מונעים, ומתי לפנות לבדיקת MRI. מדריך לסובלים מכאבי ראש.', category: 'neurology',    tags: ['מיגרנה','כאב ראש','הדמיה'],     author: 'פרופ׳ מרים לוי',     authorTitle: 'נוירולוגית',       readTime: 5, date: 'לפני חודשיים',   icon: '🧠', views: 3100, likes: 241 },
-  { id: 10, title: 'מחלות לב – גורמי סיכון ובדיקות מומלצות',              summary: 'פרופיל שומנים, לחץ דם, סוכר בצום – מה לבדוק, מתי, ומה המשמעות של הנתונים. המלצות מעשיות.', category: 'cardiology',   tags: ['לב','כולסטרול','מניעה'],         author: 'ד"ר שרה אברמוביץ',   authorTitle: 'קרדיולוגית',       readTime: 9, date: 'לפני 3 חודשים',  icon: '🫀', views: 4800, likes: 356 },
-  { id: 11, title: 'אלרגיות עונתיות – מדריך מלא לעונת האביב',             summary: 'אבחנה, טיפול תרופתי ואימונותרפיה, וטיפים מעשיים למחיה עם אלרגיות עונתיות ופרחי אביב.', category: 'neurology',    tags: ['אלרגיה','נשימה','אביב'],         author: 'ד"ר נעמה כץ',        authorTitle: 'נפרולוגית',        readTime: 3, date: 'לפני 4 חודשים',  icon: '🌸', views: 1380, likes: 78  },
-  { id: 12, title: 'בריאות נפשית בעידן הדיגיטלי – FOMO ומדיה חברתית',    summary: 'השפעת מדיה חברתית על חרדה ודיכאון בקרב בני נוער ומבוגרים, וכלים פרקטיים להגנה על הנפש.', category: 'mental',       tags: ['בריאות נפש','דיגיטל','חרדה'],   author: 'ד"ר אמיר זקן',       authorTitle: 'פסיכיאטר',         readTime: 5, date: 'לפני 5 חודשים',  icon: '📱', views: 3700, likes: 289 },
-]
-
-const HOT_TAGS = ['כאבי גב','לחץ דם','תזונה','שינה','חרדה','לב','סוכרת','מיגרנה']
-
-const TOP_AUTHORS = [
-  { name: 'ד"ר אמיר זקן',      articles: 3, specialty: 'פסיכיאטריה' },
-  { name: 'ד"ר דניאל כהן',     articles: 2, specialty: 'אורתופדיה'   },
-  { name: 'ד"ר יוסי מזרחי',    articles: 2, specialty: 'אנדוקרינולוגיה' },
-  { name: 'פרופ׳ מרים לוי',     articles: 2, specialty: 'נוירולוגיה'  },
-]
-
 export default function ArticlesPage() {
   const [search,    setSearch]    = useState('')
   const [category,  setCategory]  = useState<Category>('all')
-  const [sort,      setSort]      = useState<Sort>('hot')
+  const [sort,      setSort]      = useState<Sort>('new')
   const [activeTag, setActiveTag] = useState('')
+  const [articles, setArticles]   = useState<any[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
 
-  const filtered = ALL_ARTICLES.filter(a => {
-    const matchSearch = !search || a.title.includes(search) || a.tags.some(t => t.includes(search))
-    const matchCat    = category === 'all' || a.category === category
-    const matchTag    = !activeTag || a.tags.includes(activeTag)
-    return matchSearch && matchCat && matchTag
-  }).sort((a, b) => {
-    if (sort === 'new')     return b.id - a.id
-    if (sort === 'popular') return b.views - a.views
-    return (b.likes + b.views * 0.01) - (a.likes + a.views * 0.01)
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams()
+        if (category !== 'all') params.set('category', category)
+        if (search) params.set('search', search)
+        if (activeTag) params.set('tag', activeTag)
+        params.set('sort', sort === 'hot' ? 'popular' : sort === 'new' ? 'newest' : 'views')
+        params.set('per_page', '20')
+
+        const res = await fetch(`${API}/articles?${params}`)
+        if (res.ok) {
+          const data = await res.json()
+          setArticles(data.items || [])
+          setTotalCount(data.total || 0)
+        }
+      } catch {}
+      finally { setLoading(false) }
+    }
+    load()
+  }, [category, sort, search, activeTag])
+
+  // Collect all unique tags from loaded articles
+  const allTags = [...new Set(articles.flatMap(a => a.tags || []))]
+
+  // Collect authors
+  const authorMap = new Map<string, { name: string; title: string; count: number }>()
+  articles.forEach(a => {
+    if (a.author_name) {
+      const existing = authorMap.get(a.author_name)
+      if (existing) existing.count++
+      else authorMap.set(a.author_name, { name: a.author_name, title: a.author_title || '', count: 1 })
+    }
   })
+  const topAuthors = [...authorMap.values()].sort((a, b) => b.count - a.count).slice(0, 5)
+
+  // Category counts
+  const catCounts: Record<string, number> = {}
+  articles.forEach(a => { catCounts[a.category] = (catCounts[a.category] || 0) + 1 })
 
   return (
     <>
@@ -93,7 +100,7 @@ export default function ArticlesPage() {
           <div>
             <h2 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: '#e0f2fe' }}>📰 מאמרים רפואיים</h2>
             <p style={{ color: 'var(--muted)', margin: '6px 0 0', fontSize: 14 }}>
-              142 מאמרים · 12 חדשים השבוע · 28 רופאים כותבים
+              {totalCount} מאמרים מפורסמים
             </p>
           </div>
         </div>
@@ -104,11 +111,10 @@ export default function ArticlesPage() {
             type="text"
             className="search-input"
             style={{ flex: 1, padding: '12px 16px' }}
-            placeholder="חפש מאמר, תגית או כותב... (/ לקיצור)"
+            placeholder="חפש מאמר, תגית או כותב..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <span className="kbd">/</span>
         </div>
 
         {/* Category tabs */}
@@ -142,7 +148,7 @@ export default function ArticlesPage() {
             </button>
           ))}
           <span style={{ marginRight: 'auto', color: 'var(--muted)', fontSize: 13 }}>
-            {filtered.length} מאמרים
+            {articles.length} מאמרים
           </span>
         </div>
 
@@ -151,27 +157,40 @@ export default function ArticlesPage() {
 
           {/* Article list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filtered.length === 0 && (
+            {loading && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 48 }}>טוען מאמרים...</div>}
+
+            {!loading && articles.length === 0 && (
               <div className="card" style={{ textAlign: 'center', padding: 48, color: 'var(--muted)' }}>
                 לא נמצאו מאמרים מתאימים
               </div>
             )}
 
-            {filtered.map(article => {
-              const cat = CATEGORY_META[article.category]
+            {articles.map(article => {
+              const cat = CATEGORY_META[article.category] || CATEGORY_META.general
+              const icon = CATEGORY_ICONS[article.category] || '📄'
+              const publishDate = article.published_at ? new Date(article.published_at).toLocaleDateString('he-IL') : ''
+
               return (
                 <article key={article.id} className="article-card card" data-testid="article-card">
                   <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
 
-                    {/* Emoji icon box */}
-                    <div style={{
-                      width: 56, height: 56, borderRadius: 16, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)',
-                      fontSize: 28,
-                    }}>
-                      {article.icon}
-                    </div>
+                    {/* Image or emoji icon */}
+                    {article.hero_image_url ? (
+                      <img
+                        src={article.hero_image_url}
+                        alt={article.hero_image_alt || article.title}
+                        style={{ width: 120, height: 80, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 56, height: 56, borderRadius: 16, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)',
+                        fontSize: 28,
+                      }}>
+                        {icon}
+                      </div>
+                    )}
 
                     {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -191,7 +210,7 @@ export default function ArticlesPage() {
                           {cat.label}
                         </span>
                         {/* Tags */}
-                        {article.tags.slice(0, 2).map(tag => (
+                        {(article.tags || []).slice(0, 2).map((tag: string) => (
                           <button
                             key={tag}
                             onClick={() => setActiveTag(activeTag === tag ? '' : tag)}
@@ -202,16 +221,16 @@ export default function ArticlesPage() {
                           </button>
                         ))}
                         <span style={{ color: 'var(--muted)', fontSize: 12, marginRight: 'auto' }}>
-                          {article.author} · {article.readTime} דק׳ · {article.date}
+                          {article.author_name} · {article.read_time_minutes} דק׳ · {publishDate}
                         </span>
                       </div>
 
                       <div style={{ display: 'flex', gap: 16, marginTop: 10, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>👁️ {article.views.toLocaleString()}</span>
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>❤️ {article.likes}</span>
-                        <button className="btn btn-primary" style={{ marginRight: 'auto', padding: '6px 16px', fontSize: 12 }}>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>👁️ {(article.views || 0).toLocaleString()}</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>❤️ {article.likes || 0}</span>
+                        <Link href={`/articles/${article.slug}`} className="btn btn-primary" style={{ marginRight: 'auto', padding: '6px 16px', fontSize: 12, textDecoration: 'none' }}>
                           קרא עוד →
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -227,10 +246,10 @@ export default function ArticlesPage() {
             <div className="card">
               <h4 style={{ margin: '0 0 12px' }}>📂 קטגוריות</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(Object.entries(CATEGORY_META) as [Exclude<Category,'all'>, typeof CATEGORY_META[keyof typeof CATEGORY_META]][]).map(([id, meta]) => (
+                {Object.entries(CATEGORY_META).map(([id, meta]) => (
                   <button
                     key={id}
-                    onClick={() => setCategory(id)}
+                    onClick={() => setCategory(id as Category)}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13,
@@ -241,7 +260,7 @@ export default function ArticlesPage() {
                   >
                     <span>{meta.label}</span>
                     <span style={{ color: meta.color, fontWeight: 700, fontSize: 12 }}>
-                      {ALL_ARTICLES.filter(a => a.category === id).length}
+                      {catCounts[id] || 0}
                     </span>
                   </button>
                 ))}
@@ -249,37 +268,41 @@ export default function ArticlesPage() {
             </div>
 
             {/* Hot tags */}
-            <div className="card">
-              <h4 style={{ margin: '0 0 12px' }}>🔥 תגיות חמות</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {HOT_TAGS.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setActiveTag(activeTag === tag ? '' : tag)}
-                    className="tag"
-                    style={{ cursor: 'pointer', background: activeTag === tag ? 'rgba(56,189,248,0.18)' : undefined, border: activeTag === tag ? '1px solid rgba(56,189,248,0.6)' : undefined }}
-                  >
-                    {tag}
-                  </button>
-                ))}
+            {allTags.length > 0 && (
+              <div className="card">
+                <h4 style={{ margin: '0 0 12px' }}>🔥 תגיות חמות</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {allTags.slice(0, 12).map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setActiveTag(activeTag === tag ? '' : tag)}
+                      className="tag"
+                      style={{ cursor: 'pointer', background: activeTag === tag ? 'rgba(56,189,248,0.18)' : undefined, border: activeTag === tag ? '1px solid rgba(56,189,248,0.6)' : undefined }}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Top authors */}
-            <div className="card">
-              <h4 style={{ margin: '0 0 12px' }}>✍️ כותבים מובילים</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {TOP_AUTHORS.map(a => (
-                  <div key={a.name} className="forum-mini" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 13 }}>{a.name}</div>
-                      <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>{a.specialty}</div>
+            {topAuthors.length > 0 && (
+              <div className="card">
+                <h4 style={{ margin: '0 0 12px' }}>✍️ כותבים מובילים</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {topAuthors.map(a => (
+                    <div key={a.name} className="forum-mini" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{a.name}</div>
+                        <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>{a.title}</div>
+                      </div>
+                      <span style={{ fontSize: 11, color: '#93c5fd', fontWeight: 700 }}>{a.count} מאמרים</span>
                     </div>
-                    <span style={{ fontSize: 11, color: '#93c5fd', fontWeight: 700 }}>{a.articles} מאמרים</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Doctor Scribe AI CTA */}
             <div className="card cta-card">
@@ -291,10 +314,6 @@ export default function ArticlesPage() {
                 למד עוד →
               </a>
             </div>
-
-            <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
-              <span className="kbd">/</span> לחיפוש
-            </p>
           </aside>
         </div>
       </div>

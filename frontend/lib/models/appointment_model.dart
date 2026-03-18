@@ -31,16 +31,16 @@ class AppointmentModel {
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
     return AppointmentModel(
-      id: json['id'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
       patientId: json['patient_id'],
       patientName: json['patient_name'],
       title: json['title'] ?? '',
       description: json['description'],
       startTime: DateTime.parse(json['start_time']),
       endTime: DateTime.parse(json['end_time']),
-      durationMinutes: json['duration_minutes'] ?? 20,
+      durationMinutes: (json['duration_minutes'] as num?)?.toInt() ?? 20,
       status: json['status'] ?? 'scheduled',
-      reminderMinutes: json['reminder_minutes'] ?? 60,
+      reminderMinutes: (json['reminder_minutes'] as num?)?.toInt() ?? 60,
       syncedToGoogle: json['synced_to_google'] ?? false,
       googleEventId: json['google_event_id'],
       createdAt: DateTime.parse(json['created_at']),

@@ -135,7 +135,7 @@ class _PatientProfileScreenState extends ConsumerState<PatientProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           PatientHeader(patient: _patient!, patientId: widget.patientId),
           const SizedBox(height: 20),

@@ -16,6 +16,8 @@ class RecordingState {
   final bool isSearching;
   final int chunksUploaded;
   final bool isUploading;
+  final String? transcriptionStatus; // processing, done, error
+  final String? summaryStatus;       // processing, done, error
 
   const RecordingState({
     this.selectedPatientId,
@@ -28,6 +30,8 @@ class RecordingState {
     this.isSearching = false,
     this.chunksUploaded = 0,
     this.isUploading = false,
+    this.transcriptionStatus,
+    this.summaryStatus,
   });
 
   RecordingState copyWith({
@@ -41,6 +45,8 @@ class RecordingState {
     bool? isSearching,
     int? chunksUploaded,
     bool? isUploading,
+    String? transcriptionStatus,
+    String? summaryStatus,
   }) {
     return RecordingState(
       selectedPatientId: selectedPatientId ?? this.selectedPatientId,
@@ -53,6 +59,8 @@ class RecordingState {
       isSearching: isSearching ?? this.isSearching,
       chunksUploaded: chunksUploaded ?? this.chunksUploaded,
       isUploading: isUploading ?? this.isUploading,
+      transcriptionStatus: transcriptionStatus ?? this.transcriptionStatus,
+      summaryStatus: summaryStatus ?? this.summaryStatus,
     );
   }
 }
@@ -61,13 +69,41 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   final _api = api;
   final _uploadService = UploadService();
   Timer? _debounce;
+  Timer? _pollTimer;
 
   RecordingNotifier() : super(const RecordingState());
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkStatus());
+  }
+
+  Future<void> _checkStatus() async {
+    if (state.visitId == null) return;
+    if (state.summaryStatus == 'done') {
+      _pollTimer?.cancel();
+      return;
+    }
+    try {
+      final resp = await _api.get('/visits/${state.visitId}/status');
+      final data = resp.data;
+      final tStatus = data['transcription_status'] as String?;
+      final sStatus = data['summary_status'] as String?;
+      state = state.copyWith(
+        transcriptionStatus: tStatus,
+        summaryStatus: sStatus,
+      );
+      if (sStatus == 'done' || sStatus == 'error') {
+        _pollTimer?.cancel();
+      }
+    } catch (_) {}
   }
 
   Future<void> selectPatient(String patientId, String patientName) async {
@@ -129,7 +165,9 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
           visitId: state.visitId,
           isComplete: true,
           chunksUploaded: state.chunksUploaded,
+          transcriptionStatus: 'processing',
         );
+        _startPolling();
       }
     } catch (e) {
       state = state.copyWith(
@@ -166,7 +204,9 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         patientName: state.patientName,
         visitId: state.visitId,
         isComplete: true,
+        transcriptionStatus: 'processing',
       );
+      _startPolling();
     } catch (e) {
       state = RecordingState(
         selectedPatientId: state.selectedPatientId,

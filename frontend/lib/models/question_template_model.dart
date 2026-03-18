@@ -59,7 +59,7 @@ class QuestionTemplateModel {
   });
 
   factory QuestionTemplateModel.fromJson(Map<String, dynamic> json) => QuestionTemplateModel(
-    id: json['id'],
+    id: (json['id'] as num?)?.toInt() ?? 0,
     name: json['name'] ?? '',
     description: json['description'],
     icon: json['icon'] ?? 'clipboard',
@@ -68,7 +68,7 @@ class QuestionTemplateModel {
         ?.map((q) => QuestionField.fromJson(Map<String, dynamic>.from(q)))
         .toList() ?? [],
     isShared: json['is_shared'] == true,
-    usageCount: json['usage_count'] ?? 0,
+    usageCount: (json['usage_count'] as num?)?.toInt() ?? 0,
     createdAt: DateTime.parse(json['created_at']),
   );
 }

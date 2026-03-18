@@ -30,7 +30,7 @@ class DiagnosesSection extends ConsumerWidget {
           padding: const EdgeInsets.only(top: 10),
           child: Row(children: [
             SizedBox(
-              width: 100,
+              width: MediaQuery.of(context).size.width < 500 ? 70 : 100,
               child: TextField(
                 style: GoogleFonts.heebo(fontSize: 13, color: AppColors.textPrimary),
                 decoration: InputDecoration(
@@ -91,56 +91,75 @@ class TagsSection extends ConsumerWidget {
         ]),
         ...List.generate(noteState.tags.length, (i) {
           final tag = noteState.tags[i];
+          final isNarrow = MediaQuery.of(context).size.width < 500;
+          final inputDeco = InputDecoration(
+            filled: true, fillColor: AppColors.background,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          );
           return Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Row(children: [
-              SizedBox(
-                width: 110,
-                child: DropdownButtonFormField<String>(
-                  value: tag.tagType,
-                  style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    filled: true, fillColor: AppColors.background,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  ),
-                  items: _typeOptions.map((t) => DropdownMenuItem(value: t, child: Text(_typeLabels[t]!.tr(), style: GoogleFonts.heebo(fontSize: 12)))).toList(),
-                  onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagType: v),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 80,
-                child: TextField(
-                  style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'profile.tag_code'.tr(), filled: true, fillColor: AppColors.background,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  ),
-                  onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagCode: v),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'profile.tag_name'.tr(), filled: true, fillColor: AppColors.background,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.cardBorder)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  ),
-                  onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagLabel: v),
-                ),
-              ),
-              IconButton(
-                onPressed: () => ref.read(manualNoteProvider.notifier).removeTag(i),
-                icon: Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.accent),
-              ),
-            ]),
+            child: isNarrow
+                ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Row(children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: tag.tagType,
+                          style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
+                          decoration: inputDeco,
+                          items: _typeOptions.map((t) => DropdownMenuItem(value: t, child: Text(_typeLabels[t]!.tr(), style: GoogleFonts.heebo(fontSize: 12)))).toList(),
+                          onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagType: v),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => ref.read(manualNoteProvider.notifier).removeTag(i),
+                        icon: Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.accent),
+                      ),
+                    ]),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      SizedBox(width: 70, child: TextField(
+                        style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
+                        decoration: inputDeco.copyWith(hintText: 'profile.tag_code'.tr()),
+                        onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagCode: v),
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: TextField(
+                        style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
+                        decoration: inputDeco.copyWith(hintText: 'profile.tag_name'.tr()),
+                        onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagLabel: v),
+                      )),
+                    ]),
+                  ])
+                : Row(children: [
+                    SizedBox(
+                      width: 110,
+                      child: DropdownButtonFormField<String>(
+                        value: tag.tagType,
+                        style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
+                        decoration: inputDeco,
+                        items: _typeOptions.map((t) => DropdownMenuItem(value: t, child: Text(_typeLabels[t]!.tr(), style: GoogleFonts.heebo(fontSize: 12)))).toList(),
+                        onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagType: v),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(width: 80, child: TextField(
+                      style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
+                      decoration: inputDeco.copyWith(hintText: 'profile.tag_code'.tr()),
+                      onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagCode: v),
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextField(
+                      style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textPrimary),
+                      decoration: inputDeco.copyWith(hintText: 'profile.tag_name'.tr()),
+                      onChanged: (v) => ref.read(manualNoteProvider.notifier).updateTag(i, tagLabel: v),
+                    )),
+                    IconButton(
+                      onPressed: () => ref.read(manualNoteProvider.notifier).removeTag(i),
+                      icon: Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.accent),
+                    ),
+                  ]),
           );
         }),
       ]),

@@ -31,7 +31,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
       body: state.isLoading
           ? Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5))
           : Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 _buildHeader(state),
                 const SizedBox(height: 20),
@@ -55,25 +55,32 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
 
   Widget _buildHeader(AppointmentsState state) {
     final notifier = ref.read(appointmentsProvider.notifier);
-    return Row(children: [
-      Text('appointments.title'.tr(), style: GoogleFonts.heebo(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-      const SizedBox(width: 24),
-      _buildViewToggle(state, notifier),
-      const Spacer(),
-      _buildCalendarStatus(state),
-      const SizedBox(width: 12),
-      ElevatedButton.icon(
-        onPressed: () => _showCreateDialog(),
-        icon: const Icon(Icons.add, size: 18),
-        label: Text('appointments.new_appointment'.tr(), style: GoogleFonts.heebo(fontWeight: FontWeight.w600)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-    ]);
+    final isNarrow = MediaQuery.of(context).size.width < 600;
+    return Wrap(
+      spacing: 12,
+      runSpacing: 10,
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text('appointments.title'.tr(), style: GoogleFonts.heebo(fontSize: isNarrow ? 20 : 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        _buildViewToggle(state, notifier),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          _buildCalendarStatus(state),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () => _showCreateDialog(),
+            icon: const Icon(Icons.add, size: 18),
+            label: isNarrow ? const SizedBox.shrink() : Text('appointments.new_appointment'.tr(), style: GoogleFonts.heebo(fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ]),
+      ],
+    );
   }
 
   Widget _buildViewToggle(AppointmentsState state, AppointmentsNotifier notifier) {
@@ -387,7 +394,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           backgroundColor: AppColors.card,
           title: Text('appointments.create_title'.tr(), style: GoogleFonts.heebo(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           content: SizedBox(
-            width: 400,
+            width: MediaQuery.of(context).size.width < 500 ? MediaQuery.of(context).size.width * 0.85 : 400,
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 // Patient search
@@ -532,7 +539,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           backgroundColor: AppColors.card,
           title: Text('appointments.edit_title'.tr(), style: GoogleFonts.heebo(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           content: SizedBox(
-            width: 400,
+            width: MediaQuery.of(context).size.width < 500 ? MediaQuery.of(context).size.width * 0.85 : 400,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(controller: titleCtrl, decoration: InputDecoration(labelText: 'appointments.title_label'.tr()), style: GoogleFonts.heebo(color: AppColors.textPrimary)),
               const SizedBox(height: 12),

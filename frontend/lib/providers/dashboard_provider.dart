@@ -40,11 +40,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       final data = response.data;
       state = DashboardState(
         isLoading: false,
-        todayVisits: data['today_visits'] ?? 0,
-        pendingTranscriptions: data['pending_transcriptions'] ?? 0,
-        totalPatients: data['total_patients'] ?? 0,
-        visitsThisWeek: data['visits_this_week'] ?? 0,
-        monthlyTranscriptions: data['monthly_transcriptions'] ?? 0,
+        todayVisits: (data['today_visits'] as num?)?.toInt() ?? 0,
+        pendingTranscriptions: (data['pending_transcriptions'] as num?)?.toInt() ?? 0,
+        totalPatients: (data['total_patients'] as num?)?.toInt() ?? 0,
+        visitsThisWeek: (data['visits_this_week'] as num?)?.toInt() ?? 0,
+        monthlyTranscriptions: (data['monthly_transcriptions'] as num?)?.toInt() ?? 0,
         visitsByDay: (data['visits_by_day'] as List?)?.map((d) => ChartDay.fromJson(d)).toList() ?? [],
       );
     } catch (e) {

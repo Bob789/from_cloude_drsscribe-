@@ -41,7 +41,7 @@ class PatientsNotifier extends StateNotifier<PatientsState> {
       final response = await _api.get('/patients', queryParameters: {'page': page, 'per_page': 20});
       final data = response.data;
       final patients = (data['items'] as List).map((e) => PatientModel.fromJson(e)).toList();
-      state = PatientsState(patients: patients, page: data['page'], totalPages: data['pages']);
+      state = PatientsState(patients: patients, page: (data['page'] as num?)?.toInt() ?? 1, totalPages: (data['pages'] as num?)?.toInt() ?? 1);
     } catch (e) {
       state = PatientsState(error: e.toString());
     }

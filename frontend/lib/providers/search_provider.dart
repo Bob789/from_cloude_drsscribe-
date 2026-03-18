@@ -64,7 +64,7 @@ class SearchNotifier extends StateNotifier<SearchState> {
 
       final response = await _api.get('/search', queryParameters: params);
       final hits = (response.data['hits'] as List).map((h) => SearchResultModel.fromJson(h)).toList();
-      state = SearchState(results: hits, total: response.data['total'] ?? 0);
+      state = SearchState(results: hits, total: (response.data['total'] as num?)?.toInt() ?? 0);
     } catch (e) {
       state = SearchState(error: e.toString());
     }

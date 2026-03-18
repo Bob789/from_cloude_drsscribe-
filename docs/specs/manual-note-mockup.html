@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Scribe AI — Manual Note Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0A0A0F;
+      --card: #12121A;
+      --card-border: rgba(0,240,255,0.15);
+      --primary: #00F0FF;
+      --primary-light: #66F3FF;
+      --accent: #FF375F;
+      --success: #30D158;
+      --warning: #FFD60A;
+      --text-primary: #FFFFFF;
+      --text-secondary: #B4B4C4;
+      --text-muted: #6B6B7F;
+      --border: rgba(255,255,255,0.1);
+      --input-bg: #0A0A0F;
+      --input-border: rgba(255,255,255,0.12);
+      --input-focus: rgba(0,240,255,0.5);
+    }
+
+    body {
+      font-family: 'Heebo', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Layout */
+    .page { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px;
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      padding: 20px 0;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+    .form-container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* Sidebar */
+    .user-section {
+      padding: 10px 12px;
+      margin: 0 12px 20px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff;
+      border: 2px solid rgba(0,240,255,0.3);
+    }
+    .user-name { font-size: 13px; font-weight: 600; }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    .envelope-btn {
+      margin-right: auto;
+      padding: 8px;
+      background: rgba(0,240,255,0.1);
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      color: var(--primary);
+      font-size: 18px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      margin: 2px 8px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(0,240,255,0.12), rgba(0,240,255,0.06));
+      color: var(--primary);
+      font-weight: 600;
+      border: 1px solid rgba(0,240,255,0.2);
+    }
+    .nav-icon { width: 22px; text-align: center; font-size: 16px; }
+    .sidebar-bottom { margin-top: auto; padding: 0 8px; }
+    .sidebar-divider { height: 1px; background: var(--border); margin: 8px 8px; }
+
+    /* Header */
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .back-btn {
+      width: 40px; height: 40px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 18px;
+      transition: background 0.2s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.06); }
+    .page-title { font-size: 24px; font-weight: 800; }
+    .page-subtitle { font-size: 13px; color: var(--text-muted); }
+
+    /* Card sections */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-label .icon { color: var(--primary); font-size: 16px; }
+
+    /* Input fields */
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-family: 'Heebo', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: vertical;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--input-focus);
+      box-shadow: 0 0 0 2px rgba(0,240,255,0.15);
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-muted); }
+
+    /* Patient selector */
+    .patient-search {
+      position: relative;
+    }
+    .patient-search input {
+      padding-right: 40px;
+    }
+    .patient-search .search-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+    .search-results {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-top: 6px;
+      background: var(--card);
+      display: none;
+    }
+    .search-results.show { display: block; }
+    .search-result-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .search-result-item:hover { background: rgba(255,255,255,0.04); }
+    .search-result-item:last-child { border-bottom: none; }
+    .result-name { font-weight: 600; font-size: 14px; }
+    .result-phone { font-size: 12px; color: var(--text-muted); }
+    .selected-indicator {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--success);
+      margin-top: 6px;
+    }
+    .selected-indicator.show { display: flex; }
+
+    /* Urgency selector */
+    .urgency-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .urgency-btn {
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: 'Heebo', sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .urgency-btn.active-low { background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.4); color: #30D158; font-weight: 600; }
+    .urgency-btn.active-medium { background: rgba(255,159,10,0.15); border-color: rgba(255,159,10,0.4); color: #FF9F0A; font-weight: 600; }
+    .urgency-btn.active-high { background: rgba(255,69,58,0.15); border-color: rgba(255,69,58,0.4); color: #FF453A; font-weight: 600; }
+    .urgency-btn.active-critical { background: rgba(255,55,95,0.15); border-color: rgba(255,55,95,0.4); color: #FF375F; font-weight: 600; }
+
+    /* Questionnaire templates */
+    .template-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .template-btn {
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,240,255,0.3);
+      background: rgba(0,240,255,0.06);
+      color: var(--primary);
+      font-family: 'Heebo', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .template-btn:hover { background: rgba(0,240,255,0.12); }
+
+    /* Diagnoses row */
+    .diagnosis-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .diagnosis-row input:first-child { width: 100px; flex-shrink: 0; }
+    .diagnosis-row input:nth-child(2) { flex: 1; }
+    .delete-btn {
+      width: 36px; height: 36px;
+      border: none;
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 18px;
+      border-radius: 8px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .delete-btn:hover { background: rgba(255,55,95,0.1); }
+
+    .add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,240,255,0.2);
+      background: rgba(0,240,255,0.06);
+      color: var(--primary);
+      font-family: 'Heebo', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .add-btn:hover { background: rgba(0,240,255,0.12); }
+
+    /* Tags row */
+    .tag-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .tag-row select { width: 110px; flex-shrink: 0; padding: 8px; font-size: 12px; }
+    .tag-row input:nth-child(2) { width: 80px; flex-shrink: 0; padding: 8px; font-size: 12px; }
+    .tag-row input:nth-child(3) { flex: 1; padding: 8px; font-size: 12px; }
+
+    /* Custom fields */
+    .custom-field { margin-bottom: 12px; }
+    .custom-field-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .add-field-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+    .add-field-row input { flex: 1; padding: 10px; font-size: 13px; }
+
+    /* Save button */
+    .save-btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #000;
+      font-family: 'Heebo', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: box-shadow 0.25s, transform 0.2s;
+      box-shadow: 0 4px 20px rgba(0,240,255,0.3);
+    }
+    .save-btn:hover {
+      box-shadow: 0 6px 30px rgba(0,240,255,0.45);
+      transform: translateY(-2px);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="user-section">
+      <div class="avatar">Y</div>
+      <div>
+        <div class="user-name">Yossi Levi</div>
+        <div class="user-role">admin</div>
+      </div>
+      <button class="envelope-btn" title="הודעות">&#9993;</button>
+    </div>
+
+    <a class="nav-item" href="#"><span class="nav-icon">&#9632;</span> לוח בקרה</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#128101;</span> מטופלים</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#127908;</span> הקלטה</a>
+    <a class="nav-item active" href="#"><span class="nav-icon">&#9998;</span> סיכום ידני</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#10067;</span> כרטיסיות</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#128197;</span> פגישות</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#128269;</span> חיפוש</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#9881;</span> הגדרות</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#9432;</span> עזרה</a>
+    <a class="nav-item" href="#"><span class="nav-icon">&#128274;</span> ניהול</a>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-divider"></div>
+      <a class="nav-item"><span class="nav-icon">&#8250;</span> כווץ</a>
+      <a class="nav-item" style="color: var(--accent);"><span class="nav-icon">&#8592;</span> התנתק</a>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <div class="form-container">
+
+      <!-- Header -->
+      <div class="page-header">
+        <button class="back-btn">&#8594;</button>
+        <div>
+          <div class="page-title">סיכום ידני</div>
+          <div class="page-subtitle">מלא את פרטי הביקור ידנית</div>
+        </div>
+      </div>
+
+      <!-- Patient Selector -->
+      <div class="card">
+        <div class="card-label">בחר מטופל</div>
+        <div class="patient-search">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" placeholder="הקלד שם מטופל לחיפוש..." id="patientSearch" autocomplete="off">
+          <div class="search-results" id="searchResults">
+            <div class="search-result-item" onclick="selectPatient('ישראל ישראלי', '050-1234567')">
+              <div class="result-name">ישראל ישראלי</div>
+              <div class="result-phone">050-1234567</div>
+            </div>
+            <div class="search-result-item" onclick="selectPatient('שרה כהן', '052-9876543')">
+              <div class="result-name">שרה כהן</div>
+              <div class="result-phone">052-9876543</div>
+            </div>
+            <div class="search-result-item" onclick="selectPatient('דוד לוי', '054-5551234')">
+              <div class="result-name">דוד לוי</div>
+              <div class="result-phone">054-5551234</div>
+            </div>
+          </div>
+        </div>
+        <div class="selected-indicator" id="selectedIndicator">
+          <span style="color: var(--success); font-size: 16px;">&#10004;</span>
+          <span>נבחר: <strong id="selectedName"></strong></span>
+        </div>
+      </div>
+
+      <!-- Urgency -->
+      <div class="card">
+        <div class="card-label">דחיפות</div>
+        <div class="urgency-options">
+          <button class="urgency-btn active-low" onclick="setUrgency(this, 'low')">נמוכה</button>
+          <button class="urgency-btn" onclick="setUrgency(this, 'medium')">בינונית</button>
+          <button class="urgency-btn" onclick="setUrgency(this, 'high')">גבוהה</button>
+          <button class="urgency-btn" onclick="setUrgency(this, 'critical')">קריטית</button>
+        </div>
+      </div>
+
+      <!-- Questionnaire Templates -->
+      <div class="card">
+        <div class="card-label"><span class="icon">&#10067;</span> שאלון מובנה</div>
+        <div class="template-grid" id="templateGrid">
+          <button class="template-btn" onclick="selectTemplate('כללי')">&#128203; כללי</button>
+          <button class="template-btn" style="border-color: rgba(255,55,95,0.3); background: rgba(255,55,95,0.06); color: #fb7185;">&#10084; קרדיולוגיה</button>
+          <button class="template-btn" style="border-color: rgba(168,85,247,0.3); background: rgba(168,85,247,0.06); color: #c084fc;">&#129504; נוירולוגיה</button>
+          <button class="template-btn" style="border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.06); color: #34d399;">&#129468; אורתופדיה</button>
+          <button class="template-btn" style="border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); color: #fbbf24;">&#128065; עיניים</button>
+        </div>
+      </div>
+
+      <!-- Chief Complaint -->
+      <div class="card">
+        <div class="card-label">תלונה עיקרית</div>
+        <textarea rows="3" placeholder="תאר את התלונה העיקרית של המטופל..."></textarea>
+      </div>
+
+      <!-- Findings -->
+      <div class="card">
+        <div class="card-label">ממצאים</div>
+        <textarea rows="5" placeholder="תאר את הממצאים הקליניים..."></textarea>
+      </div>
+
+      <!-- Diagnoses -->
+      <div class="card">
+        <div class="card-label" style="justify-content: space-between;">
+          <span>אבחנות</span>
+          <button class="add-btn" onclick="addDiagnosis()">+ הוסף אבחנה</button>
+        </div>
+        <div id="diagnosesList">
+          <div class="diagnosis-row">
+            <input type="text" placeholder="קוד ICD">
+            <input type="text" placeholder="שם האבחנה">
+            <button class="delete-btn" onclick="this.parentElement.remove()">&#128465;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Treatment Plan -->
+      <div class="card">
+        <div class="card-label">תוכנית טיפול</div>
+        <textarea rows="5" placeholder="פרט את תוכנית הטיפול..."></textarea>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="card">
+        <div class="card-label">המלצות</div>
+        <textarea rows="3" placeholder="המלצות למטופל..."></textarea>
+      </div>
+
+      <!-- Notes -->
+      <div class="card">
+        <div class="card-label">הערות נוספות</div>
+        <textarea rows="4" placeholder="הערות חופשיות..."></textarea>
+      </div>
+
+      <!-- Custom Fields -->
+      <div class="card">
+        <div class="card-label"><span class="icon">&#9881;</span> שדות מותאמים אישית</div>
+        <div id="customFieldsList">
+          <div style="font-size: 12px; color: var(--text-muted);">אין שדות מותאמים. הוסף שדות חדשים בעזרת הטופס למטה.</div>
+        </div>
+        <div class="add-field-row">
+          <input type="text" id="newFieldName" placeholder="שם השדה החדש...">
+          <button class="add-btn" onclick="addCustomField()">+ הוסף</button>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div class="card">
+        <div class="card-label" style="justify-content: space-between;">
+          <span>תגיות</span>
+          <button class="add-btn" onclick="addTag()">+ הוסף תגית</button>
+        </div>
+        <div id="tagsList">
+          <div class="tag-row">
+            <select>
+              <option>אבחנה</option>
+              <option>סימפטום</option>
+              <option>טיפול</option>
+              <option>פרוצדורה</option>
+            </select>
+            <input type="text" placeholder="קוד">
+            <input type="text" placeholder="שם התגית">
+            <button class="delete-btn" onclick="this.parentElement.remove()">&#128465;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <button class="save-btn" onclick="alert('הסיכום נשמר בהצלחה!')">&#128190; שמור סיכום</button>
+
+      <div style="height: 40px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Patient search
+const searchInput = document.getElementById('patientSearch');
+const results = document.getElementById('searchResults');
+searchInput.addEventListener('focus', () => results.classList.add('show'));
+searchInput.addEventListener('input', () => {
+  results.classList.toggle('show', searchInput.value.length > 0);
+});
+document.addEventListener('click', (e) => {
+  if (!searchInput.contains(e.target) && !results.contains(e.target)) results.classList.remove('show');
+});
+
+function selectPatient(name, phone) {
+  searchInput.value = name;
+  searchInput.readOnly = true;
+  results.classList.remove('show');
+  document.getElementById('selectedIndicator').classList.add('show');
+  document.getElementById('selectedName').textContent = name;
+}
+
+// Urgency
+function setUrgency(btn, level) {
+  document.querySelectorAll('.urgency-btn').forEach(b => b.className = 'urgency-btn');
+  btn.classList.add('active-' + level);
+}
+
+// Template
+function selectTemplate(name) {
+  document.getElementById('templateGrid').innerHTML = '<div style="font-size:13px; color: var(--primary);">&#10004; נבחר: ' + name + ' <button class="add-btn" style="margin-right:10px;" onclick="location.reload()">נקה</button></div>';
+}
+
+// Add diagnosis
+function addDiagnosis() {
+  const list = document.getElementById('diagnosesList');
+  const row = document.createElement('div');
+  row.className = 'diagnosis-row';
+  row.innerHTML = '<input type="text" placeholder="קוד ICD"><input type="text" placeholder="שם האבחנה"><button class="delete-btn" onclick="this.parentElement.remove()">&#128465;</button>';
+  list.appendChild(row);
+}
+
+// Add tag
+function addTag() {
+  const list = document.getElementById('tagsList');
+  const row = document.createElement('div');
+  row.className = 'tag-row';
+  row.innerHTML = '<select><option>אבחנה</option><option>סימפטום</option><option>טיפול</option><option>פרוצדורה</option></select><input type="text" placeholder="קוד"><input type="text" placeholder="שם התגית"><button class="delete-btn" onclick="this.parentElement.remove()">&#128465;</button>';
+  list.appendChild(row);
+}
+
+// Add custom field
+function addCustomField() {
+  const name = document.getElementById('newFieldName').value.trim();
+  if (!name) return;
+  const list = document.getElementById('customFieldsList');
+  if (list.querySelector('div[style]')) list.innerHTML = '';
+  const field = document.createElement('div');
+  field.className = 'custom-field';
+  field.innerHTML = `<div class="custom-field-label" style="display:flex;justify-content:space-between;align-items:center;">${name}<button class="delete-btn" style="width:auto;height:auto;font-size:14px;" onclick="this.parentElement.parentElement.remove()">&#128465;</button></div><textarea rows="2" placeholder="הזן ערך..."></textarea>`;
+  list.appendChild(field);
+  document.getElementById('newFieldName').value = '';
+}
+</script>
+
+</body>
+</html>

@@ -25,13 +25,24 @@ class ThemeSelector extends ConsumerWidget {
         const SizedBox(height: 6),
         Text('settings.theme_subtitle'.tr(), style: GoogleFonts.heebo(fontSize: 12, color: AppColors.textMuted)),
         const SizedBox(height: 16),
-        Row(children: [
-          Expanded(child: _themeCard(ref, AppThemeStyle.aurora, 'settings.theme_aurora'.tr(), 'Aurora Neon', currentTheme == AppThemeStyle.aurora, AppColors.schemeFor(AppThemeStyle.aurora))),
-          const SizedBox(width: 12),
-          Expanded(child: _themeCard(ref, AppThemeStyle.ember, 'settings.theme_ember'.tr(), 'Ember Warm', currentTheme == AppThemeStyle.ember, AppColors.schemeFor(AppThemeStyle.ember))),
-          const SizedBox(width: 12),
-          Expanded(child: _themeCard(ref, AppThemeStyle.ocean, 'settings.theme_ocean'.tr(), 'Ocean Clean', currentTheme == AppThemeStyle.ocean, AppColors.schemeFor(AppThemeStyle.ocean))),
-        ]),
+        LayoutBuilder(builder: (context, constraints) {
+          final cards = [
+            _themeCard(ref, AppThemeStyle.aurora, 'settings.theme_aurora'.tr(), 'Aurora Neon', currentTheme == AppThemeStyle.aurora, AppColors.schemeFor(AppThemeStyle.aurora)),
+            _themeCard(ref, AppThemeStyle.ember, 'settings.theme_ember'.tr(), 'Ember Warm', currentTheme == AppThemeStyle.ember, AppColors.schemeFor(AppThemeStyle.ember)),
+            _themeCard(ref, AppThemeStyle.ocean, 'settings.theme_ocean'.tr(), 'Ocean Clean', currentTheme == AppThemeStyle.ocean, AppColors.schemeFor(AppThemeStyle.ocean)),
+          ];
+          if (constraints.maxWidth < 380) {
+            // Narrow: stack vertically
+            return Column(children: cards.map((c) => Padding(padding: const EdgeInsets.only(bottom: 10), child: c)).toList());
+          }
+          return Row(children: [
+            Expanded(child: cards[0]),
+            const SizedBox(width: 10),
+            Expanded(child: cards[1]),
+            const SizedBox(width: 10),
+            Expanded(child: cards[2]),
+          ]);
+        }),
       ]),
     );
   }
@@ -46,7 +57,7 @@ class ThemeSelector extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: scheme.background, borderRadius: BorderRadius.circular(16),
             border: Border.all(color: isSelected ? scheme.primary : scheme.cardBorder, width: isSelected ? 2.5 : 1),
@@ -63,8 +74,8 @@ class ThemeSelector extends ConsumerWidget {
               _dot(scheme.accent, 10, null),
             ]),
             const SizedBox(height: 8),
-            Text(label, style: GoogleFonts.heebo(fontSize: 13, fontWeight: FontWeight.w700, color: isSelected ? scheme.primary : AppColors.textPrimary)),
-            Text(subtitle, style: GoogleFonts.heebo(fontSize: 10, color: AppColors.textMuted)),
+            Text(label, style: GoogleFonts.heebo(fontSize: 12, fontWeight: FontWeight.w700, color: isSelected ? scheme.primary : AppColors.textPrimary), overflow: TextOverflow.ellipsis, maxLines: 1),
+            Text(subtitle, style: GoogleFonts.heebo(fontSize: 10, color: AppColors.textMuted), overflow: TextOverflow.ellipsis, maxLines: 1),
             if (isSelected) ...[
               const SizedBox(height: 6),
               Container(

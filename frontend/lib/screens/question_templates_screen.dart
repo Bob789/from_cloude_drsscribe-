@@ -29,7 +29,7 @@ class _QuestionTemplatesScreenState extends ConsumerState<QuestionTemplatesScree
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 800),
@@ -329,7 +329,7 @@ class _TemplateFormDialogState extends State<_TemplateFormDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 560,
+        width: MediaQuery.of(context).size.width < 600 ? MediaQuery.of(context).size.width * 0.95 : 560,
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
         child: Column(children: [
           Padding(

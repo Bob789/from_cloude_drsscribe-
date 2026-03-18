@@ -45,11 +45,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text('admin.period'.tr(namedArgs: {'colon': ': '}), style: Theme.of(context).textTheme.titleMedium),
                       SegmentedButton<String>(
@@ -77,17 +80,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   const SizedBox(height: 32),
                   Text('admin.doctor_stats'.tr(), style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 12),
-                  DataTable(
-                    columns: [
-                      DataColumn(label: Text('admin.name'.tr())),
-                      DataColumn(label: Text('admin.email'.tr())),
-                      DataColumn(label: Text('admin.visits'.tr()), numeric: true),
-                    ],
-                    rows: _doctors.map((d) => DataRow(cells: [
-                      DataCell(Text(d['name'] ?? '')),
-                      DataCell(Text(d['email'] ?? '')),
-                      DataCell(Text('${d['visit_count']}')),
-                    ])).toList(),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: [
+                        DataColumn(label: Text('admin.name'.tr())),
+                        DataColumn(label: Text('admin.email'.tr())),
+                        DataColumn(label: Text('admin.visits'.tr()), numeric: true),
+                      ],
+                      rows: _doctors.map((d) => DataRow(cells: [
+                        DataCell(Text(d['name'] ?? '')),
+                        DataCell(Text(d['email'] ?? '')),
+                        DataCell(Text('${d['visit_count']}')),
+                      ])).toList(),
+                    ),
                   ),
                 ],
               ),
@@ -97,7 +103,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   Widget _statCard(String title, String value, IconData icon, Color color) {
     return SizedBox(
-      width: 200,
+      width: MediaQuery.of(context).size.width < 500 ? (MediaQuery.of(context).size.width - 80) / 2 : 200,
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(16),

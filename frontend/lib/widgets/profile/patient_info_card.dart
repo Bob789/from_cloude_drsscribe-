@@ -97,8 +97,9 @@ class PatientInfoCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(children: [
-        SizedBox(width: 100, child: Text(label, style: GoogleFonts.heebo(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textMuted))),
-        Expanded(child: SelectableText(value, style: GoogleFonts.heebo(fontSize: 13, color: AppColors.textPrimary))),
+        Flexible(flex: 2, child: Text(label, style: GoogleFonts.heebo(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textMuted))),
+        const SizedBox(width: 8),
+        Flexible(flex: 3, child: SelectableText(value, style: GoogleFonts.heebo(fontSize: 13, color: AppColors.textPrimary))),
       ]),
     );
   }

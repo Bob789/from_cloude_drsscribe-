@@ -26,7 +26,7 @@ class HelpScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('help.title'.tr(), style: GoogleFonts.heebo(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
           const SizedBox(height: 4),
