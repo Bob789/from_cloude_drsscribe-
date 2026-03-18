@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מאמרים רפואיים — Medical Hub (Mockup)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ═══ RESET ═══ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --accent: #38bdf8;
+      --border: #223055;
+    }
+
+    body {
+      font-family: 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(180deg, #0b1020, #060a15);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    /* ═══ HEADER ═══ */
+    .site-header {
+      position: sticky; top: 0; z-index: 200;
+      backdrop-filter: blur(10px);
+      background: rgba(6, 10, 21, 0.75);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-container { max-width: 1400px; margin: 0 auto; padding: 16px 20px; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo-circle { width: 36px; height: 36px; border-radius: 12px; background: radial-gradient(circle at 30% 30%, var(--accent), #2563eb); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; }
+    .brand-text h1 { font-size: 16px; font-weight: 700; }
+    .brand-text p { font-size: 12px; color: var(--muted); }
+    .header-buttons { display: flex; gap: 12px; }
+
+    .btn { padding: 10px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-block; border: none; font-family: inherit; }
+    .btn-secondary { border: 1px solid var(--border); background: #0f1730; color: var(--text); }
+    .btn-primary { border: 1px solid rgba(56, 189, 248, 0.6); background: rgba(56, 189, 248, 0.12); color: #e0f2fe; }
+    .btn:hover { transform: scale(1.05); }
+
+    .nav { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .nav-pill { padding: 10px 14px; border-radius: 14px; font-size: 14px; transition: all 0.2s; color: var(--text); cursor: pointer; border: none; font-family: inherit; background: transparent; }
+    .nav-pill-default { border: 1px solid var(--border); background: rgba(18, 26, 51, 0.7); }
+    .nav-pill-active { border: 1px solid var(--accent); background: rgba(56, 189, 248, 0.08); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15) inset; color: #e0f2fe; }
+
+    .hamburger-btn { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; width: 44px; height: 44px; padding: 0; cursor: pointer; border-radius: 14px; border: 1px solid rgba(56,189,248,0.6); background: rgba(56,189,248,0.12); }
+    .hamburger-btn span { display: block; width: 20px; height: 2px; border-radius: 2px; background-color: #FFFFFF; }
+
+    /* ═══ CARDS ═══ */
+    .card { border: 1px solid var(--border); border-radius: 24px; background: rgba(18, 26, 51, 0.75); padding: 24px; min-width: 0; }
+    .card h4 { font-size: 18px; margin-bottom: 12px; }
+    .cta-card { border: 1px solid rgba(56, 189, 248, 0.6); background: rgba(18, 26, 51, 0.9); }
+
+    /* ═══ SEARCH INPUT ═══ */
+    .search-input { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: #0a1126; color: var(--text); font-size: 14px; outline: none; font-family: inherit; width: 100%; }
+    .search-input::placeholder { color: var(--muted); }
+    .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56,189,248,0.15); }
+
+    /* ═══ TAG ═══ */
+    .tag { font-size: 12px; color: #cffafe; border: 1px solid rgba(56, 189, 248, 0.5); padding: 4px 10px; border-radius: 999px; background: rgba(56, 189, 248, 0.08); white-space: nowrap; cursor: pointer; font-family: inherit; }
+    .tag:hover { background: rgba(56, 189, 248, 0.18); }
+    .tag.active { background: rgba(56,189,248,0.18); border: 1px solid rgba(56,189,248,0.6); }
+
+    /* ═══ ARTICLE CARD HOVER ═══ */
+    .article-card { cursor: pointer; transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s, background 0.22s; border-right: 3px solid transparent; }
+    .article-card:hover { transform: translateY(-4px) scale(1.005); background: rgba(56,189,248,0.07) !important; border-color: rgba(56,189,248,0.55); border-right-color: #38bdf8; box-shadow: 0 10px 36px rgba(56,189,248,0.18), 0 2px 10px rgba(0,0,0,0.4); }
+    .article-card:hover h3 { color: #e0f2fe; }
+
+    /* ═══ FORUM MINI ═══ */
+    .forum-mini { padding: 12px; border-radius: 14px; border: 1px solid var(--border); background: rgba(0,0,0,0.12); }
+
+    /* ═══ SORT BUTTON ═══ */
+    .sort-btn { padding: 6px 14px; border-radius: 10px; font-size: 13px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: inherit; transition: all 0.2s; }
+    .sort-btn.active { font-weight: 700; border: 1px solid rgba(56,189,248,0.6); background: rgba(56,189,248,0.08); color: #e0f2fe; }
+
+    /* ═══ CATEGORY PILL ═══ */
+    .cat-pill { padding: 8px 14px; border-radius: 14px; font-size: 13px; cursor: pointer; border: 1px solid var(--border); background: rgba(18,26,51,0.7); color: var(--text); font-family: inherit; white-space: nowrap; transition: all 0.2s; }
+    .cat-pill.active { border-color: var(--accent); background: rgba(56,189,248,0.08); color: #e0f2fe; font-weight: 700; }
+
+    /* ═══ LAYOUT ═══ */
+    .container { max-width: 1300px; margin: 32px auto; padding: 0 20px; }
+    .main-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+
+    /* ═══ FOOTER ═══ */
+    .site-footer { border-top: 1px solid var(--border); margin-top: 48px; padding: 24px 20px; text-align: center; color: var(--muted); font-size: 14px; }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .header-buttons .btn { font-size: 12px; padding: 8px 12px; } }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="site-header">
+  <div class="header-container">
+    <div class="header-top">
+      <a href="https://drsscribe.com" class="brand">
+        <div class="logo-circle">MH</div>
+        <div class="brand-text">
+          <h1>Medical Hub</h1>
+          <p>מאמרים • פורום • מומחים • תמלול</p>
+        </div>
+      </a>
+      <div class="header-buttons">
+        <a href="#" class="btn btn-secondary">התחברות Medical Hub</a>
+        <a href="https://drsscribe.com/product" class="btn btn-primary">שירות תמלול לקליניקה</a>
+        <button class="hamburger-btn" onclick="alert('תפריט נוסף')">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="https://drsscribe.com" class="nav-pill nav-pill-default">דף הבית</a>
+      <a href="#" class="nav-pill nav-pill-active">מאמרים</a>
+      <a href="#" class="nav-pill nav-pill-default">פורום</a>
+      <a href="#" class="nav-pill nav-pill-default">מומחים</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main>
+<div class="container">
+
+  <!-- Title -->
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h2 style="font-size: 28px; font-weight: 800; color: #e0f2fe;">📰 מאמרים רפואיים</h2>
+      <p style="color: var(--muted); margin-top: 6px; font-size: 14px;">2 מאמרים מפורסמים</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="card" style="padding: 16px 20px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center;">
+    <input type="text" class="search-input" style="flex: 1;" placeholder="חפש מאמר, תגית או כותב...">
+  </div>
+
+  <!-- Category tabs -->
+  <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+    <button class="cat-pill active" onclick="setActive(this)">📋 הכל</button>
+    <button class="cat-pill" onclick="setActive(this)">❤️ לב</button>
+    <button class="cat-pill" onclick="setActive(this)">🧠 נוירו</button>
+    <button class="cat-pill" onclick="setActive(this)">🦴 אורתו</button>
+    <button class="cat-pill" onclick="setActive(this)">🥗 תזונה</button>
+    <button class="cat-pill" onclick="setActive(this)">😴 שינה</button>
+    <button class="cat-pill" onclick="setActive(this)">🧘 נפש</button>
+  </div>
+
+  <!-- Sort -->
+  <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+    <button class="sort-btn" onclick="setSort(this)">🔥 חם</button>
+    <button class="sort-btn active" onclick="setSort(this)">🆕 חדש</button>
+    <button class="sort-btn" onclick="setSort(this)">👁️ פופולרי</button>
+    <span style="margin-right: auto; color: var(--muted); font-size: 13px;">2 מאמרים</span>
+  </div>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- ═══ ARTICLES LIST ═══ -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+
+      <!-- Article 1 -->
+      <article class="article-card card">
+        <div style="display: flex; gap: 16px; align-items: flex-start;">
+          <div style="width: 56px; height: 56px; border-radius: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); font-size: 28px;">
+            🥗
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 8px; line-height: 1.4; color: var(--text);">
+              חוסר איזון ברמות הגלוקוז: מה חשוב לדעת וכיצד להתמודד
+            </h3>
+            <p style="color: var(--muted); font-size: 13px; margin-bottom: 10px; line-height: 1.5; max-height: 2.8em; overflow: hidden;">
+              חוסר איזון ברמות הגלוקוז מהווה סיכון בריאותי. למדו כיצד לשמור על איזון בריא ולקבל ייעוץ רפואי.
+            </p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <span style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; color: #6ee7b7; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);">
+                תזונה
+              </span>
+              <button class="tag">גלוקוז</button>
+              <button class="tag">סוכרת</button>
+              <span style="color: var(--muted); font-size: 12px; margin-right: auto;">
+                צוות Medical Hub · 2 דק׳ · 16.3.2026
+              </span>
+            </div>
+            <div style="display: flex; gap: 16px; margin-top: 10px; align-items: center;">
+              <span style="font-size: 12px; color: var(--muted);">👁️ 20</span>
+              <span style="font-size: 12px; color: var(--muted);">❤️ 1</span>
+              <a href="#" class="btn btn-primary" style="margin-right: auto; padding: 6px 16px; font-size: 12px;">קרא עוד →</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Article 2 -->
+      <article class="article-card card">
+        <div style="display: flex; gap: 16px; align-items: flex-start;">
+          <div style="width: 56px; height: 56px; border-radius: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); font-size: 28px;">
+            📋
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 8px; line-height: 1.4; color: var(--text);">
+              איזון מטבולי ולבבי: המפתח לבריאות בגילאי 40 ומעלה
+            </h3>
+            <p style="color: var(--muted); font-size: 13px; margin-bottom: 10px; line-height: 1.5; max-height: 2.8em; overflow: hidden;">
+              מאמר זה מציג את החשיבות של איזון מטבולי ולבבי בגילאי 40 ומעלה ומציע טיפים לשמירה על בריאות מיטבית.
+            </p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <span style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; color: #94a3b8; background: rgba(148,163,184,0.1); border: 1px solid rgba(148,163,184,0.25);">
+                כללי
+              </span>
+              <button class="tag">בריאות</button>
+              <button class="tag">מטבוליזם</button>
+              <span style="color: var(--muted); font-size: 12px; margin-right: auto;">
+                צוות Medical Hub · 1 דק׳ · 16.3.2026
+              </span>
+            </div>
+            <div style="display: flex; gap: 16px; margin-top: 10px; align-items: center;">
+              <span style="font-size: 12px; color: var(--muted);">👁️ 6</span>
+              <span style="font-size: 12px; color: var(--muted);">❤️ 1</span>
+              <a href="#" class="btn btn-primary" style="margin-right: auto; padding: 6px 16px; font-size: 12px;">קרא עוד →</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside style="position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px;">
+
+      <!-- Categories -->
+      <div class="card">
+        <h4>📂 קטגוריות</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button class="cat-sidebar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;">
+            <span>לב וכלי דם</span><span style="color:#fca5a5;font-weight:700;font-size:12px;">0</span>
+          </button>
+          <button class="cat-sidebar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;">
+            <span>נוירולוגיה</span><span style="color:#a78bfa;font-weight:700;font-size:12px;">0</span>
+          </button>
+          <button class="cat-sidebar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;">
+            <span>אורתופדיה</span><span style="color:#93c5fd;font-weight:700;font-size:12px;">0</span>
+          </button>
+          <button class="cat-sidebar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.1);color:var(--text);font-family:inherit;">
+            <span>תזונה</span><span style="color:#6ee7b7;font-weight:700;font-size:12px;">1</span>
+          </button>
+          <button class="cat-sidebar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;">
+            <span>שינה</span><span style="color:#fde68a;font-weight:700;font-size:12px;">0</span>
+          </button>
+          <button class="cat-sidebar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;">
+            <span>בריאות נפש</span><span style="color:#f9a8d4;font-weight:700;font-size:12px;">0</span>
+          </button>
+          <button class="cat-sidebar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;border:1px solid rgba(148,163,184,0.25);background:rgba(148,163,184,0.1);color:var(--text);font-family:inherit;">
+            <span>כללי</span><span style="color:#94a3b8;font-weight:700;font-size:12px;">1</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hot tags -->
+      <div class="card">
+        <h4>🔥 תגיות חמות</h4>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <button class="tag">גלוקוז</button>
+          <button class="tag">סוכרת</button>
+          <button class="tag">תזונה</button>
+          <button class="tag">בריאות</button>
+          <button class="tag">מטבוליזם</button>
+          <button class="tag">לב</button>
+          <button class="tag">פעילות גופנית</button>
+        </div>
+      </div>
+
+      <!-- Top authors -->
+      <div class="card">
+        <h4>✍️ כותבים מובילים</h4>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="forum-mini" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 700; font-size: 13px;">צוות Medical Hub</div>
+              <div style="color: var(--muted); font-size: 11px; margin-top: 2px;">צוות התוכן הרפואי</div>
+            </div>
+            <span style="font-size: 11px; color: #93c5fd; font-weight: 700;">2 מאמרים</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Doctor Scribe CTA -->
+      <div class="card cta-card">
+        <h4>🎤 Doctor Scribe AI</h4>
+        <p style="color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
+          תמלול וסיכום אוטומטי של ביקורים רפואיים לקליניקות פרטיות.
+        </p>
+        <a href="https://drsscribe.com/product" class="btn btn-primary" style="display: block; text-align: center; padding: 10px;">
+          למד עוד →
+        </a>
+      </div>
+
+    </aside>
+  </div>
+</div>
+</main>
+
+<footer class="site-footer">
+  <p>© 2026 Medical Hub • <a href="https://drsscribe.com/privacy-policy">מדיניות פרטיות</a> • <a href="https://drsscribe.com/terms">תנאי שימוש</a></p>
+</footer>
+
+<script>
+function setActive(btn) {
+  document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setSort(btn) {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+
+</body>
+</html>
