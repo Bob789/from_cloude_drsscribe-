@@ -47,22 +47,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         child: Center(
-          child: Card(
-            margin: const EdgeInsets.all(32),
-            elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 400),
-              padding: const EdgeInsets.all(40),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.local_hospital, size: 72, color: Color(0xFF1565C0)),
-                  const SizedBox(height: 16),
-                  Text('Doctor Scribe AI', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text('login.subtitle'.tr(), style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600])),
-                  const SizedBox(height: 40),
+          child: SingleChildScrollView(
+            child: Card(
+              margin: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 16 : 32),
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 24 : 40),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_hospital, size: MediaQuery.of(context).size.width < 500 ? 48 : 72, color: const Color(0xFF1565C0)),
+                    const SizedBox(height: 12),
+                    FittedBox(child: Text('Doctor Scribe AI', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold))),
+                    const SizedBox(height: 8),
+                    Text('login.subtitle'.tr(), style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]), textAlign: TextAlign.center),
+                    const SizedBox(height: 28),
                   if (authState.status == AuthStatus.loading)
                     const CircularProgressIndicator()
                   else ...[
@@ -139,6 +140,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );
