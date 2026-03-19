@@ -1,0 +1,21 @@
+patient_name: דני כהן
+id_number: 
+dob: 1985-04-12
+phone: 
+email: 
+blood_type: 
+allergies: 
+profession: 
+address: 
+insurance_info: 
+notes: 
+visit_date: 2026-03-16T10:00:00
+visit_status: completed
+visit_source: manual
+chief_complaint: כאב גב תחתון חריף המקרין לרגל ימין
+findings: רגישות במישוש L4-L5, הגבלה בכיפוף לפנים, מבחן הרמת רגל ישרה חיובי ב-45 מעלות מימין. מתח שרירים גבוה בזוקפי הגב.
+diagnosis: Lumbago with Sciatica, Muscle Spasm
+treatment_plan: שחרור רקמות רכות (Soft Tissue) באזור הגב התחתון והישבן. מניפולציה עדינה (Articulation) לאגן ולחוליות המותניות. טכניקת אנרגיית שריר (Muscle Energy) לשריר הפיריפורמיס.
+recommendations: מנוחה יחסית, הימנעות מהרמת משאות כבדים. תרגילי מתיחה עדינים לשרירי הירך האחוריים. קומפרסים חמים.
+urgency: medium
+summary_notes: 

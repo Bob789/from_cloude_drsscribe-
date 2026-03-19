@@ -1,6 +1,12 @@
 import asyncio
+import sys
+import os
 from logging.config import fileConfig
 from sqlalchemy import pool
+
+# Add path to find 'app' module
+sys.path.insert(0, os.getcwd())
+
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.config import settings

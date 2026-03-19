@@ -1,0 +1,151 @@
+version: '3.9'
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: drscribe-backend
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: always
+    networks:
+      - drscribe-network
+
+  celery-worker:
+    build: ./backend
+    container_name: drscribe-celery
+    env_file: .env
+    depends_on:
+      - backend
+      - redis
+    command: celery -A app.celery_app worker --loglevel=warning --concurrency=4
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    restart: always
+    networks:
+      - drscribe-network
+
+  frontend:
+    build: ./frontend
+    container_name: drscribe-frontend
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - drscribe-network
+
+  parent-website:
+    build: ./parent-website
+    container_name: drscribe-parent
+    environment:
+      - NEXT_PUBLIC_MEDSCRIBE_URL=https://app.drsscribe.com
+      - NEXT_PUBLIC_DOCTORSCRIBE_URL=https://app.drsscribe.com
+      - NEXT_PUBLIC_API_URL=https://app.drsscribe.com/api
+    restart: always
+    networks:
+      - drscribe-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: drscribe-postgres
+    environment:
+      POSTGRES_DB: drscribe
+      POSTGRES_USER: drscribe
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drscribe"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    restart: always
+    networks:
+      - drscribe-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: drscribe-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - drscribe-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: drscribe-minio
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: always
+    networks:
+      - drscribe-network
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: drscribe-search
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_KEY}
+      MEILI_ENV: production
+    volumes:
+      - meili_data:/meili_data
+    restart: always
+    networks:
+      - drscribe-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: drscribe-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+      - frontend
+      - parent-website
+    restart: always
+    networks:
+      - drscribe-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  meili_data:
+
+networks:
+  drscribe-network:
+    driver: bridge

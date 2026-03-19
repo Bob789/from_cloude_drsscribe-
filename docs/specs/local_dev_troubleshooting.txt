@@ -1,0 +1,97 @@
+תקרא את הניתוח בעיון, זה יפתור לך את הבעיה:
+
+האבחנה שקיבלת ("ה-nginx של ה-frontend לא מעביר אותם ל-backend") **כנראה שגויה**.
+למה? כי שגיאה `500 Internal Server Error` אומרת ש-Nginx **כן** העביר את הבקשה לשרת, אבל השרת (Backend) קרס כשניסה לטפל בה. אם Nginx לא היה מעביר, היית מקבל שגיאת `404 Not Found` או `502 Bad Gateway`.
+
+**הבעיה האמיתית:**
+הרצת את המערכת עם בסיס נתונים (Postgres) חדש ונקי, אבל **לא יצרת את הטבלאות** (לא הרצת migrations).
+כשאתה מנסה להתחבר, ה-Backend מנסה לחפש משתמש בטבלה `users`, אבל הטבלה לא קיימת — וזה גורם לקריסה (שגיאה 500).
+
+### הפתרון (הרץ ב-PowerShell):
+
+1.  **יצירת הטבלאות בדאטה-בייס:**
+    ```powershell
+    docker compose run --rm backend alembic upgrade head
+    ```
+    (פקודה זו תייצר את כל הטבלאות החסרות).
+
+2.  **עכשיו נסה להתחבר שוב:**
+    רענן את הדפדפן ב-`http://localhost:3000/login` ונסה להתחבר.
+
+---
+
+### אם זה עדיין לא עובד (שגיאות OAuth):
+
+וודא שהגדרות גוגל (ב-`https://console.cloud.google.com`) תואמות בדיוק את מה שרץ מקומית:
+
+1.  ב-**Authorized JavaScript origins** חייב להיות:
+    *   `http://localhost:3000`
+    *   `http://localhost:8000`
+
+2.  ב-**Authorized redirect URIs** חייב להיות:
+    *   `http://localhost:8000/api/auth/google/callback`
+
+3.  בקובץ `.env` המקומי שלך, וודא שזה מוגדר כך:
+    ```env
+    GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
+    ```
+
+**לסיכום:** הבעיה היא כנראה חוסר בטבלאות ב-DB החדש. הרץ את סעיף 1 וזה אמור להסתדר.
+
+---
+
+### תגובת משתמש (שגיאה):
+
+```powershell
+PS C:\Doctor-Scribe> docker compose run --rm backend alembic upgrade head
+...
+ModuleNotFoundError: No module named 'app'
+```
+
+---
+
+### הפתרון לשגיאת ModuleNotFoundError:
+
+הבעיה היא ש-Python לא מוצא את התיקייה `app` בתוך הקונטיינר כי היא לא ב-`sys.path` בעת הרצת הטסטים/מיגרציות. זה נפוץ מאוד ב-Alembic.
+
+עליך לערוך את הקובץ `backend/alembic/env.py` **במחשב המקומי שלך** (ב-`C:\Doctor-Scribe`) ולהוסיף לו 2 שורות שאומרות לו לחפש מודולים בתיקייה הנוכחית.
+
+### מה לעשות:
+
+1.  פתח את הקובץ `C:\Doctor-Scribe\backend\alembic\env.py` בעורך טקסט (VS Code או Notepad).
+2.  מצא את השורות הראשונות של ה-imports.
+3.  הוסף את השורות הבאות **לפני** השורה `from app.config import settings`:
+
+```python
+import sys
+import os
+sys.path.insert(0, os.getcwd())
+```
+
+הקובץ המתוקן צריך להיראות בערך ככה בתחילתו:
+
+```python
+import asyncio
+from logging.config import fileConfig
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import async_engine_from_config
+from alembic import context
+
+# --- הוסף את זה כאן ---
+import sys
+import os
+sys.path.insert(0, os.getcwd())
+# ----------------------
+
+from app.config import settings
+from app.database import Base
+from app.models import *
+```
+
+4.  שמור את הקובץ.
+5.  הרץ שוב את הפקודה ב-PowerShell:
+    ```powershell
+    docker compose run --rm backend alembic upgrade head
+    ```
+
+זה אמור לעבוד ולהריץ את יצירת הטבלאות. לאחר מכן תוכל להתחבר ב-`http://localhost:3000`.
