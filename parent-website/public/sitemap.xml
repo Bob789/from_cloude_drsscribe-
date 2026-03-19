@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://medicalhub.co.il/</loc><priority>1.0</priority></url>
+  <url><loc>https://medicalhub.co.il/about-medscribe</loc><priority>0.9</priority></url>
+  <url><loc>https://medicalhub.co.il/articles</loc><priority>0.8</priority></url>
+  <url><loc>https://medicalhub.co.il/forum</loc><priority>0.8</priority></url>
+  <url><loc>https://medicalhub.co.il/experts</loc><priority>0.8</priority></url>
+  <url><loc>https://medicalhub.co.il/about</loc><priority>0.7</priority></url>
+  <url><loc>https://medicalhub.co.il/privacy</loc><priority>0.5</priority></url>
+  <url><loc>https://medicalhub.co.il/terms</loc><priority>0.5</priority></url>
+</urlset>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Doctor Scribe AI - Medical Visit Transcription">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Doctor Scribe AI">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Doctor Scribe AI</title>
+  <style>body { background-color: #F5F7FA; }</style>
+  <script>
+    // Security: Suppress GSI logger and any access_token leakage in console.
+    !function(){
+      ['log','warn','error','debug','info'].forEach(function(m){
+        var orig = console[m].bind(console);
+        console[m] = function(){
+          var s = Array.prototype.join.call(arguments,' ');
+          if(s.indexOf('GSI_LOGGER')>-1 || s.indexOf('access_token')>-1) return;
+          try{s=JSON.stringify(Array.from(arguments));if(s.indexOf('GSI_LOGGER')>-1||s.indexOf('access_token')>-1)return;}catch(e){}
+          orig.apply(console, arguments);
+        };
+      });
+    }();
+  </script>
+</head>
+<body>
+  <script src="vad_helper.js"></script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
