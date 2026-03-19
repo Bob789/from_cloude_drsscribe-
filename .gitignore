@@ -122,6 +122,9 @@ parent-website/.next/
 parent-website/node_modules/
 parent-website/.env.local
 
+# Backups
+backups/
+
 # Sensitive
 MEMORY.md
 task_log.csv

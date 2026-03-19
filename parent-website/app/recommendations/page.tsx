@@ -24,6 +24,9 @@ export default function RecommendationsPage() {
         </Link>
       </div>
       </main>
+      <footer className="site-footer">
+        <p>© 2026 Medical Hub • מדיניות פרטיות • תנאי שימוש</p>
+      </footer>
     </>
   )
 }
