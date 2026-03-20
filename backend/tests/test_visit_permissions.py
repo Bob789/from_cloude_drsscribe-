@@ -17,6 +17,7 @@ from app.models.patient import Patient
 from app.models.visit import Visit, VisitStatus
 from app.utils.jwt import create_access_token
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.pool import NullPool
 
 # Use PostgreSQL from environment — SQLite doesn't support JSONB columns
 _DB_URL = os.environ.get("DATABASE_URL", "")
@@ -24,21 +25,15 @@ if not _DB_URL:
     pytest.skip("DATABASE_URL not set — skipping PostgreSQL-dependent tests", allow_module_level=True)
 
 
-@pytest.fixture(scope="session")
-async def db_engine():
-    """Session-scoped engine — created once, avoids event loop conflicts."""
-    engine = create_async_engine(_DB_URL, echo=False)
-    yield engine
-    await engine.dispose()
-
-
 @pytest.fixture
-async def db_session(db_engine):
-    """Function-scoped session — rolled back after each test."""
-    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+async def db_session():
+    """Per-test engine with NullPool — no pool means no event loop conflicts."""
+    engine = create_async_engine(_DB_URL, echo=False, poolclass=NullPool)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
         yield session
         await session.rollback()
+    await engine.dispose()
 
 
 @pytest.fixture
