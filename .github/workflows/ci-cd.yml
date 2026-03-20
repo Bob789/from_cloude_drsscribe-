@@ -42,10 +42,10 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://medscribe:medscribe@localhost:5432/medscribe_test
       REDIS_URL: redis://localhost:6379
-      JWT_SECRET_KEY: test-secret-key-for-ci-only
+      JWT_SECRET: test-secret-key-for-ci-only-32chars
       JWT_ALGORITHM: HS256
       ENVIRONMENT: test
-      CORS_ORIGINS: '["http://localhost:3000","http://localhost:3001"]'
+      CORS_ORIGINS: 'http://localhost:3000,http://localhost:3001'
 
     steps:
       - name: Checkout code

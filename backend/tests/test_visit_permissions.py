@@ -2,6 +2,7 @@
 Permission tests for visit endpoints.
 These tests verify that access control works correctly for update and complete operations.
 """
+import os
 import uuid
 import pytest
 from datetime import datetime, timezone
@@ -15,14 +16,15 @@ from app.models.user import User, UserRole
 from app.models.patient import Patient
 from app.models.visit import Visit, VisitStatus
 from app.utils.jwt import create_access_token
-
-# Import Base for metadata but we'll create a limited set of tables
-from sqlalchemy import MetaData
+from app.database import Base
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
-# Test database setup
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+# Use PostgreSQL from environment — SQLite doesn't support JSONB columns
+_DB_URL = os.environ.get("DATABASE_URL", "")
+if not _DB_URL:
+    pytest.skip("DATABASE_URL not set — skipping PostgreSQL-dependent tests", allow_module_level=True)
+
+test_engine = create_async_engine(_DB_URL, echo=False)
 TestAsyncSessionLocal = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
 )
@@ -33,17 +35,16 @@ async def db_session():
     """Create a test database session with only needed tables."""
     # Create only the tables we need (users, patients, visits)
     async with test_engine.begin() as conn:
-        await conn.run_sync(lambda sync_conn: User.metadata.create_all(sync_conn, tables=[
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=[
             User.__table__,
             Patient.__table__,
             Visit.__table__,
         ]))
     
     async with TestAsyncSessionLocal() as session:
-        yield session
-    
-    async with test_engine.begin() as conn:
-        await conn.run_sync(User.metadata.drop_all)
+        async with session.begin():
+            yield session
+            await session.rollback()
 
 
 @pytest.fixture

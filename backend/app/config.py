@@ -104,7 +104,16 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+        import json
+        raw = self.CORS_ORIGINS.strip()
+        # Support JSON array format: '["http://localhost:3000","http://localhost:3001"]'
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+                return [o.strip().strip('"') for o in parsed if o.strip()]
+            except json.JSONDecodeError:
+                pass
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     @property
     def is_dev(self) -> bool:

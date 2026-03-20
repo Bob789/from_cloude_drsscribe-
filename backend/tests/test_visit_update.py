@@ -1,3 +1,4 @@
+import os
 import uuid
 import pytest
 from datetime import datetime, timezone, date
@@ -13,9 +14,12 @@ from app.models.visit import Visit, VisitStatus
 from app.models.summary import Summary, SummaryStatus
 
 
-# Test database setup
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+# Use PostgreSQL from environment — SQLite doesn't support JSONB columns
+_DB_URL = os.environ.get("DATABASE_URL", "")
+if not _DB_URL:
+    pytest.skip("DATABASE_URL not set — skipping PostgreSQL-dependent tests", allow_module_level=True)
+
+test_engine = create_async_engine(_DB_URL, echo=False)
 TestAsyncSessionLocal = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
 )
@@ -28,10 +32,9 @@ async def db_session():
         await conn.run_sync(Base.metadata.create_all)
     
     async with TestAsyncSessionLocal() as session:
-        yield session
-    
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        async with session.begin():
+            yield session
+            await session.rollback()
 
 
 @pytest.fixture

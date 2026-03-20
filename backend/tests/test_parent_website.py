@@ -34,7 +34,7 @@ async def test_cors_localhost_3001_allowed():
         base_url="http://test",
         headers={"Origin": "http://localhost:3001"},
     ) as client:
-        response = await client.get("/api/articles")
+        response = await client.get("/api/health")
     
     acao = response.headers.get("access-control-allow-origin", "")
     assert acao == "http://localhost:3001", (
@@ -52,9 +52,10 @@ async def test_cors_preflight_localhost_3001():
         headers={
             "Origin": "http://localhost:3001",
             "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "content-type",
         },
     ) as client:
-        response = await client.options("/api/articles")
+        response = await client.options("/api/health")
     
     assert response.status_code == 200
     assert "access-control-allow-origin" in response.headers
