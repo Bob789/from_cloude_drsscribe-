@@ -88,3 +88,19 @@ If this is a NEW bug (not in the incident log), append it to `docs/troubleshooti
 - Check logs immediately after deploy
 - Verify the specific endpoint/feature that was broken now works
 - Run the new regression tests to confirm they pass
+
+### 11. Confirm with user before closing
+**MANDATORY** — After the fix is deployed and verified, always ask:
+> "האם הבאג טופל בשלמות? האם הכל עובד כצפוי?"
+
+Only if the user confirms YES:
+1. **Document** the incident in `docs/troubleshooting.md` (INC-XXX format above)
+2. **Commit and push** to GitHub — only after a successful build and the feature works end-to-end:
+   ```bash
+   git add -A
+   git commit -m "fix: <short description of bug>"
+   git push origin main
+   ```
+3. Inform the user: "התקלה תועדה ודחיתי את הקוד ל-GitHub ✓"
+
+If the user says NO — continue investigating before closing.

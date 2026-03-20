@@ -1,5 +1,20 @@
 # MedScribe AI — Project Instructions
 
+## FIRST — Mandatory Session Start
+**Every session, before doing anything else, read these instruction files:**
+1. `c:\Doctor-Scribe\.github\instructions\safe-fix.instructions.md` — bug fix protocol (including step 11: confirm with user → document → push to GitHub)
+2. `c:\Doctor-Scribe\.github\instructions\lessons-learned.instructions.md` — known bugs and patterns to avoid
+3. `c:\Doctor-Scribe\.github\instructions\backend.instructions.md` — backend conventions
+4. `c:\Doctor-Scribe\.github\instructions\infrastructure.instructions.md` — Docker/env rules
+
+**Bug fix closure rule (from safe-fix step 11):**
+After every bug fix, always ask the user:
+> "האם הבאג טופל בשלמות? האם הכל עובד כצפוי?"
+Only after user confirms YES:
+- Document in `docs/troubleshooting.md`
+- Write regression test in `backend/tests/`
+- Commit and push to GitHub (only after successful build)
+
 ## Communication
 - Hebrew for all communication, English for code and documentation
 - Don't ask questions — make reasonable decisions and proceed
