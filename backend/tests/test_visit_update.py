@@ -39,7 +39,7 @@ async def test_user(db_session: AsyncSession):
     """Create a test user."""
     user = User(
         id=uuid.uuid4(),
-        email="test@example.com",
+        email=f"testuser-{uuid.uuid4().hex[:8]}@example.com",
         name="Test User",
         role=UserRole.doctor,
         is_active=True,
@@ -55,7 +55,7 @@ async def other_doctor(db_session: AsyncSession):
     """Create another doctor user."""
     user = User(
         id=uuid.uuid4(),
-        email="other@example.com",
+        email=f"otherdoc-{uuid.uuid4().hex[:8]}@example.com",
         name="Other Doctor",
         role=UserRole.doctor,
         is_active=True,
@@ -71,7 +71,7 @@ async def admin_user(db_session: AsyncSession):
     """Create an admin user."""
     user = User(
         id=uuid.uuid4(),
-        email="admin@example.com",
+        email=f"adminusr-{uuid.uuid4().hex[:8]}@example.com",
         name="Admin User",
         role=UserRole.admin,
         is_active=True,

@@ -58,7 +58,7 @@ async def test_update_visit_forbidden_different_doctor(client: AsyncClient, db_s
     # Create first doctor
     doctor1 = User(
         id=uuid.uuid4(),
-        email="doctor1@example.com",
+        email="d1-updforbid@test.com",
         name="Doctor One",
         role=UserRole.doctor,
         is_active=True,
@@ -68,7 +68,7 @@ async def test_update_visit_forbidden_different_doctor(client: AsyncClient, db_s
     # Create second doctor
     doctor2 = User(
         id=uuid.uuid4(),
-        email="doctor2@example.com",
+        email="d2-updforbid@test.com",
         name="Doctor Two",
         role=UserRole.doctor,
         is_active=True,
@@ -120,7 +120,7 @@ async def test_update_visit_allowed_for_owner(client: AsyncClient, db_session: A
     # Create doctor
     doctor = User(
         id=uuid.uuid4(),
-        email="doctor@example.com",
+        email="doc-updowner@test.com",
         name="Doctor",
         role=UserRole.doctor,
         is_active=True,
@@ -168,7 +168,7 @@ async def test_update_visit_allowed_for_admin(client: AsyncClient, db_session: A
     # Create doctor
     doctor = User(
         id=uuid.uuid4(),
-        email="doctor@example.com",
+        email="doc-updadmin@test.com",
         name="Doctor",
         role=UserRole.doctor,
         is_active=True,
@@ -178,7 +178,7 @@ async def test_update_visit_allowed_for_admin(client: AsyncClient, db_session: A
     # Create admin
     admin = User(
         id=uuid.uuid4(),
-        email="admin@example.com",
+        email="admin-updadmin@test.com",
         name="Admin",
         role=UserRole.admin,
         is_active=True,
@@ -226,7 +226,7 @@ async def test_complete_visit_forbidden_different_doctor(client: AsyncClient, db
     # Create first doctor
     doctor1 = User(
         id=uuid.uuid4(),
-        email="doctor1@example.com",
+        email="d1-cmpforbid@test.com",
         name="Doctor One",
         role=UserRole.doctor,
         is_active=True,
@@ -236,7 +236,7 @@ async def test_complete_visit_forbidden_different_doctor(client: AsyncClient, db
     # Create second doctor
     doctor2 = User(
         id=uuid.uuid4(),
-        email="doctor2@example.com",
+        email="d2-cmpforbid@test.com",
         name="Doctor Two",
         role=UserRole.doctor,
         is_active=True,
@@ -286,7 +286,7 @@ async def test_complete_visit_allowed_for_owner(client: AsyncClient, db_session:
     # Create doctor
     doctor = User(
         id=uuid.uuid4(),
-        email="doctor@example.com",
+        email="doc-cmpowner@test.com",
         name="Doctor",
         role=UserRole.doctor,
         is_active=True,
@@ -333,7 +333,7 @@ async def test_complete_visit_allowed_for_admin(client: AsyncClient, db_session:
     # Create doctor
     doctor = User(
         id=uuid.uuid4(),
-        email="doctor@example.com",
+        email="doc-cmpadmin@test.com",
         name="Doctor",
         role=UserRole.doctor,
         is_active=True,
@@ -343,7 +343,7 @@ async def test_complete_visit_allowed_for_admin(client: AsyncClient, db_session:
     # Create admin
     admin = User(
         id=uuid.uuid4(),
-        email="admin@example.com",
+        email="admin-cmpadmin@test.com",
         name="Admin",
         role=UserRole.admin,
         is_active=True,
