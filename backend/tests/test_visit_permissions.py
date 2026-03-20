@@ -24,18 +24,21 @@ if not _DB_URL:
     pytest.skip("DATABASE_URL not set — skipping PostgreSQL-dependent tests", allow_module_level=True)
 
 
-@pytest.fixture
-async def db_session():
-    """Create a per-test engine+session to avoid asyncio event loop conflicts.
-    Tables are assumed to exist (run alembic upgrade head before pytest).
-    All changes are rolled back after each test.
-    """
+@pytest.fixture(scope="session")
+async def db_engine():
+    """Session-scoped engine — created once, avoids event loop conflicts."""
     engine = create_async_engine(_DB_URL, echo=False)
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture
+async def db_session(db_engine):
+    """Function-scoped session — rolled back after each test."""
+    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
         yield session
         await session.rollback()
-    await engine.dispose()
 
 
 @pytest.fixture
@@ -106,7 +109,7 @@ async def test_update_visit_forbidden_different_doctor(client: AsyncClient, db_s
     )
     
     assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert "הרשאה" in response.json()["message"]
     
     # Verify visit was not updated
     result = await db_session.execute(select(Visit).where(Visit.id == visit.id))
@@ -272,7 +275,7 @@ async def test_complete_visit_forbidden_different_doctor(client: AsyncClient, db
     )
     
     assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert "הרשאה" in response.json()["message"]
     
     # Verify visit was not completed
     result = await db_session.execute(select(Visit).where(Visit.id == visit.id))
