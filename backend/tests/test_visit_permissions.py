@@ -16,7 +16,6 @@ from app.models.user import User, UserRole
 from app.models.patient import Patient
 from app.models.visit import Visit, VisitStatus
 from app.utils.jwt import create_access_token
-from app.database import Base
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 # Use PostgreSQL from environment — SQLite doesn't support JSONB columns
@@ -24,27 +23,19 @@ _DB_URL = os.environ.get("DATABASE_URL", "")
 if not _DB_URL:
     pytest.skip("DATABASE_URL not set — skipping PostgreSQL-dependent tests", allow_module_level=True)
 
-test_engine = create_async_engine(_DB_URL, echo=False)
-TestAsyncSessionLocal = async_sessionmaker(
-    test_engine, class_=AsyncSession, expire_on_commit=False
-)
-
 
 @pytest.fixture
 async def db_session():
-    """Create a test database session with only needed tables."""
-    # Create only the tables we need (users, patients, visits)
-    async with test_engine.begin() as conn:
-        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=[
-            User.__table__,
-            Patient.__table__,
-            Visit.__table__,
-        ]))
-    
-    async with TestAsyncSessionLocal() as session:
-        async with session.begin():
-            yield session
-            await session.rollback()
+    """Create a per-test engine+session to avoid asyncio event loop conflicts.
+    Tables are assumed to exist (run alembic upgrade head before pytest).
+    All changes are rolled back after each test.
+    """
+    engine = create_async_engine(_DB_URL, echo=False)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        yield session
+        await session.rollback()
+    await engine.dispose()
 
 
 @pytest.fixture

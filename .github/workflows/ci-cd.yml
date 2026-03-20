@@ -63,6 +63,11 @@ jobs:
           cd backend
           pip install -r requirements.txt
 
+      - name: Run Alembic migrations
+        run: |
+          cd backend
+          PYTHONPATH=/home/runner/work/-from_pc_drsscribe/-from_pc_drsscribe/backend python -m alembic upgrade head
+
       - name: Run tests
         run: |
           cd backend
