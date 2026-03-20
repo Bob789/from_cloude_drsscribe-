@@ -91,7 +91,13 @@ jobs:
       - name: Run tests
         run: |
           cd backend
-          python -m pytest tests/ -v --tb=short --ignore=tests/load
+          python -m pytest tests/ -v --tb=short --ignore=tests/load --junitxml=test-results.xml
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: backend/test-results.xml
 
   # ─────────────────────────────────────────────
   # JOB 2: Deploy to GCP — only after tests pass
