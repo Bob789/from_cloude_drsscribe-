@@ -93,14 +93,18 @@ If this is a NEW bug (not in the incident log), append it to `docs/troubleshooti
 **MANDATORY** — After the fix is deployed and verified, always ask:
 > "האם הבאג טופל בשלמות? האם הכל עובד כצפוי?"
 
-Only if the user confirms YES:
-1. **Document** the incident in `docs/troubleshooting.md` (INC-XXX format above)
-2. **Commit and push** to GitHub — only after a successful build and the feature works end-to-end:
+**Wait for explicit YES before proceeding. Never assume.**
+
+Only if the user confirms YES — follow this exact order:
+1. **Write regression tests** in `backend/tests/` (per step 9 above)
+2. **Document** the incident in `docs/troubleshooting.md` (INC-XXX format above)
+3. **Commit ALL changed files** to GitHub — including code files (not just tests/docs):
    ```bash
-   git add -A
-   git commit -m "fix: <short description of bug>"
+   git add -A          # stages EVERYTHING that changed
+   git commit -m "fix: <short description> (INC-XXX)"
    git push origin main
    ```
-3. Inform the user: "התקלה תועדה ודחיתי את הקוד ל-GitHub ✓"
+   ⚠️ Never selectively `git add` only docs/tests — always use `git add -A` to catch all modified code files.
+4. Inform the user: "התקלה תועדה ודחיתי את הקוד ל-GitHub ✓"
 
 If the user says NO — continue investigating before closing.

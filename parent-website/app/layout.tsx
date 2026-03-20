@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import './homepage.css'
 import CookieBanner from '@/components/CookieBanner'
 
 export const metadata: Metadata = {
@@ -22,6 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="he" dir="rtl">
       <head>
         <link rel="privacy-policy" href="https://drsscribe.com/privacy-policy" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body>
         {children}

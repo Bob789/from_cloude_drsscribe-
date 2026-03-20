@@ -27,6 +27,12 @@ node_modules/
 .env.production
 .env.staging
 
+# Backup / temp files
+*.bak
+*.backup
+*.old
+*_export.csv
+
 # IDE
 .idea/
 .vscode/
