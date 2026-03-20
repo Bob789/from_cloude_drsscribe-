@@ -263,7 +263,7 @@ async def test_update_visit_with_summary(
     updated_summary = result.scalar_one()
     assert updated_summary.chief_complaint == "Updated complaint"
     assert updated_summary.findings == "Updated findings"
-    assert updated_summary.diagnosis == ["Updated diagnosis"]
+    assert updated_summary.diagnosis == [{"code": "", "description": "Updated diagnosis"}]
 
 
 @pytest.mark.asyncio
