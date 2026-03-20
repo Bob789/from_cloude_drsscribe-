@@ -92,7 +92,9 @@ jobs:
             cd /opt/drscribe
 
             echo "=== Pulling latest code ==="
-            git pull origin main
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
 
             echo "=== Running migrations ==="
             sudo docker-compose -f docker-compose.prod.yml run --rm backend \
