@@ -128,8 +128,7 @@ jobs:
             cd /opt/drscribe
 
             echo "=== Pulling latest code ==="
-            git fetch pc
-            git checkout main
+            git fetch pc main
             git reset --hard pc/main
 
             echo "=== Running migrations ==="
