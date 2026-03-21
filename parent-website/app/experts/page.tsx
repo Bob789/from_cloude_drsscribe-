@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Header from '@/components/Header'
+
 
 type Specialty = 'all' | 'orthopedics' | 'neurology' | 'cardiology' | 'internal' | 'endocrinology' | 'psychiatry' | 'nephrology' | 'oncology'
 
@@ -121,7 +121,7 @@ export default function ExpertsPage() {
 
   return (
     <>
-      <Header page="experts" />
+
 
       <main>
       <div style={{ maxWidth: 1300, margin: '32px auto', padding: '0 20px' }}>
@@ -318,9 +318,6 @@ export default function ExpertsPage() {
       )}
 
       </main>
-      <footer className="site-footer">
-        <p>© 2026 Medical Hub • מדיניות פרטיות • תנאי שימוש</p>
-      </footer>
     </>
   )
 }

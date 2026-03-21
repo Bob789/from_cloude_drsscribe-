@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Header from '@/components/Header'
+
 
 type Status = 'answered' | 'waiting' | 'unanswered'
 type Sort   = 'hot' | 'new' | 'unanswered' | 'top'
@@ -69,7 +69,7 @@ export default function ForumPage() {
 
   return (
     <>
-      <Header page="forum" />
+
 
       <main>
       <div style={{ maxWidth: 1300, margin: '32px auto', padding: '0 20px' }}>
@@ -334,9 +334,6 @@ export default function ForumPage() {
       )}
 
       </main>
-      <footer className="site-footer">
-        <p>© 2026 Medical Hub • מדיניות פרטיות • תנאי שימוש</p>
-      </footer>
     </>
   )
 }

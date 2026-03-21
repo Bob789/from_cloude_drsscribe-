@@ -1,4 +1,4 @@
-import Header from '@/components/Header'
+
 import Link from 'next/link'
 
 export const metadata = {
@@ -10,7 +10,7 @@ export const metadata = {
 export default function AboutPage() {
   return (
     <>
-      <Header />
+
       <main>
       <div style={{ maxWidth: 900, margin: '64px auto', padding: '0 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 64, marginBottom: 24 }}>ℹ️</div>

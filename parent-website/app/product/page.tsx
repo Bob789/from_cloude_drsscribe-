@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Header from '@/components/Header'
+
 
 export const metadata = {
   title: 'Doctor Scribe AI — תמלול רפואי חכם | Medical Hub',
@@ -15,7 +15,7 @@ export const metadata = {
 export default function AboutMedScribeAIPage() {
   return (
     <>
-      <Header page="about" />
+
 
       {/* Hero */}
       <div style={{ position: 'relative' }}>

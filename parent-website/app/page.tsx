@@ -1,68 +1,10 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useEffect } from 'react'
 import Link from 'next/link'
 
 export default function HomePage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  // Stars rising animation
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let W: number, H: number
-    let animationFrameId: number
-
-    const resize = () => {
-      const parent = canvas.parentElement
-      W = canvas.width = parent ? parent.scrollWidth : window.innerWidth
-      H = canvas.height = parent ? parent.scrollHeight : window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    interface Star {
-      x: number; y: number; r: number
-      dx: number; dy: number; o: number
-    }
-
-    const stars: Star[] = []
-    for (let i = 0; i < 80; i++) {
-      stars.push({
-        x: Math.random() * 1400,
-        y: Math.random() * 900,
-        r: Math.random() * 1.8 + 0.3,
-        dx: (Math.random() - 0.5) * 0.15,
-        dy: -Math.random() * 0.5 - 0.15,
-        o: Math.random() * 0.7 + 0.2,
-      })
-    }
-
-    const draw = () => {
-      ctx.clearRect(0, 0, W, H)
-      stars.forEach(s => {
-        ctx.beginPath()
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255,255,255,${s.o})`
-        ctx.fill()
-        s.x += s.dx
-        s.y += s.dy
-        if (s.y < -10) { s.y = H + 10; s.x = Math.random() * W }
-        if (s.x < -10) s.x = W + 10
-        if (s.x > W + 10) s.x = -10
-      })
-      animationFrameId = requestAnimationFrame(draw)
-    }
-    draw()
-
-    return () => {
-      window.removeEventListener('resize', resize)
-      cancelAnimationFrame(animationFrameId)
-    }
-  }, [])
+  // Stars rising animation handled globally in StarsCanvas (layout.tsx)
 
   // Scroll reveal
   useEffect(() => {
@@ -90,35 +32,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <>
-      <div className="hp">
-        {/* Stars canvas */}
-        <canvas ref={canvasRef} className="stars-canvas" aria-hidden="true" />
-
-        {/* TOP BAR */}
-        <div className="top-bar">
-          <Link href="/product">חדש: תמלול רפואי אוטומטי לקליניקות — Doctor Scribe AI ←</Link>
-        </div>
-
-        {/* HEADER */}
-        <header className="site-header">
-          <div className="header-inner">
-            <Link href="/" className="brand">
-              <div className="logo-circle">MH</div>
-              <div className="brand-name">MedicalHub</div>
-            </Link>
-            <nav className="header-nav">
-              <Link href="/" className="hnav-link">דף הבית</Link>
-              <Link href="/articles" className="hnav-link">מאמרים</Link>
-              <Link href="/forum" className="hnav-link">פורום</Link>
-              <Link href="/experts" className="hnav-link">מומחים</Link>
-              <Link href="/about" className="hnav-link">אודות</Link>
-              <Link href="/login" className="hnav-btn hnav-login">התחברות</Link>
-              <Link href="/product" className="hnav-btn hnav-cta">Doctor Scribe AI</Link>
-            </nav>
-          </div>
-        </header>
-
+    <div className="hp">
         {/* PAGE CONTENT */}
         <div className="page-wrap">
           <div className="block">
@@ -396,20 +310,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* FOOTER */}
-        <footer className="site-footer">
-          <div className="footer-logo">MedicalHub</div>
-          <div className="footer-links">
-            <Link href="/articles">מאמרים</Link>
-            <Link href="/forum">פורום</Link>
-            <Link href="/experts">מומחים</Link>
-            <Link href="/product">Doctor Scribe AI</Link>
-            <Link href="/privacy-policy">פרטיות</Link>
-            <Link href="/terms">תנאי שימוש</Link>
-          </div>
-          <div className="footer-copy">© 2026 Medical Hub</div>
-        </footer>
       </div>
-    </>
   )
 }

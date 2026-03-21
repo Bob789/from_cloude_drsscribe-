@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Header from '@/components/Header'
+
 
 export const metadata = {
   title: 'MedScribe AI — תמלול רפואי חכם | Medical Hub',
@@ -15,7 +15,7 @@ export const metadata = {
 export default function AboutMedScribePage() {
   return (
     <>
-      <Header page="about" />
+
 
       {/* Hero */}
       <div className="hero" style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 20px', textAlign: 'center' }}>
@@ -177,12 +177,6 @@ export default function AboutMedScribePage() {
         </div>
       </div>
 
-      <footer className="site-footer">
-        <p>© 2026 Medical Hub • מדיניות פרטיות • תנאי שימוש</p>
-        <p style={{ marginTop: 8 }}>
-          <Link href="/" style={{ color: 'var(--accent)' }}>← חזרה לדף הבית</Link>
-        </p>
-      </footer>
     </>
   )
 }

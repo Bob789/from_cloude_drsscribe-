@@ -1,4 +1,4 @@
-import Header from '@/components/Header'
+
 import Link from 'next/link'
 
 export const metadata = {
@@ -14,7 +14,7 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <>
-      <Header />
+
       <main>
         <div style={{ maxWidth: 800, margin: '48px auto', padding: '0 20px' }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: '#e0f2fe', marginBottom: 8 }}>
