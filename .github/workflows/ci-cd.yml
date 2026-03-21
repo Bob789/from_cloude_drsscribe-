@@ -128,10 +128,9 @@ jobs:
             cd /opt/drscribe
 
             echo "=== Pulling latest code ==="
-            git remote set-url origin https://github.com/Bob789/-from_pc_drsscribe.git
-            git fetch origin
+            git fetch pc
             git checkout main
-            git reset --hard origin/main
+            git reset --hard pc/main
 
             echo "=== Running migrations ==="
             sudo docker-compose -f docker-compose.prod.yml run --rm backend \
