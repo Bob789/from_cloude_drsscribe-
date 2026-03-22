@@ -148,6 +148,9 @@ main { flex: 1; }
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text; line-height: 1.2;
 }
+.gh-brand-sub {
+  color: rgba(255,255,255,0.5); font-size: 11px; line-height: 1.3;
+}
 .gh-nav {
   display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
 }

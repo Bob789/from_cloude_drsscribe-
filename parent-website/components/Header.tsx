@@ -35,7 +35,10 @@ export default function Header() {
       <div className="gh-inner">
         <Link href="/" className="gh-brand">
           <div className="gh-logo">MH</div>
-          <div className="gh-brand-name">MedicalHub</div>
+          <div>
+            <div className="gh-brand-name">MedicalHub</div>
+            <div className="gh-brand-sub">מאמרים • פורום • מומחים</div>
+          </div>
         </Link>
 
         <nav className="gh-nav">
