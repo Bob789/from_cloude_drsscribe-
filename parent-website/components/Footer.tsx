@@ -9,8 +9,13 @@ export default function Footer() {
         <Link href="/forum">פורום</Link>
         <Link href="/experts">מומחים</Link>
         <Link href="/product">Doctor Scribe AI</Link>
-        <Link href="/privacy-policy">פרטיות</Link>
+      </div>
+      <div className="footer-legal">
         <Link href="/terms">תנאי שימוש</Link>
+        <span>|</span>
+        <Link href="/privacy">מדיניות פרטיות</Link>
+        <span>|</span>
+        <Link href="/medical-disclaimer">הצהרת שימוש רפואי</Link>
       </div>
       <div className="footer-copy">© 2026 Medical Hub</div>
     </footer>

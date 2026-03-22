@@ -908,6 +908,10 @@ footer {
 .footer-links { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
 .footer-links a { font-size: .82rem; color: rgba(255,255,255,0.7); text-decoration: none; transition: color .2s; }
 .footer-links a:hover { color: #fcf9c6; }
+.footer-legal { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; margin-bottom: 14px; padding: 10px 0; border-top: 1px solid rgba(200,160,0,0.3); border-bottom: 1px solid rgba(200,160,0,0.3); }
+.footer-legal a { font-size: .8rem; color: rgba(255,255,255,0.6); text-decoration: none; transition: color .2s; }
+.footer-legal a:hover { color: #fcf9c6; }
+.footer-legal span { color: rgba(200,160,0,0.5); font-size: 14px; user-select: none; }
 .footer-copy { font-size: .76rem; color: rgba(255,255,255,0.45); }
 
 /* ── FLOATING PARTICLES ── */

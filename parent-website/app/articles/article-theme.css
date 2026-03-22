@@ -450,7 +450,8 @@
 }
 
 /* ===== HEADER BAR ===== */
-.article-main .page-header-bar {
+.article-main .page-header-bar,
+.page-header-bar {
   background: linear-gradient(to left, #2d3a4a, #5a6a5a);
   padding: 16px 24px;
   display: flex;
@@ -459,7 +460,8 @@
   border-bottom: 2px solid #c8a000;
 }
 
-.article-main .back-btn {
+.article-main .back-btn,
+.back-btn {
   width: 36px; height: 36px;
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.3);
@@ -469,14 +471,21 @@
   transition: background 0.2s; text-decoration: none;
   flex-shrink: 0;
 }
-.article-main .back-btn:hover { background: rgba(255,255,255,0.25); }
+.article-main .back-btn:hover,
+.back-btn:hover { background: rgba(255,255,255,0.25); }
 
-.article-main .page-title  { font-size: 20px; font-weight: 800; color: white; line-height: 1.2; }
-.article-main .page-subtitle { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+.article-main .page-title,
+.page-title  { font-size: 20px; font-weight: 800; color: white; line-height: 1.2; }
+
+.article-main .page-subtitle,
+.page-subtitle { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
 
 /* ===== RED DOUBLE LINES ===== */
-.article-main .title-lines { display: flex; flex-direction: column; gap: 5px; padding: 10px 20px 0; }
-.article-main .title-line  { height: 2px; background-color: #ff0000; width: 100%; }
+.article-main .title-lines,
+.title-lines { display: flex; flex-direction: column; gap: 5px; padding: 10px 20px 0; }
+
+.article-main .title-line,
+.title-line  { height: 2px; background-color: #ff0000; width: 100%; }
 
 /* ===== ARTICLE HERO ===== */
 .article-hero {
@@ -653,14 +662,28 @@
 
 /* ===== LEGAL NOTICE ===== */
 .legal-notice {
-  background: rgba(255,220,0,0.25);
+  background: rgba(255,220,0,0.18);
   border: 1px solid rgba(200,160,0,0.4);
-  border-radius: 8px;
-  padding: 14px 16px;
-  font-size: 13px;
-  color: #5a4000;
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #4a3500;
   margin-top: 8px;
+  direction: rtl;
 }
+.legal-notice-title {
+  font-weight: 800;
+  font-size: 13.5px;
+  color: #3a2800;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(200,160,0,0.3);
+}
+.legal-notice p {
+  margin: 0 0 8px 0;
+}
+.legal-notice p:last-child { margin-bottom: 0; }
 
 /* ===== LIKE BUTTON ===== */
 .like-section {

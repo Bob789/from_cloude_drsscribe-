@@ -1,142 +1,125 @@
-
-import Link from 'next/link'
+﻿import Link from 'next/link'
+import '../articles/article-theme.css'
 
 export const metadata = {
-  title: 'Doctor Scribe AI Privacy Policy | Medical Hub',
-  description: 'Doctor Scribe AI Privacy Policy — how we collect, use, and protect data, including Google API and Google Calendar data usage.',
+  title: 'מדיניות פרטיות | Medical Hub',
+  description: 'מדיניות הפרטיות של Medical Hub ו-Doctor Scribe AI — הגנה על מידע אישי ונתוני Google.',
   openGraph: {
-    title: 'Doctor Scribe AI Privacy Policy | Medical Hub',
-    description: 'Doctor Scribe AI Privacy Policy, including Google API Services and Google Calendar data usage disclosures.',
+    title: 'מדיניות פרטיות | Medical Hub',
+    description: 'מדיניות הפרטיות של Medical Hub ו-Doctor Scribe AI, כולל הצהרת שימוש ב-Google API.',
     type: 'website',
   },
 }
 
+const LegalNav = ({ active }: { active: string }) => (
+  <div style={{ padding: '0 24px 28px', borderTop: '1px solid rgba(0,51,153,0.2)', marginTop: 8 }}>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 18, justifyContent: 'center', alignItems: 'center' }}>
+      <Link href="/terms" style={{ fontWeight: active === 'terms' ? 800 : 600, color: active === 'terms' ? '#001f6b' : '#1a56db', textDecoration: 'none', padding: '8px 18px', background: active === 'terms' ? 'rgba(26,86,219,0.12)' : 'rgba(26,86,219,0.04)', border: active === 'terms' ? '2px solid #1a56db' : '1px solid rgba(26,86,219,0.25)', borderRadius: 10, fontSize: 14 }}>תנאי שימוש</Link>
+      <span style={{ color: '#b0b8c8', fontSize: 18, userSelect: 'none' }}>|</span>
+      <Link href="/privacy" style={{ fontWeight: active === 'privacy' ? 800 : 600, color: active === 'privacy' ? '#001f6b' : '#1a56db', textDecoration: 'none', padding: '8px 18px', background: active === 'privacy' ? 'rgba(26,86,219,0.12)' : 'rgba(26,86,219,0.04)', border: active === 'privacy' ? '2px solid #1a56db' : '1px solid rgba(26,86,219,0.25)', borderRadius: 10, fontSize: 14 }}>מדיניות פרטיות</Link>
+      <span style={{ color: '#b0b8c8', fontSize: 18, userSelect: 'none' }}>|</span>
+      <Link href="/medical-disclaimer" style={{ fontWeight: active === 'medical' ? 800 : 600, color: active === 'medical' ? '#001f6b' : '#1a56db', textDecoration: 'none', padding: '8px 18px', background: active === 'medical' ? 'rgba(26,86,219,0.12)' : 'rgba(26,86,219,0.04)', border: active === 'medical' ? '2px solid #1a56db' : '1px solid rgba(26,86,219,0.25)', borderRadius: 10, fontSize: 14 }}>הצהרת שימוש רפואי</Link>
+    </div>
+  </div>
+)
+
 export default function PrivacyPage() {
   return (
     <>
+      <div className="article-block">
 
-      <main>
-        <div style={{ maxWidth: 800, margin: '48px auto', padding: '0 20px' }}>
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#e0f2fe', marginBottom: 8 }}>
-            מדיניות פרטיות
-          </h1>
-          <p style={{ color: 'var(--muted)', marginBottom: 40, fontSize: 14 }}>
-            עדכון אחרון: פברואר 2026
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            <section style={{
-              padding: '24px',
-              borderRadius: 20,
-              border: '1px solid rgba(56,189,248,0.35)',
-              background: 'rgba(56,189,248,0.08)',
-            }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#e0f2fe', marginBottom: 12 }}>
-                Google API Disclosure for Doctor Scribe AI
-              </h2>
-              <p style={{ color: 'var(--text)', lineHeight: 1.8, marginBottom: 12 }}>
-                Doctor Scribe AI&apos;s use and transfer to any other app of information received from Google APIs will adhere to the{' '}
-                <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8' }}>
-                  Google API Services User Data Policy
-                </a>, including the Limited Use requirements.
-              </p>
-              <p style={{ color: 'var(--text)', lineHeight: 1.8, fontWeight: 700, marginBottom: 8 }}>
-                How we use your Google Data:
-              </p>
-              <p style={{ color: 'var(--text)', lineHeight: 1.8 }}>
-                Our application requests access to your Google Calendar to synchronize medical appointments. This information is used exclusively to organize transcription sessions and clinical summaries for the physician. We do not share, sell, or use this data for any other purposes.
-              </p>
-            </section>
-
-            <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>1. כללי</h2>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
-                Medical Hub ו-Doctor Scribe AI ("אנחנו", "השירות") מכבדים את פרטיותך ומחויבים להגנה על המידע האישי שלך.
-                מדיניות זו מסבירה כיצד אנו אוספים, משתמשים, ומגנים על המידע שלך בהתאם לתקנות GDPR ולחקיקת הגנת הפרטיות הישראלית.
-              </p>
-            </section>
-
-            <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>2. מידע שאנו אוספים</h2>
-              <ul style={{ color: 'var(--muted)', lineHeight: 1.8, paddingRight: 20 }}>
-                <li><strong style={{ color: 'var(--text)' }}>מידע שמסרת:</strong> שם, כתובת אימייל, סיסמה בעת הרשמה</li>
-                <li><strong style={{ color: 'var(--text)' }}>מידע שימוש:</strong> דפים שנצפו, שאלות שנשאלו בפורום, מאמרים שנקראו</li>
-                <li><strong style={{ color: 'var(--text)' }}>מידע טכני:</strong> כתובת IP, סוג דפדפן, מכשיר</li>
-                <li><strong style={{ color: 'var(--text)' }}>עוגיות (Cookies):</strong> ראה סעיף 5</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>3. שימוש במידע</h2>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
-                אנו משתמשים במידע שלך כדי לספק ולשפר את השירות, לתקשר איתך, לנתח שימוש, ולעמוד בחובות חוקיות.
-                לא נמכור או נשתף את המידע האישי שלך עם צדדים שלישיים לצרכי שיווק.
-              </p>
-            </section>
-
-            <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>4. זכויותיך</h2>
-              <ul style={{ color: 'var(--muted)', lineHeight: 1.8, paddingRight: 20 }}>
-                <li>זכות לגישה למידע האישי שלך</li>
-                <li>זכות לתיקון מידע שגוי</li>
-                <li>זכות למחיקה ("הזכות להישכח")</li>
-                <li>זכות להתנגד לעיבוד</li>
-                <li>זכות לניידות נתונים</li>
-              </ul>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginTop: 12 }}>
-                לממש זכויות אלה, צור קשר: <a href="mailto:privacy@medicalhub.co.il" style={{ color: '#38bdf8' }}>privacy@medicalhub.co.il</a>
-              </p>
-            </section>
-
-            <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>5. עוגיות</h2>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
-                אנו משתמשים בעוגיות הכרחיות לתפעול האתר ועוגיות אנליטיקה לשיפור השירות.
-                ניתן לנהל העדפות עוגיות דרך הגדרות הדפדפן שלך.
-              </p>
-            </section>
-
-            <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>6. אבטחת מידע</h2>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
-                אנו נוקטים באמצעי אבטחה טכניים וארגוניים מתאימים להגנה על המידע שלך, כולל הצפנת SSL, אחסון מאובטח, וגישה מוגבלת למידע.
-              </p>
-            </section>
-
-            <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0f2fe', marginBottom: 12 }}>7. Google API Services</h2>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8, fontWeight: 600 }}>
-                Google API Data Usage: Doctor Scribe AI uses Google Calendar API to access and synchronize your medical appointments. This data is used solely to provide automated transcription and clinical note organization services. We do not share or sell this data to third parties.
-              </p>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginTop: 12 }}>
-                Doctor Scribe AI uses Google Calendar API to sync medical appointments and organize transcription sessions.
-                The application accesses your Google Calendar data only with your explicit consent and uses it solely for scheduling and managing medical appointments within the Doctor Scribe AI platform.
-              </p>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginTop: 12 }}>
-                Doctor Scribe AI&apos;s use and transfer of information received from Google APIs to any other app will adhere to the{' '}
-                <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8' }}>
-                  Google API Services User Data Policy
-                </a>, including the Limited Use requirements.
-              </p>
-              <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginTop: 12 }}>
-                You can revoke Doctor Scribe AI&apos;s access to your Google account at any time through your{' '}
-                <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8' }}>
-                  Google Account permissions settings
-                </a>.
-              </p>
-            </section>
-
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', paddingTop: 16 }}>
-              <Link href="/terms" className="btn btn-secondary" style={{ padding: '12px 24px' }}>
-                תנאי שימוש
-              </Link>
-              <Link href="/" className="btn btn-primary" style={{ padding: '12px 24px' }}>
-                חזרה לדף הבית
-              </Link>
-            </div>
+        <div className="page-header-bar">
+          <Link href="/" className="back-btn">→</Link>
+          <div>
+            <div className="page-title">Medical Hub · מדיניות פרטיות</div>
+            <div className="page-subtitle">עדכון אחרון: פברואר 2026</div>
           </div>
         </div>
-      </main>
+
+        <div className="title-lines">
+          <div className="title-line"></div>
+          <div className="title-line"></div>
+        </div>
+
+        <div className="article-hero">
+          <span className="hero-badge">מסמך משפטי</span>
+          <h1 className="hero-title">מדיניות פרטיות</h1>
+          <p className="hero-subtitle">הגנה על מידע אישי ופרטיות המשתמשים — המידע שאנו אוספים וכיצד אנו משתמשים בו</p>
+        </div>
+
+        <div className="divider-section">
+          <div className="arch arch-right"></div>
+          <div className="dark-lines-wrapper">
+            <div className="dark-line"></div>
+            <div className="dark-line"></div>
+          </div>
+          <div className="arch arch-left"></div>
+        </div>
+
+        <div className="article-body">
+
+          <div className="info-box">
+            <h3>🔑 הצהרת שימוש ב-Google API</h3>
+            <p>השימוש ב-Doctor Scribe AI במידע שהתקבל מ-Google APIs יעמוד בדרישות מדיניות נתוני המשתמש של Google, כולל דרישות השימוש המוגבל. אנו לא מוכרים, לא מעבירים ולא משתמשים בנתוני Google לצרכי פרסום. הגישה לנתוני Google (כגון כתובת מייל ופרופיל) משמשת אך ורק לצורך אימות מזהות המשתמש.</p>
+          </div>
+
+          <h2>1. מבוא</h2>
+          <p>Medical Hub ו-Doctor Scribe AI מחויבים לשמירה על פרטיות המשתמשים. מדיניות זו מפרטת כיצד אנו אוספים, משתמשים ומגנים על המידע האישי שלך.</p>
+
+          <h2>2. המידע שאנו אוספים</h2>
+          <ul>
+            <li>פרטי חשבון: שם, כתובת מייל, תפקיד מקצועי</li>
+            <li>נתוני Google OAuth: מזהה ייחודי, שם תצוגה, כתובת מייל</li>
+            <li>תוכן מקצועי: הקלטות, תמלולים וסיכומים שנוצרו בשירות</li>
+            <li>נתוני שימוש: עמודים שנצפו, פעולות בממשק</li>
+            <li>נתונים טכניים: כתובת IP, סוג דפדפן</li>
+          </ul>
+
+          <h2>3. מטרות השימוש במידע</h2>
+          <ul>
+            <li>מתן השירות והפעלתו התקינה</li>
+            <li>אימות זהות המשתמש ואבטחת החשבון</li>
+            <li>שיפור השירות ופיתוח תכונות חדשות</li>
+            <li>תמיכה טכנית ומענה לפניות</li>
+          </ul>
+
+          <h2>4. מידע רפואי ורגיש</h2>
+          <p>תוכן רפואי (הקלטות, תמלולים, סיכומי מפגשים) מוצפן ב-AES-256 ומאוחסן בבידוד מלא. אנו לא מוכרים ולא משתפים מידע רפואי עם צדדים שלישיים ללא הסכמה מפורשת.</p>
+
+          <h2>5. צדדים שלישיים</h2>
+          <ul>
+            <li>Google OAuth — אימות זהות בלבד</li>
+            <li>OpenAI / Whisper — עיבוד תמלול וסיכום (בכפוף להסכם עיבוד נתונים)</li>
+            <li>ספקי תשתית — אחסון וגיבוי מאובטח</li>
+          </ul>
+          <p>אנו לא מוכרים מידע אישי לצדדים שלישיים לצורכי פרסום.</p>
+
+          <h2>6. אבטחת מידע</h2>
+          <p>מידע אישי מוגן באמצעות הצפנת TLS 1.3 בתעבורה ו-AES-256 באחסון. גישה למידע מוגבלת לעובדים המורשים בלבד, ומבוקרת ב-Audit Log.</p>
+
+          <h2>7. עוגיות (Cookies)</h2>
+          <p>אנו משתמשים ב-Cookies לצורך ניהול סשן, העדפות שפה ואנליטיקה בסיסית. ניתן לנהל עוגיות דרך הגדרות הדפדפן שלך.</p>
+
+          <h2>8. זכויות המשתמש</h2>
+          <ul>
+            <li>גישה למידע האישי — בכל עת לפי בקשה</li>
+            <li>תיקון מידע שגוי</li>
+            <li>מחיקת החשבון וכל הנתונים</li>
+            <li>ייצוא הנתונים בפורמט נגיש</li>
+          </ul>
+
+          <h2>9. שמירת מידע</h2>
+          <p>מידע משתמש נשמר כל עוד החשבון פעיל. לאחר בקשת מחיקה, המידע יוסר תוך 30 יום, למעט מידע הנדרש לצרכים משפטיים.</p>
+
+          <h2>10. יצירת קשר</h2>
+          <p>לשאלות בנושא פרטיות: <a href="mailto:privacy@medicalhub.co.il">privacy@medicalhub.co.il</a></p>
+
+        </div>
+
+        <LegalNav active="privacy" />
+
+      </div>
+      <div className="main-footer">Doctor Scribe AI · Medical Hub · כל הזכויות שמורות</div>
     </>
   )
 }
