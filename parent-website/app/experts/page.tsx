@@ -1,6 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
+import '../community-theme.css'
 
 
 type Specialty = 'all' | 'orthopedics' | 'neurology' | 'cardiology' | 'internal' | 'endocrinology' | 'psychiatry' | 'nephrology' | 'oncology'
@@ -120,195 +121,173 @@ export default function ExpertsPage() {
   }
 
   return (
-    <>
+    <div id="experts-page-root">
 
-
-      <div style={{ padding: '24px 20px' }}>
-
-        {/* Title row */}
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: '#001f6b' }}>👨‍⚕️ מומחים רפואיים</h2>
-          <p style={{ color: 'var(--muted)', margin: '6px 0 0', fontSize: 14 }}>
-            48 מומחים מאומתים · זמן תגובה ממוצע ~3 שעות · 1,800+ תשובות השבוע
-          </p>
+      {/* ── BLOCK HEADER ── */}
+      <div className="com-block-header">
+        <div>
+          <div className="com-block-title">👨‍⚕️ מומחים רפואיים</div>
+          <div className="com-block-count">48 מומחים מאומתים · זמן תגובה ~3 שעות · 12K+ תשובות</div>
         </div>
+      </div>
 
-        {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+      {/* ── TITLE LINES ── */}
+      <div className="com-title-lines">
+        <div className="com-title-line"></div>
+        <div className="com-title-line"></div>
+      </div>
+
+      {/* ── BODY ── */}
+      <div className="com-body">
+
+        {/* Stats bar */}
+        <div className="com-stats-bar">
           {[
-            { n: '48', label: 'מומחים מאומתים', icon: '✓' },
-            { n: '~3h', label: 'זמן תגובה ממוצע', icon: '⏱' },
-            { n: '12K+', label: 'תשובות סה"כ', icon: '💬' },
-            { n: '4.8', label: 'דירוג ממוצע', icon: '★' },
+            { n: '48',   l: 'מומחים מאומתים', icon: '✓'  },
+            { n: '~3h',  l: 'זמן תגובה ממוצע', icon: '⏱' },
+            { n: '12K+', l: 'תשובות סה"כ',     icon: '💬' },
+            { n: '4.8',  l: 'דירוג ממוצע',      icon: '★'  },
           ].map(s => (
-            <div key={s.label} className="card" style={{ textAlign: 'center', padding: '16px 12px' }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#38bdf8' }}>{s.icon} {s.n}</div>
-              <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>{s.label}</div>
+            <div key={s.l} className="com-stat-tile">
+              <div className="ex-stat-n">{s.icon} {s.n}</div>
+              <div className="ex-stat-l">{s.l}</div>
             </div>
           ))}
         </div>
 
         {/* Search */}
-        <div className="card" style={{ padding: '16px 20px', marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div className="com-search-bar">
+          <span style={{ fontSize: 16, color: '#999' }}>🔍</span>
           <input
             type="text"
-            className="search-input"
-            style={{ flex: 1, padding: '12px 16px' }}
+            className="com-search-input"
             placeholder="חפש מומחה לפי שם, התמחות, או תגית..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <span className="kbd">/</span>
+          <span className="com-kbd">/</span>
         </div>
 
-        {/* Specialty tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Specialty pills */}
+        <div className="com-pills">
           {SPECIALTY_TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setSpecialty(t.id)}
-              className={`nav-pill ${specialty === t.id ? 'nav-pill-active' : 'nav-pill-default'}`}
+              className={`com-pill${specialty === t.id ? ' com-pill-active' : ''}`}
             >
               {t.label}
             </button>
           ))}
-          <span style={{ marginRight: 'auto', color: 'var(--muted)', fontSize: 13 }}>
-            {filtered.length} מומחים
-          </span>
+          <span className="com-count">{filtered.length} מומחים</span>
         </div>
 
         {/* Experts grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+        <div className="ex-grid">
           {filtered.length === 0 && (
-            <div className="card" style={{ textAlign: 'center', padding: 48, color: 'var(--muted)', gridColumn: '1/-1' }}>
+            <div className="com-card" style={{ textAlign: 'center', padding: 48, color: '#888', gridColumn: '1/-1' }}>
               לא נמצאו מומחים מתאימים
             </div>
           )}
-
           {filtered.map(expert => (
-            <article key={expert.id} className="expert-card card" data-testid="expert-card" style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <article key={expert.id} className="ex-card" data-testid="expert-card">
 
-              {/* Available badge */}
-              <div style={{ marginBottom: 12 }}>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
-                  color: expert.available ? '#a7f3d0' : 'var(--muted)',
-                  background: expert.available ? 'rgba(52,211,153,0.1)' : 'rgba(0,0,0,0.2)',
-                  border: `1px solid ${expert.available ? 'rgba(52,211,153,0.3)' : 'var(--border)'}`,
-                }}>
+              {/* Availability + verified */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span className={`ex-avail ${expert.available ? 'ex-avail-yes' : 'ex-avail-no'}`}>
                   {expert.available ? '🟢 זמין' : '⏸ לא זמין'}
                 </span>
+                {expert.verified && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#1a56db', background: 'rgba(26,86,219,0.08)', padding: '3px 8px', borderRadius: 999, border: '1px solid rgba(26,86,219,0.2)' }}>
+                    ✓ מאומת
+                  </span>
+                )}
               </div>
 
-              {/* Avatar + name */}
-              <div style={{ textAlign: 'center', marginBottom: 14 }}>
-                <div style={{
-                  width: 72, height: 72, borderRadius: '50%',
+              {/* Avatar */}
+              <div
+                className="ex-avatar"
+                style={{
                   background: `radial-gradient(circle at 30% 30%, ${expert.color}, #1e3a5f)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'white', fontWeight: 800, fontSize: 22,
-                  margin: '0 auto 12px',
                   border: `2px solid ${expert.color}55`,
                   boxShadow: `0 0 20px ${expert.color}33`,
-                }}>
-                  {expert.initials}
-                </div>
-                <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 3px', color: 'var(--text)' }}>
-                  {expert.name}
-                  {expert.verified && <span style={{ color: '#38bdf8', fontSize: 13, marginRight: 5 }}>✓</span>}
-                </h3>
-                <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 3px' }}>{expert.title}</p>
-                <p style={{ color: 'var(--muted)', fontSize: 12, margin: 0 }}>🏥 {expert.hospital} · {expert.city}</p>
+                }}
+              >
+                {expert.initials}
               </div>
 
+              {/* Name + role */}
+              <div className="ex-name">{expert.name}</div>
+              <div className="ex-job">{expert.title}</div>
+              <div className="ex-hosp">🏥 {expert.hospital} · {expert.city}</div>
+
               {/* Rating */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12 }}>
+              <div className="ex-rating-row">
                 <Stars rating={expert.rating} />
-                <span style={{ fontSize: 14, fontWeight: 700 }}>{expert.rating}</span>
-                <span style={{ color: 'var(--muted)', fontSize: 12 }}>({expert.reviews})</span>
+                <span style={{ fontWeight: 700 }}>{expert.rating}</span>
+                <span style={{ color: '#888', fontSize: 12 }}>({expert.reviews})</span>
               </div>
 
               {/* Bio */}
-              <p style={{
-                color: 'var(--muted)', fontSize: 13, lineHeight: 1.55, margin: '0 0 12px',
-                maxHeight: '4em', overflow: 'hidden',
-              }}>
-                {expert.bio}
-              </p>
+              <p className="ex-bio">{expert.bio}</p>
 
               {/* Tags */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, justifyContent: 'center' }}>
-                {expert.tags.map(tag => <span key={tag} className="tag">{tag}</span>)}
+              <div className="ex-tags">
+                {expert.tags.map(tag => <span key={tag} className="com-tag">{tag}</span>)}
               </div>
 
               {/* Stats */}
-              <div style={{ display: 'flex', gap: 0, justifyContent: 'center', marginBottom: 16, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ flex: 1, textAlign: 'center', padding: '10px 8px', borderLeft: '1px solid var(--border)' }}>
-                  <div style={{ fontWeight: 900, fontSize: 18, color: '#38bdf8' }}>{expert.answers}</div>
-                  <div style={{ color: 'var(--muted)', fontSize: 11 }}>תשובות</div>
+              <div className="ex-stats-row">
+                <div className="ex-stat-cell">
+                  <div className="ex-stat-n">{expert.answers}</div>
+                  <div className="ex-stat-l">תשובות</div>
                 </div>
-                <div style={{ flex: 1, textAlign: 'center', padding: '10px 8px' }}>
-                  <div style={{ fontWeight: 900, fontSize: 18, color: '#38bdf8' }}>{expert.reviews}</div>
-                  <div style={{ color: 'var(--muted)', fontSize: 11 }}>ביקורות</div>
+                <div className="ex-stat-cell">
+                  <div className="ex-stat-n">{expert.reviews}</div>
+                  <div className="ex-stat-l">ביקורות</div>
                 </div>
               </div>
 
-              {/* CTA */}
-              <button
-                onClick={() => openModal(expert)}
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '12px', fontSize: 14, textAlign: 'center' }}
-              >
+              {/* CTA button */}
+              <button onClick={() => openModal(expert)} className="ex-ask-btn">
                 💬 שאל את המומחה
               </button>
+
             </article>
           ))}
         </div>
       </div>
 
-      {/* Ask expert modal */}
+      {/* Footer bar */}
+      <div className="com-footer-bar">Doctor Scribe AI · Medical Hub · כל הזכויות שמורות</div>
+
+      {/* ── MODAL ── */}
       {showModal && selected && (
         <div
+          className="com-modal-overlay"
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 300,
-            background: 'rgba(0,0,0,0.65)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 20,
-          }}
         >
-          <div style={{
-            width: '100%', maxWidth: 540,
-            background: 'rgba(18,26,51,0.97)',
-            border: '1px solid var(--border)',
-            borderRadius: 24, overflow: 'hidden',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>
-                💬 שאל את {selected.name}
-              </h3>
-              <button onClick={() => setShowModal(false)} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: 13 }}>✕</button>
+          <div className="com-modal">
+            <div className="com-modal-head">
+              <h3 className="com-modal-head-title">💬 שאל את {selected.name}</h3>
+              <button onClick={() => setShowModal(false)} className="com-modal-close">✕ סגור</button>
             </div>
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <p style={{ color: 'var(--muted)', fontSize: 13, margin: 0 }}>
+            <div className="com-modal-body">
+              <p style={{ color: '#666', fontSize: 13, margin: 0 }}>
                 {selected.title} · {selected.hospital} · {selected.city}
               </p>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>נושא השאלה</label>
-                <input className="search-input" style={{ width: '100%', padding: '12px 14px' }} placeholder="לדוגמה: כאב ברך לאחר ריצה" />
+                <label className="com-modal-label">נושא השאלה</label>
+                <input className="com-modal-input" placeholder="לדוגמה: כאב ברך לאחר ריצה" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>פרטים (גיל, רקע, מה ניסית)</label>
-                <textarea className="search-input" rows={4} style={{ width: '100%', padding: '12px 14px', resize: 'vertical' }} placeholder="כתוב פרטים קצרים..." />
+                <label className="com-modal-label">פרטים (גיל, רקע, מה ניסית)</label>
+                <textarea className="com-modal-input" rows={4} style={{ resize: 'vertical' }} placeholder="כתוב פרטים קצרים..." />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
-              <button onClick={() => setShowModal(false)} className="btn btn-secondary">ביטול</button>
-              <button
-                onClick={() => { setShowModal(false); alert('דמו: שאלתך נשלחה!') }}
-                className="btn btn-primary"
-                style={{ flex: 1 }}
-              >
+            <div className="com-modal-foot">
+              <button onClick={() => setShowModal(false)} className="com-btn-cancel">ביטול</button>
+              <button onClick={() => { setShowModal(false); alert('דמו: שאלתך נשלחה!') }} className="com-btn-submit">
                 שלח שאלה →
               </button>
             </div>
@@ -316,6 +295,6 @@ export default function ExpertsPage() {
         </div>
       )}
 
-    </>
+    </div>
   )
 }

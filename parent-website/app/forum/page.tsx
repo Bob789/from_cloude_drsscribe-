@@ -1,8 +1,8 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
-
+import '../community-theme.css'
 
 type Status = 'answered' | 'waiting' | 'unanswered'
 type Sort   = 'hot' | 'new' | 'unanswered' | 'top'
@@ -45,9 +45,9 @@ const HOT_TAGS = [
 ]
 
 const STATUS_LABEL: Record<Status, { text: string; color: string; bg: string; border: string }> = {
-  answered:   { text: 'נענה',       color: '#a7f3d0', bg: 'rgba(52,211,153,.1)',  border: 'rgba(52,211,153,.3)'  },
-  waiting:    { text: 'ממתין',      color: '#fde68a', bg: 'rgba(251,191,36,.1)',  border: 'rgba(251,191,36,.3)'  },
-  unanswered: { text: 'ללא מענה',   color: '#fecdd3', bg: 'rgba(251,113,133,.1)', border: 'rgba(251,113,133,.3)' },
+  answered:   { text: '✓ נענה',     color: '#065f46', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)'  },
+  waiting:    { text: '⏳ ממתין',   color: '#92400e', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.3)'  },
+  unanswered: { text: '❓ ללא מענה', color: '#9f1239', bg: 'rgba(244,63,94,0.08)', border: 'rgba(244,63,94,0.25)'  },
 }
 
 export default function ForumPage() {
@@ -68,122 +68,107 @@ export default function ForumPage() {
   })
 
   return (
-    <>
+    <div id="forum-page-root">
 
-
-      <div style={{ padding: '24px 20px' }}>
-
-        {/* Page title row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h2 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: '#001f6b' }}>💬 פורום רפואי</h2>
-            <p style={{ color: 'var(--muted)', margin: '6px 0 0', fontSize: 14 }}>
-              1,248 שאלות · 342 נוספו היום · 48 מומחים פעילים
-            </p>
-          </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn btn-primary"
-            style={{ padding: '13px 24px', fontSize: 15, fontWeight: 700 }}
-          >
-            ✏️ שאל שאלה
-          </button>
+      {/* ── BLOCK HEADER ── */}
+      <div className="com-block-header">
+        <div>
+          <div className="com-block-title">💬 פורום רפואי</div>
+          <div className="com-block-count">1,248 שאלות · 342 נוספו היום · 48 מומחים פעילים</div>
         </div>
+        <button onClick={() => setShowModal(true)} className="com-cta-btn" style={{ width: 'auto', padding: '10px 22px' }}>
+          ✏️ שאל שאלה
+        </button>
+      </div>
+
+      {/* ── TITLE LINES ── */}
+      <div className="com-title-lines">
+        <div className="com-title-line"></div>
+        <div className="com-title-line"></div>
+      </div>
+
+      {/* ── BODY ── */}
+      <div className="com-body">
 
         {/* Search */}
-        <div className="card" style={{ padding: '16px 20px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div className="com-search-bar">
+          <span style={{ fontSize: 16, color: '#999' }}>🔍</span>
           <input
             type="text"
-            className="search-input"
-            style={{ flex: 1, padding: '12px 16px' }}
-            placeholder="חפש שאלה, תגית או מומחה... (/ לקיצור)"
+            className="com-search-input"
+            placeholder="חפש שאלה, תגית או נושא..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <span className="kbd">/</span>
+          <span className="com-kbd">/</span>
         </div>
 
-        {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Filter pills */}
+        <div className="com-pills">
           {(['hot','new','unanswered','top'] as Sort[]).map(s => (
             <button
               key={s}
               onClick={() => setSort(s)}
-              className={`nav-pill ${sort === s ? 'nav-pill-active' : 'nav-pill-default'}`}
+              className={`com-pill${sort === s ? ' com-pill-active' : ''}`}
             >
               {{ hot: '🔥 חם', new: '🆕 חדש', unanswered: '❓ ללא מענה', top: '⭐ מובילים' }[s]}
             </button>
           ))}
-          <span style={{ marginRight: 'auto', color: 'var(--muted)', fontSize: 13 }}>
-            {filtered.length} שאלות
-          </span>
+          <span className="com-count">{filtered.length} שאלות</span>
         </div>
 
-        {/* Main layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }} className="forum-grid">
+        {/* Main layout — posts + sidebar */}
+        <div className="com-layout">
 
           {/* Post list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {filtered.length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: 48, color: 'var(--muted)' }}>
+              <div className="com-card" style={{ textAlign: 'center', padding: 48, color: '#888' }}>
                 לא נמצאו שאלות מתאימות
               </div>
             )}
             {filtered.map(post => {
               const s = STATUS_LABEL[post.status]
               return (
-                <article key={post.id} className="forum-post card" data-testid="question">
-                  <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                <article key={post.id} className="com-card">
+                  <div className="fr-post">
 
                     {/* Stats column */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: 64 }}>
-                      <div className="forum-stat">
-                        <div className="forum-stat-n">{post.replies}</div>
-                        <div className="forum-stat-l">תגובות</div>
+                    <div className="fr-stats-col">
+                      <div className="fr-stat-box">
+                        <div className="fr-stat-n">{post.replies}</div>
+                        <div className="fr-stat-l">תגובות</div>
                       </div>
-                      <div className="forum-stat">
-                        <div className="forum-stat-n">{post.views}</div>
-                        <div className="forum-stat-l">צפיות</div>
+                      <div className="fr-stat-box">
+                        <div className="fr-stat-n">{post.views}</div>
+                        <div className="fr-stat-l">צפיות</div>
                       </div>
-                      <div className="forum-stat">
-                        <div className="forum-stat-n">+{post.votes}</div>
-                        <div className="forum-stat-l">הצבעות</div>
+                      <div className="fr-stat-box">
+                        <div className="fr-stat-n">+{post.votes}</div>
+                        <div className="fr-stat-l">הצבעות</div>
                       </div>
                     </div>
 
                     {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 10px', lineHeight: 1.35, color: 'var(--text)' }}>
-                        {post.title}
-                      </h3>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                        {/* Status badge */}
-                        <span style={{
-                          fontSize: 12, fontWeight: 700,
-                          padding: '4px 10px', borderRadius: 999,
-                          color: s.color, background: s.bg, border: `1px solid ${s.border}`,
-                          whiteSpace: 'nowrap',
-                        }}>
+                    <div className="fr-post-content">
+                      <h3 className="fr-post-title">{post.title}</h3>
+                      <div className="fr-post-meta">
+                        <span
+                          className="fr-status"
+                          style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}
+                        >
                           {s.text}
                         </span>
-                        {/* Tags */}
                         {post.tags.map(tag => (
                           <button
                             key={tag}
                             onClick={() => setActiveTag(activeTag === tag ? '' : tag)}
-                            className="tag"
-                            style={{
-                              cursor: 'pointer',
-                              background: activeTag === tag ? 'rgba(56,189,248,0.18)' : undefined,
-                              border: activeTag === tag ? '1px solid rgba(56,189,248,0.6)' : undefined,
-                            }}
+                            className={`com-tag${activeTag === tag ? ' com-tag-active' : ''}`}
                           >
                             {tag}
                           </button>
                         ))}
-                        <span style={{ color: 'var(--muted)', fontSize: 12, marginRight: 'auto' }}>
-                          {post.author} · {post.time}
-                        </span>
+                        <span className="fr-post-author">{post.author} · {post.time}</span>
                       </div>
                     </div>
                   </div>
@@ -193,72 +178,61 @@ export default function ForumPage() {
           </div>
 
           {/* Sidebar */}
-          <aside style={{ position: 'sticky', top: 88, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <aside className="com-sidebar">
 
-            {/* CTA */}
-            <div className="card cta-card">
-              <h4 style={{ margin: '0 0 8px' }}>🙋 שאל את הקהילה</h4>
-              <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.5, margin: '0 0 14px' }}>
-                שאל שאלה רפואית ותקבל מענה ממומחים ומרופאים תוך שעות ספורות.
-              </p>
-              <div className="forum-mini-grid">
-                <div className="forum-mini">
-                  <div style={{ color: 'var(--muted)', fontSize: 11 }}>מומחים פעילים</div>
-                  <div style={{ fontWeight: 900, fontSize: 18, marginTop: 4 }}>48</div>
+            {/* CTA card */}
+            <div className="com-cta-card">
+              <div className="com-cta-title">🙋 שאל את הקהילה</div>
+              <div className="com-cta-sub">שאל שאלה רפואית ותקבל מענה ממומחים ורופאים תוך שעות ספורות.</div>
+              <div className="com-mini-stats">
+                <div className="com-mini-stat">
+                  <div className="com-mini-n">48</div>
+                  <div className="com-mini-l">מומחים פעילים</div>
                 </div>
-                <div className="forum-mini">
-                  <div style={{ color: 'var(--muted)', fontSize: 11 }}>זמן תגובה</div>
-                  <div style={{ fontWeight: 900, fontSize: 18, marginTop: 4 }}>~3 שע׳</div>
+                <div className="com-mini-stat">
+                  <div className="com-mini-n">~3 שע׳</div>
+                  <div className="com-mini-l">זמן תגובה</div>
                 </div>
               </div>
-              <button
-                onClick={() => setShowModal(true)}
-                className="btn btn-primary"
-                style={{ width: '100%', textAlign: 'center', marginTop: 14, padding: '12px' }}
-              >
+              <button onClick={() => setShowModal(true)} className="com-cta-btn">
                 ✏️ פתח טופס שאלה
               </button>
             </div>
 
             {/* Hot tags */}
-            <div className="card">
-              <h4 style={{ margin: '0 0 12px' }}>🔥 תגיות חמות</h4>
+            <div className="com-card">
+              <div className="com-sidebar-title">🔥 תגיות חמות</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {HOT_TAGS.map(t => (
                   <button
                     key={t.label}
                     onClick={() => setActiveTag(activeTag === t.label ? '' : t.label)}
-                    className="tag"
-                    style={{
-                      cursor: 'pointer',
-                      background: activeTag === t.label ? 'rgba(56,189,248,0.18)' : undefined,
-                      border: activeTag === t.label ? '1px solid rgba(56,189,248,0.6)' : undefined,
-                    }}
+                    className={`com-tag${activeTag === t.label ? ' com-tag-active' : ''}`}
                   >
                     {t.label}
-                    <span style={{ color: 'var(--muted)', fontWeight: 700, marginRight: 4 }}>{t.count}</span>
+                    <span style={{ marginRight: 5, fontWeight: 900, color: '#888' }}>{t.count}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Top contributors */}
-            <div className="card">
-              <h4 style={{ margin: '0 0 12px' }}>🏆 תורמים מובילים</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="com-card">
+              <div className="com-sidebar-title">🏆 תורמים מובילים</div>
+              <div>
                 {[
-                  { name: 'פרופ׳ לוי',  answers: 78,  votes: 1240, badge: 'מומחה',  bColor: '#a7f3d0' },
-                  { name: 'ד"ר כהן',    answers: 52,  votes: 820,  badge: 'מאומת',  bColor: '#fde68a' },
-                  { name: 'ד"ר שרה א', answers: 34,  votes: 570,  badge: 'מאומת',  bColor: '#fde68a' },
+                  { name: 'פרופ׳ לוי',  answers: 78,  votes: 1240, badge: 'מומחה', bc: '#059669' },
+                  { name: 'ד"ר כהן',    answers: 52,  votes: 820,  badge: 'מאומת', bc: '#b45309' },
+                  { name: 'ד"ר שרה א',  answers: 34,  votes: 570,  badge: 'מאומת', bc: '#b45309' },
                 ].map(c => (
-                  <div key={c.name} className="forum-mini" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={c.name} className="fr-contrib-row">
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: 14 }}>{c.name}</div>
-                      <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{c.answers} תשובות · {c.votes} הצבעות</div>
+                      <div className="fr-contrib-name">{c.name}</div>
+                      <div className="fr-contrib-sub">{c.answers} תשובות · {c.votes} הצבעות</div>
                     </div>
                     <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
-                      color: c.bColor, background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.bColor}55`,
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                      color: c.bc, background: `${c.bc}18`, border: `1px solid ${c.bc}44`,
                     }}>
                       {c.badge}
                     </span>
@@ -267,63 +241,48 @@ export default function ForumPage() {
               </div>
             </div>
 
-            <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
-              <span className="kbd">/</span> לחיפוש · <span className="kbd">Esc</span> לסגירה
-            </p>
+            {/* Keyboard hint */}
+            <div style={{ textAlign: 'center', fontSize: 12, color: '#888' }}>
+              <span className="com-kbd">/</span> לחיפוש · <span className="com-kbd">Esc</span> לסגירה
+            </div>
+
           </aside>
         </div>
       </div>
-      {/* Ask question modal */}
+
+      {/* Footer bar */}
+      <div className="com-footer-bar">Doctor Scribe AI · Medical Hub · כל הזכויות שמורות</div>
+
+      {/* ── MODAL ── */}
       {showModal && (
         <div
+          className="com-modal-overlay"
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.65)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 20,
-          }}
         >
-          <div style={{
-            width: '100%', maxWidth: 600,
-            background: 'rgba(18,26,51,0.97)',
-            border: '1px solid var(--border)',
-            borderRadius: 24,
-            overflow: 'hidden',
-          }}>
-            {/* Modal header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>✏️ שאל שאלה</h3>
-              <button onClick={() => setShowModal(false)} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: 13 }}>✕ סגור</button>
+          <div className="com-modal">
+            <div className="com-modal-head">
+              <h3 className="com-modal-head-title">✏️ שאל שאלה</h3>
+              <button onClick={() => setShowModal(false)} className="com-modal-close">✕ סגור</button>
             </div>
-
-            {/* Modal body */}
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="com-modal-body">
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>כותרת השאלה</label>
-                <input className="search-input" style={{ width: '100%', padding: '12px 14px' }} placeholder="לדוגמה: כאב גב תחתון אחרי אימון – מה הסימנים המסוכנים?" />
+                <label className="com-modal-label">כותרת השאלה</label>
+                <input className="com-modal-input" placeholder="לדוגמה: כאב גב תחתון אחרי אימון – מה הסימנים המסוכנים?" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>תגית ראשית</label>
-                <select className="search-input" style={{ width: '100%', padding: '12px 14px' }}>
+                <label className="com-modal-label">תגית ראשית</label>
+                <select className="com-modal-input">
                   {HOT_TAGS.map(t => <option key={t.label}>{t.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>פירוט (גיל, רקע, מה ניסית)</label>
-                <textarea
-                  className="search-input"
-                  rows={5}
-                  style={{ width: '100%', padding: '12px 14px', resize: 'vertical' }}
-                  placeholder="כתוב פרטים קצרים..."
-                />
+                <label className="com-modal-label">פירוט (גיל, רקע, מה ניסית)</label>
+                <textarea className="com-modal-input" rows={4} style={{ resize: 'vertical' }} placeholder="כתוב פרטים קצרים..." />
               </div>
             </div>
-
-            {/* Modal footer */}
-            <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
-              <button onClick={() => setShowModal(false)} className="btn btn-secondary">ביטול</button>
-              <button onClick={() => { setShowModal(false); alert('דמו: השאלה פורסמה!') }} className="btn btn-primary" style={{ flex: 1 }}>
+            <div className="com-modal-foot">
+              <button onClick={() => setShowModal(false)} className="com-btn-cancel">ביטול</button>
+              <button onClick={() => { setShowModal(false); alert('דמו: השאלה פורסמה!') }} className="com-btn-submit">
                 פרסם שאלה →
               </button>
             </div>
@@ -331,6 +290,6 @@ export default function ForumPage() {
         </div>
       )}
 
-    </>
+    </div>
   )
 }
