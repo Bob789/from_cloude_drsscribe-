@@ -19,8 +19,7 @@
   color: #111;
   line-height: 1.7;
   min-height: 100vh;
-  background: linear-gradient(160deg, #001f6b 0%, #4a5a8a 45%, #7a6a3a 100%);
-  background-attachment: fixed;
+  background: transparent;
   position: relative;
 }
 .hp a { text-decoration: none; color: inherit; }
@@ -98,12 +97,12 @@
 .hp .hnav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(252,249,198,0.5); }
 
 /* ===== PAGE WRAP ===== */
-.hp .page-wrap { max-width: 1200px; margin: 28px auto 48px; padding: 0 24px; position: relative; z-index: 1; }
+.hp .page-wrap { max-width: 100%; margin: 0; padding: 0; position: relative; z-index: 1; }
 
 /* ===== YELLOW BLOCK ===== */
 .hp .block {
-  background: #fcf9c6;
-  box-shadow: 0 8px 56px rgba(0,0,0,0.4), 0 0 0 1px rgba(200,160,0,0.25);
+  background: transparent;
+  box-shadow: none;
   position: relative;
   z-index: 2;
 }

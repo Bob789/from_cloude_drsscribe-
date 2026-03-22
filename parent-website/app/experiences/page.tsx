@@ -10,12 +10,10 @@ export const metadata = {
 export default function ExperiencesPage() {
   return (
     <>
-
-      <main>
-      <div style={{ maxWidth: 900, margin: '64px auto', padding: '0 20px', textAlign: 'center' }}>
+      <div style={{ padding: '48px 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 64, marginBottom: 24 }}>💬</div>
-        <h2 style={{ fontSize: 32, fontWeight: 800, color: '#e0f2fe', marginBottom: 16 }}>חוויות אישיות</h2>
-        <p style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 32, lineHeight: 1.7 }}>
+        <h2 style={{ fontSize: 32, fontWeight: 800, color: '#001f6b', marginBottom: 16 }}>חוויות אישיות</h2>
+        <p style={{ fontSize: 18, color: '#444', marginBottom: 32, lineHeight: 1.7 }}>
           כאן תוכלו לשתף ולקרוא חוויות אישיות של מטופלים ורופאים.<br />
           הדף בפיתוח — בקרוב!
         </p>
@@ -23,7 +21,6 @@ export default function ExperiencesPage() {
           חזרה לדף הבית
         </Link>
       </div>
-      </main>
     </>
   )
 }

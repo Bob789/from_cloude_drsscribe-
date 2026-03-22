@@ -62,10 +62,6 @@ export default function ArticlesPage() {
   return (
     <div id="article-page-root">
 
-
-      <div className="page-wrap">
-        <div className="block">
-
           <div className="block-header">
             <div>
               <div className="block-title">📰 מאמרים רפואיים</div>
@@ -111,8 +107,6 @@ export default function ArticlesPage() {
               activeTag={activeTag}
               onCategory={setCategory} onTag={handleTag}
             />
-          </div>
-        </div>
       </div>
 
     </div>

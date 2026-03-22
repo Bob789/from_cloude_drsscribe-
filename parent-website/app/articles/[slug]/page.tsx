@@ -41,15 +41,15 @@ export default function ArticlePage() {
   }
 
   if (loading) return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e2e8f0', direction: 'rtl' }}>
-      <div style={{ color: '#0f172a', fontSize: 16 }}>טוען מאמר...</div>
+    <main style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl' }}>
+      <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 16 }}>טוען מאמר...</div>
     </main>
   )
 
   if (error || !article) return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e2e8f0', flexDirection: 'column', gap: 16, direction: 'rtl' }}>
-      <h1 style={{ fontSize: 28, color: '#0f172a' }}>המאמר לא נמצא</h1>
-      <Link href="/articles" style={{ color: '#2563eb' }}>חזרה למאמרים</Link>
+    <main style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, direction: 'rtl' }}>
+      <h1 style={{ fontSize: 28, color: 'white' }}>המאמר לא נמצא</h1>
+      <Link href="/articles" style={{ color: '#fcf9c6' }}>חזרה למאמרים</Link>
     </main>
   )
 
@@ -75,9 +75,7 @@ export default function ArticlePage() {
         <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
 
-      <main className="article-main">
-        <div className="article-main-wrapper">
-          <div className="article-block">
+      <div className="article-block">
 
             <div className="page-header-bar">
               <Link href="/articles" className="back-btn"><i className="fas fa-arrow-right"></i></Link>
@@ -161,8 +159,6 @@ export default function ArticlePage() {
             Doctor Scribe AI · Medical Hub · כל הזכויות שמורות
           </div>
 
-        </div>
-      </main>
     </>
   )
 }

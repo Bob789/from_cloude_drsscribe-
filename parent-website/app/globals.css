@@ -89,6 +89,28 @@ body {
 .hp-topbar a:hover { border-color: #001f6b; }
 
 /* ═══════════════════════════════════════════════════
+   SHARED SITE BLOCK — yellow card, written ONCE
+   Wraps all page content (set in layout.tsx)
+   ═══════════════════════════════════════════════════ */
+.site-block {
+  background: #fcf9c6;
+  max-width: 1200px;
+  margin: 32px auto;
+  box-shadow: -8px 0 40px rgba(252,249,198,0.25), 8px 0 40px rgba(26,37,53,0.4);
+  color: #1a1a2e;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 4px;
+}
+@media (max-width: 960px) {
+  .site-block { margin: 16px; }
+}
+@media (max-width: 600px) {
+  .site-block { margin: 8px; }
+}
+
+/* ═══════════════════════════════════════════════════
    GLOBAL HEADER — blue + gold (all pages)
    ═══════════════════════════════════════════════════ */
 .gh-header {

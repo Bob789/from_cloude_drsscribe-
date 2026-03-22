@@ -42,9 +42,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Shared header — blue + gold, auto-detects active page */}
         <Header />
 
-        {/* Page content */}
+        {/* Page content — yellow block written ONCE here, applies to all pages */}
         <main>
-          {children}
+          <div className="site-block">
+            {children}
+          </div>
         </main>
 
         {/* Shared footer */}

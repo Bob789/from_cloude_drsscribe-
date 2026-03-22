@@ -33,9 +33,6 @@ export default function HomePage() {
 
   return (
     <div className="hp">
-        {/* PAGE CONTENT */}
-        <div className="page-wrap">
-          <div className="block">
 
             {/* HERO */}
             <div className="hero">
@@ -306,9 +303,6 @@ export default function HomePage() {
                 <Link href="/product" className="cta-ghost">דמו אונליין</Link>
               </div>
             </div>
-
-          </div>
-        </div>
 
       </div>
   )

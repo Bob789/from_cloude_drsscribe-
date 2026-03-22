@@ -71,13 +71,12 @@ export default function ForumPage() {
     <>
 
 
-      <main>
-      <div style={{ maxWidth: 1300, margin: '32px auto', padding: '0 20px' }}>
+      <div style={{ padding: '24px 20px' }}>
 
         {/* Page title row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h2 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: '#e0f2fe' }}>💬 פורום רפואי</h2>
+            <h2 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: '#001f6b' }}>💬 פורום רפואי</h2>
             <p style={{ color: 'var(--muted)', margin: '6px 0 0', fontSize: 14 }}>
               1,248 שאלות · 342 נוספו היום · 48 מומחים פעילים
             </p>
@@ -274,7 +273,6 @@ export default function ForumPage() {
           </aside>
         </div>
       </div>
-
       {/* Ask question modal */}
       {showModal && (
         <div
@@ -333,7 +331,6 @@ export default function ForumPage() {
         </div>
       )}
 
-      </main>
     </>
   )
 }
