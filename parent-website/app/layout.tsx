@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import './homepage.css'
-import CookieBanner from '@/components/CookieBanner'
-import Header       from '@/components/Header'
-import Footer       from '@/components/Footer'
-import StarsCanvas  from '@/components/StarsCanvas'
+import CookieBanner         from '@/components/CookieBanner'
+import Header               from '@/components/Header'
+import Footer               from '@/components/Footer'
+import StarsCanvas          from '@/components/StarsCanvas'
+import AccessibilityWidget  from '@/components/AccessibilityWidget'
 import Link         from 'next/link'
 
 export const metadata: Metadata = {
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Footer />
 
         <CookieBanner />
+        <AccessibilityWidget />
       </body>
     </html>
   )

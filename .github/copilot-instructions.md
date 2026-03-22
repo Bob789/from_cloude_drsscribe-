@@ -1,5 +1,35 @@
 # MedScribe AI — Project Instructions
 
+## כללי א'-ב' — חובה לכל סוכן AI שנכנס לפרויקט
+
+### א. אחרי כל משימה שדורשת build — בצע build+deploy אוטומטית
+
+**שירותים שדורשים build אחרי שינוי קוד:**
+
+| שירות | פקודת build | הפעלה |
+|-------|-------------|--------|
+| `parent-website` | `docker-compose build --no-cache parent-website` | `docker-compose up -d parent-website` |
+| `frontend` | `docker-compose build --no-cache frontend` | `docker-compose up -d frontend` |
+| `backend` | `docker-compose build --no-cache backend` | `docker-compose up -d backend` |
+
+**כלל:** כל שינוי ב-`parent-website/**`, `frontend/**`, או `backend/**` — מסיים תמיד ב:
+```bash
+docker-compose build --no-cache <service>
+docker-compose up -d <service>
+```
+אל תחכה לאישור. בצע אוטומטית.
+
+**הערה:** exit code 1 עם הודעת `version is obsolete` — זו **אזהרה בלבד**, לא שגיאה. הבנייה הצליחה אם מופיע `FINISHED`.
+
+### ב. בדיקת תקינות אחרי build
+אחרי כל build, בדוק:
+```bash
+docker-compose ps                        # כל הקונטיינרים Up
+docker-compose logs --tail=20 <service>  # אין שגיאות
+```
+
+---
+
 ## FIRST — Mandatory Session Start
 **Every session, before doing anything else, read these instruction files:**
 1. `c:\Doctor-Scribe\.github\instructions\safe-fix.instructions.md` — bug fix protocol (including step 11: confirm with user → document → push to GitHub)
