@@ -1,10 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 export default function HomePage() {
   // Stars rising animation handled globally in StarsCanvas (layout.tsx)
+
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    setWidth(window.innerWidth)
+    const onResize = () => setWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // Scroll reveal
   useEffect(() => {
@@ -44,7 +52,7 @@ export default function HomePage() {
                 כל הידע הרפואי<br />
                 <span>במקום אחד</span>
               </h1>
-              <p className="hero-sub">מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי</p>
+              <p className="hero-sub">מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי <span style={{color:'#f0c040',fontWeight:700,fontSize:'0.9em'}}>{width}px</span></p>
               <div className="hero-search">
                 <input type="text" placeholder="חיפוש מאמרים, דיונים או מומחים..." />
                 <button className="search-btn"><i className="fas fa-search"></i> חיפוש</button>

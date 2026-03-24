@@ -6,6 +6,7 @@ import Header               from '@/components/Header'
 import Footer               from '@/components/Footer'
 import StarsCanvas          from '@/components/StarsCanvas'
 import AccessibilityWidget  from '@/components/AccessibilityWidget'
+import NavDebugger          from '@/components/NavDebugger'
 import Link         from 'next/link'
 
 export const metadata: Metadata = {
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <CookieBanner />
         <AccessibilityWidget />
+        <NavDebugger />
       </body>
     </html>
   )
