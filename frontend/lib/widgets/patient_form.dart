@@ -133,8 +133,10 @@ class _PatientFormState extends State<PatientForm> {
                   ? 'patient_form.id_number'.tr()
                   : 'patient_form.id_number_optional'.tr(),
             ),
-            keyboardType: TextInputType.text,
+            keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            autocorrect: false,
+            enableSuggestions: false,
             validator: (v) {
               if (widget.patientKeyType == 'national_id' &&
                   (v == null || v.isEmpty))
@@ -152,10 +154,12 @@ class _PatientFormState extends State<PatientForm> {
                   ? 'patient_form.phone'.tr()
                   : 'patient_form.phone_optional'.tr(),
             ),
-            keyboardType: TextInputType.text,
+            keyboardType: TextInputType.phone,
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-() ]')),
             ],
+            autocorrect: false,
+            enableSuggestions: false,
             validator: (v) {
               if (widget.patientKeyType == 'phone' && (v == null || v.isEmpty))
                 return 'patient_form.phone_required'.tr();
