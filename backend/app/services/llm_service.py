@@ -21,12 +21,84 @@ def normalize_diagnosis(diagnosis_raw) -> list[dict]:
     return normalized
 
 
+def _repair_json(text: str) -> str:
+    """Try to fix common JSON issues from LLM output (e.g. unescaped quotes in Hebrew like אק"ג)."""
+    # Fix unescaped double-quotes inside JSON string values.
+    # Iterate character-by-character, tracking position properly.
+    result = []
+    i = 0
+    n = len(text)
+    in_string = False
+    while i < n:
+        ch = text[i]
+        if in_string:
+            if ch == '\\' and i + 1 < n:
+                # Escaped character — keep as-is
+                result.append(ch)
+                result.append(text[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                # Check if this quote ends the string: look ahead past whitespace
+                rest = text[i + 1:].lstrip()
+                if not rest or rest[0] in (',', '}', ']', ':'):
+                    # This is a real closing quote
+                    in_string = False
+                    result.append(ch)
+                else:
+                    # Interior quote (like אק"ג) — escape it
+                    result.append('\\"')
+            else:
+                result.append(ch)
+        else:
+            if ch == '"':
+                in_string = True
+            result.append(ch)
+        i += 1
+    return ''.join(result)
+
+
+def _parse_llm_json(response_text: str) -> dict | None:
+    """Extract and parse JSON from LLM response text, with repair fallback."""
+    start = response_text.find("{")
+    end = response_text.rfind("}") + 1
+    if start < 0 or end <= start:
+        return None
+    json_str = response_text[start:end]
+    # Try direct parse first
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        pass
+    # Try repair (handles unescaped quotes like אק"ג)
+    try:
+        repaired = _repair_json(json_str)
+        return json.loads(repaired)
+    except (json.JSONDecodeError, ValueError):
+        pass
+    return None
+
+
+def _normalize_result(result: dict) -> dict:
+    """Ensure all expected fields exist with proper defaults."""
+    result["diagnosis"] = normalize_diagnosis(result.get("diagnosis"))
+    result.setdefault("summary_text", "")
+    result.setdefault("chief_complaint", "")
+    result.setdefault("findings", "")
+    result.setdefault("treatment_plan", "")
+    result.setdefault("recommendations", "")
+    result.setdefault("urgency", "low")
+    result.pop("notes", None)
+    return result
+
+
 async def summarize_medical_visit(transcription_text: str, patient_history: str = "") -> dict:
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
     response = await client.chat.completions.create(
         model=settings.OPENAI_MODEL,
         max_tokens=4096,
+        response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_user_prompt(transcription_text, patient_history)},
@@ -35,22 +107,9 @@ async def summarize_medical_visit(transcription_text: str, patient_history: str 
 
     response_text = response.choices[0].message.content
 
-    try:
-        start = response_text.find("{")
-        end = response_text.rfind("}") + 1
-        if start >= 0 and end > start:
-            result = json.loads(response_text[start:end])
-            result["diagnosis"] = normalize_diagnosis(result.get("diagnosis"))
-            result.setdefault("summary_text", "")
-            result.setdefault("chief_complaint", "")
-            result.setdefault("findings", "")
-            result.setdefault("treatment_plan", "")
-            result.setdefault("recommendations", "")
-            result.setdefault("urgency", "low")
-            result.pop("notes", None)
-            return result
-    except json.JSONDecodeError:
-        pass
+    result = _parse_llm_json(response_text)
+    if result:
+        return _normalize_result(result)
 
     return {
         "summary_text": "",
