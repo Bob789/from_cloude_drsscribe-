@@ -8,7 +8,10 @@ from app.models.user import User
 from app.models.visit import Visit
 from app.models.patient import Patient
 from app.models.transcription import Transcription, TranscriptionStatus
+from app.utils.encryption import decrypt_field
+import structlog
 
+logger = structlog.get_logger()
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
@@ -77,8 +80,15 @@ async def get_stats(
                 .order_by(Visit.start_time.desc())
             )
             for visit, patient in visits_q.all():
+                # Decrypt patient name (stored encrypted with AES-256-GCM)
+                patient_name = patient.name
+                try:
+                    if patient_name and len(patient_name) > 50:
+                        patient_name = decrypt_field(patient_name)
+                except Exception as e:
+                    logger.error("dashboard_decrypt_failed", patient_id=str(patient.id), error=str(e))
                 patients.append({
-                    "name": patient.name,
+                    "name": patient_name,
                     "patient_display_id": patient.display_id,
                     "time": visit.start_time.strftime("%H:%M") if visit.start_time else "",
                 })

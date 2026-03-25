@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:medscribe_ai/services/api_client.dart';
 
@@ -8,7 +9,12 @@ class PatientForm extends StatefulWidget {
   final VoidCallback onSaved;
   final String patientKeyType;
 
-  const PatientForm({super.key, this.patientId, required this.onSaved, this.patientKeyType = 'national_id'});
+  const PatientForm({
+    super.key,
+    this.patientId,
+    required this.onSaved,
+    this.patientKeyType = 'national_id',
+  });
 
   @override
   State<PatientForm> createState() => _PatientFormState();
@@ -34,7 +40,9 @@ class _PatientFormState extends State<PatientForm> {
   Future<void> _loadPatient() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient().dio.get('/patients/${widget.patientId}');
+      final response = await ApiClient().dio.get(
+        '/patients/${widget.patientId}',
+      );
       final data = response.data;
       _nameController.text = data['name'] ?? '';
       _idNumberController.text = data['id_number'] ?? '';
@@ -53,11 +61,14 @@ class _PatientFormState extends State<PatientForm> {
     try {
       final data = {
         'name': _nameController.text,
-        if (_idNumberController.text.isNotEmpty) 'id_number': _idNumberController.text,
+        if (_idNumberController.text.isNotEmpty)
+          'id_number': _idNumberController.text,
         if (_phoneController.text.isNotEmpty) 'phone': _phoneController.text,
         if (_emailController.text.isNotEmpty) 'email': _emailController.text,
-        if (_professionController.text.isNotEmpty) 'profession': _professionController.text,
-        if (_addressController.text.isNotEmpty) 'address': _addressController.text,
+        if (_professionController.text.isNotEmpty)
+          'profession': _professionController.text,
+        if (_addressController.text.isNotEmpty)
+          'address': _addressController.text,
         if (_dob != null) 'dob': _dob!.toIso8601String().split('T')[0],
       };
       if (widget.patientId != null) {
@@ -73,7 +84,9 @@ class _PatientFormState extends State<PatientForm> {
           final detail = e.response?.data?['detail'];
           if (detail != null) msg = detail.toString();
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     }
     setState(() => _isLoading = false);
@@ -92,7 +105,9 @@ class _PatientFormState extends State<PatientForm> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && widget.patientId != null && _nameController.text.isEmpty) {
+    if (_isLoading &&
+        widget.patientId != null &&
+        _nameController.text.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -103,44 +118,71 @@ class _PatientFormState extends State<PatientForm> {
         children: [
           TextFormField(
             controller: _nameController,
-            decoration: InputDecoration(labelText: 'patient_form.full_name'.tr()),
-            validator: (v) => (v == null || v.length < 2) ? 'patient_form.name_required'.tr() : null,
+            decoration: InputDecoration(
+              labelText: 'patient_form.full_name'.tr(),
+            ),
+            validator: (v) => (v == null || v.length < 2)
+                ? 'patient_form.name_required'.tr()
+                : null,
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _idNumberController,
-            decoration: InputDecoration(labelText: widget.patientKeyType == 'national_id' ? 'patient_form.id_number'.tr() : 'patient_form.id_number_optional'.tr()),
-            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: widget.patientKeyType == 'national_id'
+                  ? 'patient_form.id_number'.tr()
+                  : 'patient_form.id_number_optional'.tr(),
+            ),
+            keyboardType: TextInputType.text,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             validator: (v) {
-              if (widget.patientKeyType == 'national_id' && (v == null || v.isEmpty)) return 'patient_form.id_required'.tr();
-              if (v != null && v.isNotEmpty && !RegExp(r'^\d{9}$').hasMatch(v)) return 'patient_form.id_format'.tr();
+              if (widget.patientKeyType == 'national_id' &&
+                  (v == null || v.isEmpty))
+                return 'patient_form.id_required'.tr();
+              if (v != null && v.isNotEmpty && !RegExp(r'^\d{9}$').hasMatch(v))
+                return 'patient_form.id_format'.tr();
               return null;
             },
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _phoneController,
-            decoration: InputDecoration(labelText: widget.patientKeyType == 'phone' ? 'patient_form.phone'.tr() : 'patient_form.phone_optional'.tr()),
-            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: widget.patientKeyType == 'phone'
+                  ? 'patient_form.phone'.tr()
+                  : 'patient_form.phone_optional'.tr(),
+            ),
+            keyboardType: TextInputType.text,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-() ]')),
+            ],
             validator: (v) {
-              if (widget.patientKeyType == 'phone' && (v == null || v.isEmpty)) return 'patient_form.phone_required'.tr();
+              if (widget.patientKeyType == 'phone' && (v == null || v.isEmpty))
+                return 'patient_form.phone_required'.tr();
               return null;
             },
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _emailController,
-            decoration: InputDecoration(labelText: widget.patientKeyType == 'email' ? 'patient_form.email'.tr() : 'patient_form.email_optional'.tr()),
+            decoration: InputDecoration(
+              labelText: widget.patientKeyType == 'email'
+                  ? 'patient_form.email'.tr()
+                  : 'patient_form.email_optional'.tr(),
+            ),
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
-              if (widget.patientKeyType == 'email' && (v == null || v.isEmpty)) return 'patient_form.email_required'.tr();
+              if (widget.patientKeyType == 'email' && (v == null || v.isEmpty))
+                return 'patient_form.email_required'.tr();
               return null;
             },
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _professionController,
-            decoration: InputDecoration(labelText: 'patient_form.profession'.tr()),
+            decoration: InputDecoration(
+              labelText: 'patient_form.profession'.tr(),
+            ),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -149,7 +191,15 @@ class _PatientFormState extends State<PatientForm> {
           ),
           const SizedBox(height: 16),
           ListTile(
-            title: Text(_dob != null ? 'patient_form.dob_selected'.tr(namedArgs: {'date': '${_dob!.day}/${_dob!.month}/${_dob!.year}'}) : 'patient_form.dob'.tr()),
+            title: Text(
+              _dob != null
+                  ? 'patient_form.dob_selected'.tr(
+                      namedArgs: {
+                        'date': '${_dob!.day}/${_dob!.month}/${_dob!.year}',
+                      },
+                    )
+                  : 'patient_form.dob'.tr(),
+            ),
             trailing: const Icon(Icons.calendar_today),
             onTap: () async {
               final picked = await showDatePicker(
@@ -164,7 +214,9 @@ class _PatientFormState extends State<PatientForm> {
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _isLoading ? null : _submit,
-            child: _isLoading ? const CircularProgressIndicator() : Text('common.save'.tr()),
+            child: _isLoading
+                ? const CircularProgressIndicator()
+                : Text('common.save'.tr()),
           ),
         ],
       ),
