@@ -36,6 +36,12 @@ docker-compose logs --tail=20 <service>  # אין שגיאות
 2. `c:\Doctor-Scribe\.github\instructions\lessons-learned.instructions.md` — known bugs and patterns to avoid
 3. `c:\Doctor-Scribe\.github\instructions\backend.instructions.md` — backend conventions
 4. `c:\Doctor-Scribe\.github\instructions\infrastructure.instructions.md` — Docker/env rules
+5. Read the end of `docs/AI_SESSION_LOG.md` to pick up the context from previous chats!
+
+## Mandatory Session Logging (Anti Data-Loss Protocol)
+- Users computer may restart unexpectedly.
+- At the end of EVERY task, or before writing "I am done", you MUST append a brief, clear summary of the current chat session (what was asked, the root cause found, the files changed, and the result) into `docs/AI_SESSION_LOG.md`.
+- **CRITICAL:** DO NOT commit or push `docs/AI_SESSION_LOG.md` to GitHub. It must remain strictly local.
 
 **Bug fix closure rule (from safe-fix step 11):**
 After every bug fix, always ask the user:

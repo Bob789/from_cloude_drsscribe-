@@ -1,4 +1,3 @@
-version: '3.9'
 services:
   backend:
     build:
@@ -132,7 +131,7 @@ services:
     environment:
       POSTGRES_DB: ds_platform
       POSTGRES_USER: ds_user
-      POSTGRES_PASSWORD: ${DS_DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DS_DB_PASSWORD:-changeme_ds_password}
     volumes:
       - ds_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -154,10 +153,10 @@ services:
     environment:
       - DB_NAME=ds_platform
       - DB_USER=ds_user
-      - DB_PASSWORD=${DS_DB_PASSWORD}
+      - DB_PASSWORD=${DS_DB_PASSWORD:-changeme_ds_password}
       - DB_HOST=ds-postgres
       - DB_PORT=5432
-      - SECRET_KEY=${DS_JWT_SECRET}
+      - SECRET_KEY=${DS_JWT_SECRET:-changeme_ds_jwt_secret}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30240
       - API_BASE_URL=http://localhost:8000

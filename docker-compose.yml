@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # === Parent Website (Next.js) ===
   parent-website:

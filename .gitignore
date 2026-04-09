@@ -134,3 +134,5 @@ backups/
 # Sensitive
 MEMORY.md
 task_log.csv
+# AI Auto Session Log
+docs/AI_SESSION_LOG.md
