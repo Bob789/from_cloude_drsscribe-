@@ -93,7 +93,7 @@ class APIClient:
         """Train a model with uploaded CSV file."""
         data = {"model_name": model_name, "feature_columns": feature_columns,
                 "label_column": label_column, "test_size": test_size, "model_type": model_type}
-        return self._request("post", "/models/train", files={"file": file}, data=data)
+        return self._request("post", "/models/train", files={"file": file}, data=data, timeout=60)
 
     def compare_models(self, file, feature_columns: str, label_column: str,
                        test_size: float = 0.2, evaluation_strategy: str = "cv",

@@ -56,10 +56,15 @@ def show():
     model_type = st.selectbox("Model Type", list(MODEL_LABELS.keys()),
                               format_func=lambda x: MODEL_LABELS[x])
 
+    # Auto-generate model name: method + csv name + index
+    csv_name = uploaded_file.name.replace(".csv", "").replace(" ", "_")
+    existing = api_client.list_models()
+    model_count = existing.get("count", 0) if "error" not in existing else 0
+    default_name = f"{model_type}_{csv_name}_{model_count + 1}"
+
     col3, col4 = st.columns(2)
     with col3:
-        model_name = st.text_input("Model Name",
-                                   value=f"model_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}")
+        model_name = st.text_input("Model Name", value=default_name)
     with col4:
         test_size = st.slider("Test Set Size (%)", 10, 50, 20, 5) / 100
 
@@ -69,6 +74,33 @@ def show():
 
     if st.button("Train Model", type="primary"):
         _train_model(uploaded_file, model_name, feature_columns, label_column, test_size, model_type)
+
+    # Show results after rerun
+    if "train_result" in st.session_state:
+        res = st.session_state.pop("train_result")
+        m_name = res["model_name"]
+        m_type = res["model_type"]
+        metadata = res["metadata"]
+        metrics = metadata["metrics"]
+        eval_strategy = metadata.get("evaluation", {}).get("strategy", "holdout")
+        is_classification = m_type in CLASSIFICATION_MODELS
+
+        st.success(f"Model '{m_name}' trained successfully!")
+        st.subheader("Model Performance")
+
+        if is_classification:
+            display_classification_metrics(metrics, eval_strategy)
+        else:
+            display_regression_metrics(metrics, eval_strategy)
+
+        if "metrics_summary" in metadata:
+            st.info(f"**Summary:** {metadata['metrics_summary']}")
+
+        with st.expander("Raw Metrics"):
+            st.json(metrics)
+
+        with st.expander("Preprocessing Details"):
+            st.json(metadata["preprocessing"])
 
 
 def _train_model(uploaded_file, model_name, feature_columns, label_column, test_size, model_type):
@@ -96,30 +128,12 @@ def _train_model(uploaded_file, model_name, feature_columns, label_column, test_
             st.warning("Insufficient tokens! Please purchase more tokens.")
         return
 
-    st.success(f"Model '{model_name}' trained successfully!")
-    st.subheader("Model Performance")
-
-    metadata = result["metadata"]
-    metrics = metadata["metrics"]
-    eval_strategy = metadata.get("evaluation", {}).get("strategy", "holdout")
-    is_classification = model_type in CLASSIFICATION_MODELS
-
-    with st.expander("Debug: Raw Metrics"):
-        st.json(metrics)
-        st.write(f"**Evaluation Strategy:** {eval_strategy}")
-
-    if is_classification:
-        display_classification_metrics(metrics, eval_strategy)
-    else:
-        display_regression_metrics(metrics, eval_strategy)
-
-    if "metrics_summary" in metadata:
-        st.info(f"**Summary:** {metadata['metrics_summary']}")
-
+    st.session_state["train_result"] = {
+        "model_name": model_name,
+        "model_type": model_type,
+        "metadata": result["metadata"]
+    }
     _update_token_balance()
-
-    with st.expander("Preprocessing Details"):
-        st.json(metadata["preprocessing"])
 
 
 def _update_token_balance():
@@ -129,7 +143,6 @@ def _update_token_balance():
         token_result = api_client.get_tokens(username)
         if "tokens" in token_result:
             st.session_state["tokens"] = token_result["tokens"]
-            st.info(f"1 token deducted. Remaining: {token_result['tokens']} tokens")
         else:
             st.session_state["tokens"] -= 1
     else:

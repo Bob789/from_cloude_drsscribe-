@@ -112,12 +112,30 @@ def train_model(
             y_pred_full = pipeline.predict(X)
             metrics["confusion_matrix"] = confusion_matrix(y, y_pred_full).tolist()
 
-    # 8. Create metadata
+    # 8. Compute feature statistics for prediction guidance
+    feature_stats = {}
+    for col in feature_columns:
+        col_data = X[col]
+        if pd.api.types.is_numeric_dtype(col_data):
+            feature_stats[col] = {
+                "min": float(col_data.min()),
+                "max": float(col_data.max()),
+                "mean": round(float(col_data.mean()), 2),
+                "type": "numeric"
+            }
+        else:
+            feature_stats[col] = {
+                "values": col_data.dropna().unique().tolist()[:20],
+                "type": "categorical"
+            }
+
+    # 9. Create metadata
     metadata = {
         "model_name": model_name,
         "model_type": model_type,
         "feature_columns": feature_columns,
         "label_column": label_column,
+        "feature_stats": feature_stats,
         "preprocessing": get_preprocessing_metadata(df, feature_columns, config["needs_scaling"]),
         "evaluation": {
             "strategy": evaluation_strategy,

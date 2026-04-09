@@ -20,7 +20,7 @@ def create_usage_logs_table():
             status VARCHAR(50) NOT NULL,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             details TEXT,
-            FOREIGN KEY (user_name) REFERENCES users(username) ON DELETE SET NULL
+            FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE SET NULL
         )
     """
     CREATE_IDX_USER = """

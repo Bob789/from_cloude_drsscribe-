@@ -33,6 +33,13 @@ services:
       - API_BASE_URL=http://localhost:8000
     ports:
       - "8501:8501"
+    volumes:
+      - ds-models:/app/app_fastapi/models
+      - ds-uploads:/app/app_fastapi/data/uploads
     depends_on:
       ds-postgres:
         condition: service_healthy
+
+volumes:
+  ds-models:
+  ds-uploads:

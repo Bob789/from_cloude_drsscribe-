@@ -71,6 +71,17 @@ def _show_models_section():
                     st.write(f"- Evaluation: {eval_info.get('strategy', 'N/A').upper()}")
                 st.write(f"**Trained:** {model.get('created_at', model.get('trained_at', 'N/A'))}")
 
+            model_name = model["model_name"]
+            col_del1, col_del2 = st.columns([3, 1])
+            with col_del2:
+                if st.button("🗑️ Delete", key=f"del_{model_name}", type="secondary"):
+                    del_result = api_client.delete_model(model_name)
+                    if "error" in del_result:
+                        st.error(f"Delete failed: {del_result['error']}")
+                    else:
+                        st.success(f"Model '{model_name}' deleted.")
+                        st.rerun()
+
 
 def _display_model_metrics(metrics):
     """Display model performance metrics."""

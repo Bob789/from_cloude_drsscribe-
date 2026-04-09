@@ -97,6 +97,7 @@ def _run_comparison(uploaded_file, feature_columns, label_column,
     models_results = result.get("results", [])
     best_model = result.get("best_model")
 
+    st.balloons()
     st.success(f"Compared **{len(models_results)}** {task} models. "
                f"Best model: **{MODEL_LABELS.get(best_model, best_model)}**")
 
