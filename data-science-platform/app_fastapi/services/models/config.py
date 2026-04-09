@@ -3,10 +3,10 @@
 Model Configuration - Defines all models in one place
 """
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.svm import SVC, SVR
 
 MODEL_CONFIG = {
     "linear_regression": {
@@ -70,6 +70,38 @@ MODEL_CONFIG = {
         "supports_proba": True,
         "needs_label_encoding": True,
         "supports_random_state": True  # SVC (kernel) supports random_state
+    },
+    "random_forest_regressor": {
+        "estimator_class": RandomForestRegressor,
+        "default_params": {"n_estimators": 100, "max_depth": None, "n_jobs": -1},
+        "type": "regression",
+        "needs_scaling": False,
+        "supports_proba": False,
+        "supports_random_state": True
+    },
+    "decision_tree_regressor": {
+        "estimator_class": DecisionTreeRegressor,
+        "default_params": {"max_depth": None},
+        "type": "regression",
+        "needs_scaling": False,
+        "supports_proba": False,
+        "supports_random_state": True
+    },
+    "knn_regressor": {
+        "estimator_class": KNeighborsRegressor,
+        "default_params": {"n_neighbors": 5},
+        "type": "regression",
+        "needs_scaling": True,
+        "supports_proba": False,
+        "supports_random_state": False
+    },
+    "svr": {
+        "estimator_class": SVR,
+        "default_params": {"kernel": "rbf", "C": 1.0, "gamma": "scale"},
+        "type": "regression",
+        "needs_scaling": True,
+        "supports_proba": False,
+        "supports_random_state": False
     }
 }
 

@@ -13,8 +13,13 @@ from pages.train_page.metrics_display import display_classification_metrics, dis
 api_client = APIClient()
 
 CLASSIFICATION_MODELS = ["logistic_regression", "decision_tree", "random_forest", "knn", "svm", "kernel_svm"]
+REGRESSION_MODELS = ["linear_regression", "random_forest_regressor", "decision_tree_regressor", "knn_regressor", "svr"]
 MODEL_LABELS = {
-    "linear_regression": "Linear Regression (Continuous Target)",
+    "linear_regression": "Linear Regression",
+    "random_forest_regressor": "Random Forest (Regression)",
+    "decision_tree_regressor": "Decision Tree (Regression)",
+    "knn_regressor": "K-Nearest Neighbors (Regression)",
+    "svr": "Support Vector Regression (RBF)",
     "logistic_regression": "Logistic Regression (Classification)",
     "decision_tree": "Decision Tree (Classification)",
     "random_forest": "Random Forest (Classification)",

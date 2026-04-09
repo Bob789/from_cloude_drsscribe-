@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app_fastapi/ ./app_fastapi/
 COPY app_streamlit/ ./app_streamlit/
 COPY .streamlit/ ./.streamlit/
+COPY sample_data/ ./sample_data/
 COPY start.sh .
 
 RUN chmod +x start.sh \
