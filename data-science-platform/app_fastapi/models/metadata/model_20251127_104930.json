@@ -1,0 +1,54 @@
+{
+  "model_name": "model_20251127_104930",
+  "model_type": "linear_regression",
+  "feature_columns": [
+    "YearsExperience"
+  ],
+  "label_column": "Salary",
+  "preprocessing": {
+    "strategy": "sklearn-pipeline",
+    "note": "All preprocessing inside Pipeline - no data leakage",
+    "numeric_columns": [
+      "YearsExperience"
+    ],
+    "categorical_columns": [],
+    "scale_features": true,
+    "transformers": {
+      "numeric": [
+        "SimpleImputer(mean)",
+        "StandardScaler()"
+      ],
+      "categorical": [
+        "SimpleImputer(most_frequent)",
+        "OneHotEncoder(handle_unknown='ignore')"
+      ]
+    }
+  },
+  "evaluation": {
+    "strategy": "cv",
+    "cv_folds": 5,
+    "cv_repeats": 1,
+    "test_size": null,
+    "stratify": null,
+    "primary_metric": null
+  },
+  "hyperparameters": {},
+  "metrics": {
+    "r2_mean": 0.9224156654035129,
+    "r2_std": 0.04963115265341941,
+    "rmse_mean": 5694.822429275664,
+    "rmse_std": 1159.6011055242134,
+    "mae_mean": 4726.554886811273,
+    "mae_std": 1109.7313497807816,
+    "baseline_rmse_mean": 27690.456448152363,
+    "r2": 0.9224156654035129,
+    "rmse": 5694.822429275664,
+    "mae": 4726.554886811273,
+    "mse": 32431002.500981174
+  },
+  "classes": null,
+  "label_encoder_used": false,
+  "metrics_summary": "✓ R²: 0.9224 | RMSE: 5694.8224",
+  "created_at": "2025-11-27T08:49:38.347816",
+  "model_file": "model_20251127_104930.pkl"
+}

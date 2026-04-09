@@ -1,0 +1,38 @@
+# LOCAL TESTING ONLY — not used in production
+# Usage:  docker-compose -f docker-compose.ds-test.yml up --build
+# Access: http://localhost:8501
+
+services:
+  ds-postgres:
+    image: postgres:16-alpine
+    container_name: ds-test-postgres
+    environment:
+      POSTGRES_DB: ds_platform
+      POSTGRES_USER: ds_user
+      POSTGRES_PASSWORD: ${DS_DB_PASSWORD:-ds_demo_pass_2024}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ds_user -d ds_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ds-app:
+    build:
+      context: ./data-science-platform
+      dockerfile: Dockerfile
+    container_name: ds-test-app
+    environment:
+      - DB_NAME=ds_platform
+      - DB_USER=ds_user
+      - DB_PASSWORD=${DS_DB_PASSWORD:-ds_demo_pass_2024}
+      - DB_HOST=ds-postgres
+      - DB_PORT=5432
+      - SECRET_KEY=${DS_JWT_SECRET:-ds-jwt-secret-change-in-production-minimum-32-chars}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30240
+      - API_BASE_URL=http://localhost:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      ds-postgres:
+        condition: service_healthy

@@ -123,6 +123,54 @@ services:
     networks:
       - drscribe-network
 
+  # ── Data Science Demo Platform ──────────────────────────────────────────────
+  # Run with:  docker-compose -f docker-compose.prod.yml --profile ds-platform up -d
+  # Remove:    docker-compose -f docker-compose.prod.yml --profile ds-platform down
+  ds-postgres:
+    image: postgres:16-alpine
+    container_name: drscribe-ds-postgres
+    environment:
+      POSTGRES_DB: ds_platform
+      POSTGRES_USER: ds_user
+      POSTGRES_PASSWORD: ${DS_DB_PASSWORD}
+    volumes:
+      - ds_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ds_user -d ds_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - drscribe-network
+    profiles:
+      - ds-platform
+
+  ds-app:
+    build:
+      context: ./data-science-platform
+      dockerfile: Dockerfile
+    container_name: drscribe-ds-app
+    environment:
+      - DB_NAME=ds_platform
+      - DB_USER=ds_user
+      - DB_PASSWORD=${DS_DB_PASSWORD}
+      - DB_HOST=ds-postgres
+      - DB_PORT=5432
+      - SECRET_KEY=${DS_JWT_SECRET}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30240
+      - API_BASE_URL=http://localhost:8000
+    depends_on:
+      ds-postgres:
+        condition: service_healthy
+    restart: always
+    networks:
+      - drscribe-network
+    profiles:
+      - ds-platform
+  # ─────────────────────────────────────────────────────────────────────────────
+
   nginx:
     image: nginx:alpine
     container_name: drscribe-nginx
@@ -145,6 +193,7 @@ volumes:
   redis_data:
   minio_data:
   meili_data:
+  ds_postgres_data:
 
 networks:
   drscribe-network:

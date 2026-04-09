@@ -52,7 +52,7 @@ export default function HomePage() {
                 כל הידע הרפואי<br />
                 <span>במקום אחד</span>
               </h1>
-              <p className="hero-sub">מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי <span style={{color:'#f0c040',fontWeight:700,fontSize:'0.9em'}}>{width}px</span></p>
+              <p className="hero-sub">מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי</p>
               <div className="hero-search">
                 <input type="text" placeholder="חיפוש מאמרים, דיונים או מומחים..." />
                 <button className="search-btn"><i className="fas fa-search"></i> חיפוש</button>

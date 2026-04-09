@@ -137,9 +137,11 @@ jobs:
 
             echo "=== Rebuilding changed services ==="
             sudo docker-compose -f docker-compose.prod.yml build --no-cache backend parent-website frontend
+            sudo docker-compose -f docker-compose.prod.yml --profile ds-platform build --no-cache ds-app
 
             echo "=== Restarting services ==="
             sudo docker-compose -f docker-compose.prod.yml up -d --no-deps backend parent-website frontend
+            sudo docker-compose -f docker-compose.prod.yml --profile ds-platform up -d --no-deps ds-postgres ds-app
 
             echo "=== Health check ==="
             sleep 15

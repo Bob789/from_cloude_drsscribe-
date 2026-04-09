@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.git
+*.bat
+scripts/
+doc/
+images/
+temp/
+*.md
+start_servers.bat
+run_server.py
+run_server.md

@@ -1,0 +1,28 @@
+{
+  "patient": {
+    "name": "שלומי אלמקיאס (סימולציה)",
+    "id_number": "333444555",
+    "phone": "0526789012",
+    "dob": "1982-03-20"
+  },
+  "visit": {
+    "chief_complaint": "כאבים חזקים בחזה מהבוקר, מוחמרים בתנועה",
+    "findings": "כאב לוחץ בבית החזה, מקרין ליד שמאל ולגב העליון. טרם בוצעו בדיקות. דופק 92, לחץ דם 150/95.",
+    "diagnosis": [
+      {"code": "R07.9", "description": "כאב בחזה, לא מפורט"},
+      {"code": "I20.9", "description": "חשד לתעוקת חזה"}
+    ],
+    "treatment_plan": "ביצוע אק\"ג ובדיקות דם דחופות (טרופונין, CK-MB, D-dimer) לבירור קרדיאלי. אספירין 300mg חד פעמי.",
+    "recommendations": "מעקב במיון וחזרה לרופא עם תוצאות הבדיקות, הפניה דחופה להמשך בירור במקרה של החמרה. להימנע ממאמץ גופני עד לקבלת תוצאות.",
+    "urgency": "high",
+    "notes": "המטופל מדווח על עישון 15 סיגריות ביום. היסטוריה משפחתית: אב עבר אוטם שריר הלב בגיל 55.",
+    "tags": [
+      {"tag_type": "symptom", "tag_label": "כאב בחזה", "tag_code": "R07.9"},
+      {"tag_type": "symptom", "tag_label": "כאב מקרין ליד שמאל", "tag_code": ""},
+      {"tag_type": "procedure", "tag_label": "אק\"ג", "tag_code": ""},
+      {"tag_type": "procedure", "tag_label": "בדיקות דם דחופות", "tag_code": ""},
+      {"tag_type": "medication", "tag_label": "אספירין 300mg", "tag_code": "B01AC06"},
+      {"tag_type": "condition", "tag_label": "חשד לתעוקת חזה", "tag_code": "I20.9"}
+    ]
+  }
+}

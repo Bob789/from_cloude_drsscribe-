@@ -1,0 +1,60 @@
+{
+  "model_name": "salary_predictor_test",
+  "model_type": "linear_regression",
+  "feature_columns": [
+    "years_experience",
+    "education_level",
+    "age",
+    "hours_per_week"
+  ],
+  "label_column": "salary",
+  "preprocessing": {
+    "strategy": "sklearn-pipeline",
+    "note": "All preprocessing inside Pipeline - no data leakage",
+    "numeric_columns": [
+      "years_experience",
+      "education_level",
+      "age",
+      "hours_per_week"
+    ],
+    "categorical_columns": [],
+    "scale_features": true,
+    "transformers": {
+      "numeric": [
+        "SimpleImputer(mean)",
+        "StandardScaler()"
+      ],
+      "categorical": [
+        "SimpleImputer(most_frequent)",
+        "OneHotEncoder(handle_unknown='ignore')"
+      ]
+    }
+  },
+  "evaluation": {
+    "strategy": "cv",
+    "cv_folds": 5,
+    "cv_repeats": 1,
+    "test_size": null,
+    "stratify": null,
+    "primary_metric": null
+  },
+  "hyperparameters": {},
+  "metrics": {
+    "r2_mean": 0.93535044009241,
+    "r2_std": 0.006715408920325871,
+    "rmse_mean": 4974.6985369157865,
+    "rmse_std": 152.72496472364966,
+    "mae_mean": 3967.6305066442847,
+    "mae_std": 146.17341869003258,
+    "baseline_rmse_mean": 19786.86696767406,
+    "r2": 0.93535044009241,
+    "rmse": 4974.6985369157865,
+    "mae": 3967.6305066442847,
+    "mse": 24747625.533192065
+  },
+  "classes": null,
+  "label_encoder_used": false,
+  "metrics_summary": "✓ R²: 0.9354 | RMSE: 4974.6985",
+  "created_at": "2025-11-17T14:36:01.139439",
+  "model_file": "salary_predictor_test.pkl"
+}
