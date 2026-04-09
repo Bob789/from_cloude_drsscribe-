@@ -12,6 +12,7 @@ from app_fastapi.services.logger_service import log_insufficient_tokens, log_tok
 # Token costs for different operations
 TOKEN_COSTS = {
     "train": 1,
+    "compare": 1,
     "predict": 5,
     "list_models": 0,  # Free operation
     "get_model": 0,    # Free operation

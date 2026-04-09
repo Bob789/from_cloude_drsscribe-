@@ -95,6 +95,16 @@ class APIClient:
                 "label_column": label_column, "test_size": test_size, "model_type": model_type}
         return self._request("post", "/models/train", files={"file": file}, data=data)
 
+    def compare_models(self, file, feature_columns: str, label_column: str,
+                       test_size: float = 0.2, evaluation_strategy: str = "cv",
+                       cv_folds: int = 5, task_type: str = "auto") -> Dict:
+        """Compare all applicable models on the same dataset."""
+        data = {"feature_columns": feature_columns, "label_column": label_column,
+                "test_size": test_size, "evaluation_strategy": evaluation_strategy,
+                "cv_folds": cv_folds, "task_type": task_type}
+        return self._request("post", "/models/compare", files={"file": file},
+                             data=data, timeout=120)
+
     def predict(self, model_name: str, features: Dict) -> Dict:
         """Make a prediction with a trained model."""
         return self._request("post", "/models/predict", json={"model_name": model_name, "features": features})

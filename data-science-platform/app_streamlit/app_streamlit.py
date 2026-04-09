@@ -149,7 +149,7 @@ def main_app():
         st.caption("🟢 Server: Online")
 
     # Build navigation options based on user role
-    nav_options = ["Dashboard", "Train Model", "Make Prediction"]
+    nav_options = ["Dashboard", "Train Model", "Compare Models", "Make Prediction"]
 
     # Only show Admin Panel to admin users
     if st.session_state.get("is_admin", False):
@@ -174,6 +174,9 @@ def main_app():
     elif page == "Train Model":
         from pages import train_page
         train_page.show()
+    elif page == "Compare Models":
+        from pages import compare_page
+        compare_page.show()
     elif page == "Make Prediction":
         from pages import predict_page
         predict_page.show()

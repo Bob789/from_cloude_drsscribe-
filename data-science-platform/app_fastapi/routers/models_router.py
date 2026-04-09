@@ -114,6 +114,45 @@ async def predict_model(request: PredictRequest, current_user: dict = Depends(ge
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 
+@router.post("/compare")
+async def compare_models(
+        file: UploadFile = File(...),
+        feature_columns: str = Form(...),
+        label_column: str = Form(...),
+        test_size: float = Form(0.2),
+        evaluation_strategy: str = Form("cv"),
+        cv_folds: int = Form(5),
+        task_type: str = Form("auto"),
+        current_user: dict = Depends(get_current_user)):
+    """Compare all applicable models on the same dataset."""
+    username = current_user["sub"]
+    validate_and_deduct_tokens(username, "compare")
+
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    try:
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+
+        feature_list = [col.strip() for col in feature_columns.split(",")]
+        result = model_service.compare_models(
+            file_path=file_path, feature_columns=feature_list,
+            label_column=label_column, test_size=test_size,
+            evaluation_strategy=evaluation_strategy, cv_folds=cv_folds,
+            task_type=task_type)
+
+        db.add_usage_log(username, "MODEL_COMPARISON", -1, "SUCCESS",
+                         f"Compared {result['models_compared']} models, best: {result['best_model']}")
+
+        return {"status": "success", **result, "tokens_deducted": 1}
+
+    except ValueError as e:
+        refund_tokens(username, "compare", f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        refund_tokens(username, "compare", f"Comparison failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Comparison failed: {str(e)}")
+
+
 @router.get("")
 async def list_models(current_user: dict = Depends(get_current_user)):
     """Get list of all trained models."""

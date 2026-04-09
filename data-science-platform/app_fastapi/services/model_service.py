@@ -13,6 +13,7 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(METADATA_DIR, exist_ok=True)
 
 from .models import MODEL_REGISTRY
+from .models.config import MODEL_CONFIG, get_model_config
 
 
 def preprocess_dataframe(df: pd.DataFrame, feature_columns: List[str], label_column: str) -> tuple:
@@ -153,3 +154,106 @@ def delete_model(model_name: str) -> Dict:
         os.remove(metadata_path)
 
     return {"message": f"Model '{model_name}' deleted successfully"}
+
+
+def compare_models(
+        file_path: str,
+        feature_columns: List[str],
+        label_column: str,
+        test_size: float = 0.2,
+        random_state: int = 42,
+        evaluation_strategy: str = "cv",
+        cv_folds: int = 5,
+        task_type: str = "auto",
+) -> Dict:
+    """Compare all applicable models on the same dataset without saving."""
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import LabelEncoder
+    from app_fastapi.core.data_handler import load_and_validate_csv
+    from app_fastapi.core.preprocessing import create_preprocessor
+    from app_fastapi.core.evaluation import (
+        evaluate_classification_holdout, evaluate_classification_cv,
+        evaluate_regression_holdout, evaluate_regression_cv,
+        format_metrics_summary,
+    )
+
+    df, X, y = load_and_validate_csv(file_path, feature_columns, label_column)
+
+    # Auto-detect task type
+    if task_type == "auto":
+        nunique = y.nunique()
+        is_numeric = pd.api.types.is_numeric_dtype(y)
+        task_type = "regression" if is_numeric and nunique > 15 else "classification"
+
+    # Filter models by task type
+    applicable = {k: v for k, v in MODEL_CONFIG.items() if v["type"] == task_type}
+
+    results = []
+    for model_type, config in applicable.items():
+        try:
+            # Prepare y per model
+            if config.get("needs_label_encoding", False):
+                le = LabelEncoder()
+                y_enc = pd.Series(le.fit_transform(y.astype(str)))
+            else:
+                y_enc = pd.to_numeric(y, errors="coerce").fillna(y.mean())
+
+            preprocessor = create_preprocessor(df, feature_columns, scale_features=config["needs_scaling"])
+            params = dict(config["default_params"])
+            if config.get("supports_random_state", True):
+                params["random_state"] = random_state
+            estimator = config["estimator_class"](**params)
+            pipeline = Pipeline([("preprocessor", preprocessor), ("estimator", estimator)])
+
+            is_cls = task_type == "classification"
+            if evaluation_strategy == "holdout":
+                metrics = (evaluate_classification_holdout(pipeline, X, y_enc, test_size, random_state)
+                           if is_cls else evaluate_regression_holdout(pipeline, X, y_enc, test_size, random_state))
+            else:
+                metrics = (evaluate_classification_cv(pipeline, X, y_enc, cv_folds, 1, random_state)
+                           if is_cls else evaluate_regression_cv(pipeline, X, y_enc, cv_folds, 1, random_state))
+
+            # Add compatibility aliases for CV
+            if evaluation_strategy == "cv":
+                if is_cls:
+                    for k in ["accuracy", "precision", "recall", "f1"]:
+                        if f"{k}_mean" in metrics:
+                            metrics[k] = metrics[f"{k}_mean"]
+                else:
+                    for k in ["r2", "rmse", "mae"]:
+                        if f"{k}_mean" in metrics:
+                            metrics[k] = metrics[f"{k}_mean"]
+
+            summary = format_metrics_summary(metrics, model_type, evaluation_strategy)
+            results.append({
+                "model_type": model_type,
+                "metrics": metrics,
+                "summary": summary,
+                "status": "success",
+            })
+        except Exception as e:
+            results.append({
+                "model_type": model_type,
+                "metrics": {},
+                "summary": str(e),
+                "status": "error",
+            })
+
+    # Sort: classification by accuracy desc, regression by r2 desc
+    if task_type == "classification":
+        results.sort(key=lambda r: r["metrics"].get("accuracy", r["metrics"].get("accuracy_mean", 0)), reverse=True)
+        best_metric = "accuracy"
+    else:
+        results.sort(key=lambda r: r["metrics"].get("r2", r["metrics"].get("r2_mean", 0)), reverse=True)
+        best_metric = "r2"
+
+    best = results[0]["model_type"] if results and results[0]["status"] == "success" else None
+
+    return {
+        "task_type": task_type,
+        "models_compared": len(results),
+        "best_model": best,
+        "best_metric": best_metric,
+        "evaluation_strategy": evaluation_strategy,
+        "results": results,
+    }
