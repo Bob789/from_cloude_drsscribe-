@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap');
-
 :root {
   --bg:        #0d1117;
   --surface:   #161c28;
@@ -31,7 +29,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-heebo), sans-serif;
   background: linear-gradient(160deg, #001f6b 0%, #4a5a8a 45%, #7a6a3a 100%);
   background-attachment: fixed;
   color: var(--white);
@@ -83,7 +81,7 @@ main { flex: 1; }
   font-size: 12px;
   font-weight: 700;
   color: #001f6b;
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), sans-serif;
 }
 .hp-topbar a {
   color: #001f6b;
@@ -126,7 +124,7 @@ main { flex: 1; }
   border-bottom: 2px solid #c8a000;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), sans-serif;
 }
 /* When menu is open, release sticky so it doesn't trap the viewport during scroll (Mobile only) */
 @media (max-width: 820px) {
@@ -176,7 +174,7 @@ main { flex: 1; }
 }
 .gh-btn {
   padding: 7px 14px; border-radius: 12px;
-  font-family: 'Rubik', sans-serif; font-size: 13px; font-weight: 700;
+  font-family: var(--font-rubik), sans-serif; font-size: 13px; font-weight: 700;
   text-decoration: none; cursor: pointer;
   transition: all 0.2s; border: none; display: inline-block;
 }
@@ -493,7 +491,7 @@ h1.hero-title:hover .grad-text {
   background: var(--surface2);
   border: 1px solid var(--border2);
   color: var(--white);
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-heebo), sans-serif;
   font-size: 1.18rem;
   outline: none;
   transition: border-color .25s, box-shadow .25s;
@@ -931,7 +929,7 @@ footer {
   border-top: 2px solid #c8a000;
   padding: 28px 24px 24px;
   text-align: center;
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), sans-serif;
 }
 .footer-logo {
   font-size: 1.3rem; font-weight: 800;

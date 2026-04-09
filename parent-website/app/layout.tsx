@@ -1,7 +1,22 @@
 import type { Metadata } from 'next'
+import { Heebo, Rubik } from 'next/font/google'
 import './globals.css'
 import './homepage.css'
 import CookieBanner         from '@/components/CookieBanner'
+
+const heebo = Heebo({
+  subsets: ['hebrew', 'latin'],
+  weight: ['300', '400', '500', '700', '900'],
+  display: 'swap',
+  variable: '--font-heebo',
+})
+
+const rubik = Rubik({
+  subsets: ['hebrew', 'latin'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  display: 'swap',
+  variable: '--font-rubik',
+})
 import Header               from '@/components/Header'
 import Footer               from '@/components/Footer'
 import StarsCanvas          from '@/components/StarsCanvas'
@@ -25,11 +40,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl">
+    <html lang="he" dir="rtl" className={`${heebo.variable} ${rubik.variable}`}>
       <head>
         <link rel="privacy-policy" href="https://drsscribe.com/privacy-policy" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-        <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body>
         {/* Stars floating in background — fixed, covers all pages */}
