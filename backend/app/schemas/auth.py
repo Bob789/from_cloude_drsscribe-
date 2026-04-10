@@ -13,6 +13,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr
     name: str
+    nickname: str | None = None
     role: UserRole
     avatar_url: str | None = None
     is_active: bool
@@ -55,3 +56,8 @@ class RefreshRequest(BaseModel):
 class LocalLoginRequest(BaseModel):
     username: str
     password: str
+
+
+class ProfileUpdate(BaseModel):
+    nickname: str | None = None
+    avatar_url: str | None = None

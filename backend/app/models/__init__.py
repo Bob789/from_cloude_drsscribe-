@@ -15,6 +15,7 @@ from app.models.custom_field import CustomField
 from app.models.patient_file import PatientFile
 from app.models.recording_chunk import RecordingChunk
 from app.models.user_activity_log import UserActivityLog
+from app.models.forum import ForumPost, ForumReply, ForumVote, PostStatus
 
 __all__ = [
     "User", "UserRole",
@@ -34,4 +35,5 @@ __all__ = [
     "PatientFile",
     "RecordingChunk",
     "UserActivityLog",
+    "ForumPost", "ForumReply", "ForumVote", "PostStatus",
 ]

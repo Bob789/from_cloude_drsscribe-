@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
-from app.schemas.auth import GoogleAuthRequest, TokenResponse, RefreshRequest, UserResponse, LocalLoginRequest, PatientKeyTypeUpdate, LanguageUpdate
+from app.schemas.auth import GoogleAuthRequest, TokenResponse, RefreshRequest, UserResponse, LocalLoginRequest, PatientKeyTypeUpdate, LanguageUpdate, ProfileUpdate
 from app.services.auth_service import verify_google_token, get_or_create_user, generate_tokens, refresh_access_token, authenticate_local, logout_user
 from app.middleware.auth import get_current_user, security
 from app.middleware.rate_limit import limiter
@@ -64,6 +64,21 @@ async def update_patient_key_type(
     current_user: User = Depends(get_current_user),
 ):
     current_user.patient_key_type = data.patient_key_type
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+@router.put("/me/profile", response_model=UserResponse)
+async def update_profile(
+    data: ProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if data.nickname is not None:
+        current_user.nickname = data.nickname.strip() if data.nickname.strip() else None
+    if data.avatar_url is not None:
+        current_user.avatar_url = data.avatar_url.strip() if data.avatar_url.strip() else None
     await db.commit()
     await db.refresh(current_user)
     return current_user
