@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, Enum, Text, func
+from sqlalchemy import String, Boolean, DateTime, Enum, Text, Integer, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
@@ -42,6 +42,7 @@ class User(Base):
     calendar_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     calendar_connected: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     calendar_connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reputation: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
     def __repr__(self):
         return f"<User {self.email}>"

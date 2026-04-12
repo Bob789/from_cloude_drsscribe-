@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import '../../community-theme.css'
@@ -33,27 +33,121 @@ interface Reply {
   created_at: string
 }
 
-const STATUS_MAP: Record<string, { text: string; color: string; bg: string; border: string }> = {
-  answered: { text: '✓ נענה',     color: '#065f46', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)'  },
-  open:     { text: '❓ פתוח',    color: '#9f1239', bg: 'rgba(244,63,94,0.08)', border: 'rgba(244,63,94,0.25)'  },
-  closed:   { text: '🔒 סגור',    color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.3)' },
-}
-
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
+  if (mins < 1)     return 'עכשיו'
   if (mins < 60)    return `לפני ${mins} דקות`
   const hours = Math.floor(mins / 60)
   if (hours < 24)   return `לפני ${hours} שעות`
   const days = Math.floor(hours / 24)
   if (days < 7)     return `לפני ${days} ימים`
   const weeks = Math.floor(days / 7)
-  return `לפני ${weeks} שבועות`
+  if (weeks < 5)    return `לפני ${weeks} שבועות`
+  const months = Math.floor(days / 30)
+  if (months < 12)  return `לפני ${months} חודשים`
+  return `לפני ${Math.floor(days / 365)} שנים`
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })
+    + ' בשעה ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+}
+
+function renderFormatted(text: string): string {
+  let h = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+  // Images: ![alt](https://url)
+  h = h.replace(/!\[([^\]]{0,100})\]\((https?:\/\/[^)\s]{1,500})\)/g,
+    '<img src="$2" alt="$1" class="so-fmt-img" loading="lazy" />')
+  // Bold: **text**
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  // Italic: *text*
+  h = h.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+  // Font size: {size:18}text{/size} — clamped 15–24
+  h = h.replace(/\{size:(\d+)\}([\s\S]+?)\{\/size\}/g, (_m, px, txt) => {
+    const s = Math.max(15, Math.min(24, parseInt(px)))
+    return `<span style="font-size:${s}px">${txt}</span>`
+  })
+  // Preset colors: {red}text{/red}
+  const colorMap: Record<string, string> = {
+    red: '#d32f2f', blue: '#1565c0', green: '#2e7d32',
+    orange: '#e65100', purple: '#7b1fa2', teal: '#00695c', brown: '#4e342e'
+  }
+  for (const [name, hex] of Object.entries(colorMap)) {
+    h = h.replace(new RegExp(`\\{${name}\\}([\\s\\S]+?)\\{\\/${name}\\}`, 'g'),
+      `<span style="color:${hex}">$1</span>`)
+  }
+  // Line-by-line: headings, lists, blockquotes
+  const lines = h.split('\n')
+  let out = '', i = 0
+  while (i < lines.length) {
+    const ln = lines[i]
+    if (ln.startsWith('### ')) { out += `<h3 class="so-fmt-h3">${ln.slice(4)}</h3>`; i++; continue }
+    if (ln.startsWith('&gt; ')) { out += `<blockquote class="so-fmt-bq">${ln.slice(5)}</blockquote>`; i++; continue }
+    if (/^\d+\.\s/.test(ln)) {
+      out += '<ol class="so-fmt-ol">'
+      while (i < lines.length && /^\d+\.\s/.test(lines[i]))
+        out += `<li>${lines[i++].replace(/^\d+\.\s/, '')}</li>`
+      out += '</ol>'; continue
+    }
+    if (/^[-•]\s/.test(ln)) {
+      out += '<ul class="so-fmt-ul">'
+      while (i < lines.length && /^[-•]\s/.test(lines[i]))
+        out += `<li>${lines[i++].replace(/^[-•]\s/, '')}</li>`
+      out += '</ul>'; continue
+    }
+    out += ln + '\n'; i++
+  }
+  return out
+}
+
+function isHTML(text: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(text)
+}
+
+function renderBody(text: string): string {
+  return isHTML(text) ? text : renderFormatted(text)
 }
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null
   return localStorage.getItem('access_token')
+}
+
+async function refreshToken(): Promise<string | null> {
+  const refresh = localStorage.getItem('refresh_token')
+  if (!refresh) return null
+  try {
+    const res = await fetch(`${API}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    localStorage.setItem('access_token', data.access_token)
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    return data.access_token
+  } catch { return null }
+}
+
+async function authFetch(url: string, options: RequestInit): Promise<Response> {
+  let token = getToken()
+  if (!token) throw new Error('no_token')
+  options.headers = { ...options.headers as Record<string,string>, Authorization: `Bearer ${token}` }
+  let res = await fetch(url, options)
+  if (res.status === 401) {
+    const newToken = await refreshToken()
+    if (!newToken) throw new Error('token_expired')
+    options.headers = { ...options.headers as Record<string,string>, Authorization: `Bearer ${newToken}` }
+    res = await fetch(url, options)
+  }
+  return res
 }
 
 function getCurrentUserId(): string | null {
@@ -70,7 +164,28 @@ export default function ForumPostPage() {
   const [replies, setReplies] = useState<Reply[]>([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(false)
-  const [replyBody, setReplyBody] = useState('')
+  const [replySort, setReplySort] = useState<'votes' | 'oldest' | 'newest'>('votes')
+  const editorRef = useRef<HTMLDivElement>(null)
+  const [showColors, setShowColors] = useState(false)
+  const [showFontSize, setShowFontSize] = useState(false)
+
+  const execCmd = (cmd: string, value?: string) => {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, value)
+  }
+
+  const insertImageWYSIWYG = () => {
+    const url = prompt('הכנס כתובת תמונה (URL):')
+    if (!url) return
+    try { new URL(url) } catch { alert('כתובת לא תקינה'); return }
+    if (!/^https?:\/\//i.test(url)) { alert('הכתובת חייבת להתחיל ב-https://'); return }
+    editorRef.current?.focus()
+    document.execCommand('insertImage', false, url)
+  }
+
+  const getEditorHTML = (): string => {
+    return editorRef.current?.innerHTML?.trim() || ''
+  }
 
   const loadPost = useCallback(async () => {
     try {
@@ -91,35 +206,46 @@ export default function ForumPostPage() {
   useEffect(() => { loadPost() }, [loadPost])
   useEffect(() => { loadReplies() }, [loadReplies])
 
-  const handleReply = async () => {
-    const token = getToken()
-    if (!token) { alert('יש להתחבר כדי להגיב'); return }
-    if (replyBody.length < 2) return
+  const sortedReplies = [...replies].sort((a, b) => {
+    // Accepted always on top
+    if (a.is_accepted && !b.is_accepted) return -1
+    if (!a.is_accepted && b.is_accepted) return 1
+    if (replySort === 'votes') return b.votes - a.votes
+    if (replySort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
 
+  const handleReply = async () => {
+    const html = getEditorHTML()
+    if (html.length < 2 || html === '<br>') return
     try {
-      const res = await fetch(`${API}/forum/posts/${id}/replies`, {
+      const res = await authFetch(`${API}/forum/posts/${id}/replies`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ body: replyBody }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: html }),
       })
       if (res.ok) {
-        setReplyBody('')
+        if (editorRef.current) editorRef.current.innerHTML = ''
         loadReplies()
         loadPost()
       } else {
         const err = await res.json().catch(() => null)
         alert(err?.detail || 'שגיאה בשליחת התגובה')
       }
-    } catch { alert('שגיאת רשת — נסה שוב') }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : ''
+      if (msg === 'no_token' || msg === 'token_expired') {
+        alert('יש להתחבר מחדש כדי להגיב')
+        window.location.href = '/login'
+      } else { alert('שגיאת רשת — נסה שוב') }
+    }
   }
 
   const handleVotePost = async (value: number) => {
-    const token = getToken()
-    if (!token) { alert('יש להתחבר כדי להצביע'); return }
     try {
-      const res = await fetch(`${API}/forum/posts/${id}/vote`, {
+      const res = await authFetch(`${API}/forum/posts/${id}/vote`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value }),
       })
       if (res.ok) loadPost()
@@ -127,49 +253,50 @@ export default function ForumPostPage() {
   }
 
   const handleVoteReply = async (replyId: string, value: number) => {
-    const token = getToken()
-    if (!token) { alert('יש להתחבר כדי להצביע'); return }
     try {
-      const res = await fetch(`${API}/forum/replies/${replyId}/vote`, {
+      const res = await authFetch(`${API}/forum/replies/${replyId}/vote`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value }),
       })
       if (res.ok) loadReplies()
     } catch {}
   }
 
+  const [acceptToast, setAcceptToast] = useState<string | null>(null)
+
   const handleAcceptReply = async (replyId: string) => {
-    const token = getToken()
-    if (!token) return
     try {
-      const res = await fetch(`${API}/forum/replies/${replyId}/accept`, {
+      const res = await authFetch(`${API}/forum/replies/${replyId}/accept`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {},
       })
-      if (res.ok) { loadReplies(); loadPost() }
+      if (res.ok) {
+        setAcceptToast('+15 נקודות למשיב!')
+        setTimeout(() => setAcceptToast(null), 3000)
+        loadReplies(); loadPost()
+      }
     } catch {}
   }
 
   if (loading) return (
     <div id="forum-page-root">
-      <div className="com-body" style={{ textAlign: 'center', padding: 80, color: '#888' }}>טוען...</div>
+      <div className="com-body" style={{ textAlign: 'center', padding: 80, color: '#848d97' }}>טוען...</div>
     </div>
   )
 
   if (error || !post) return (
     <div id="forum-page-root">
-      <div className="com-body" style={{ textAlign: 'center', padding: 80, color: '#888' }}>
+      <div className="com-body" style={{ textAlign: 'center', padding: 80, color: '#848d97' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>😕</div>
         <div>השאלה לא נמצאה</div>
-        <Link href="/forum" style={{ color: '#10b981', marginTop: 16, display: 'inline-block' }}>
+        <Link href="/forum" style={{ color: '#0074cc', marginTop: 16, display: 'inline-block' }}>
           ← חזרה לפורום
         </Link>
       </div>
     </div>
   )
 
-  const s = STATUS_MAP[post.status] || STATUS_MAP.open
   const tags = post.tags ? post.tags.split(',').map(t => t.trim()).filter(Boolean) : []
   const currentUserId = getCurrentUserId()
   const isAuthor = currentUserId === post.author_id
@@ -177,115 +304,131 @@ export default function ForumPostPage() {
   return (
     <div id="forum-page-root">
 
-      {/* ── BLOCK HEADER ── */}
-      <div className="com-block-header">
-        <div>
-          <Link href="/forum" style={{ color: '#10b981', fontSize: 13, textDecoration: 'none' }}>
-            ← חזרה לפורום
-          </Link>
-          <div className="com-block-title" style={{ fontSize: 22, marginTop: 8 }}>{post.title}</div>
+      {/* ── Question Header (SO style) ── */}
+      <div className="so-post-header">
+        <div className="so-post-header-top">
+          <Link href="/forum" className="so-back-link">← חזרה לפורום</Link>
+        </div>
+        <h1 className="so-post-title">{post.title}</h1>
+        <div className="so-post-header-meta">
+          <span>נשאל <time>{formatDate(post.created_at)}</time></span>
+          {post.updated_at && <span>עודכן <time>{timeAgo(post.updated_at)}</time></span>}
+          <span>נצפה {post.views} פעמים</span>
         </div>
       </div>
 
-      <div className="com-title-lines">
-        <div className="com-title-line"></div>
-        <div className="com-title-line"></div>
-      </div>
+      <div className="so-post-divider"></div>
 
-      <div className="com-body">
-        <div className="com-layout">
+      <div className="so-post-body-wrap">
+        <div className="so-post-layout">
 
-          {/* Main content */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* ═══ Main column ═══ */}
+          <div className="so-post-main">
 
-            {/* Post body */}
-            <div className="com-card" style={{ padding: 24 }}>
-              <div style={{ display: 'flex', gap: 16 }}>
+            {/* ── Question ── */}
+            <div className="so-post-cell">
+              {/* Vote column */}
+              <div className="so-vote-cell">
+                <button onClick={() => handleVotePost(1)} className="so-vote-btn so-vote-up" title="הצבע למעלה">
+                  <svg width="36" height="36" viewBox="0 0 36 36"><path d="M2 25h32L18 9 2 25Z" fill="currentColor"/></svg>
+                </button>
+                <div className="so-vote-count">{post.votes}</div>
+                <button onClick={() => handleVotePost(-1)} className="so-vote-btn so-vote-down" title="הצבע למטה">
+                  <svg width="36" height="36" viewBox="0 0 36 36"><path d="M2 11h32L18 27 2 11Z" fill="currentColor"/></svg>
+                </button>
+                {post.status === 'answered' && (
+                  <div className="so-accepted-big" title="לשאלה זו יש תשובה מקובלת">
+                    <svg width="24" height="24" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/></svg>
+                  </div>
+                )}
+              </div>
 
-                {/* Vote column */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 48 }}>
-                  <button
-                    onClick={() => handleVotePost(1)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#10b981' }}
-                    title="הצבע למעלה"
-                  >▲</button>
-                  <span style={{ fontWeight: 700, fontSize: 18, color: '#e5e7eb' }}>{post.votes}</span>
-                  <button
-                    onClick={() => handleVotePost(-1)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#ef4444' }}
-                    title="הצבע למטה"
-                  >▼</button>
+              {/* Post content */}
+              <div className="so-post-content">
+                <div className="so-post-text so-fmt-content" dangerouslySetInnerHTML={{ __html: renderBody(post.body) }} />
+
+                <div className="so-post-tags">
+                  {tags.map(tag => (
+                    <Link key={tag} href={`/forum?tag=${tag}`} className="so-tag">{tag}</Link>
+                  ))}
                 </div>
 
-                {/* Body */}
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: '#e5e7eb', fontSize: 15, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-                    {post.body}
+                <div className="so-post-actions-row">
+                  <div className="so-post-actions">
+                    <button className="so-action-link">שתף</button>
+                    <button className="so-action-link">עקוב</button>
                   </div>
-                  <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span className="fr-status" style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}>
-                      {s.text}
-                    </span>
-                    {tags.map(tag => (
-                      <Link key={tag} href={`/forum?tag=${tag}`} className="com-tag">{tag}</Link>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
-                    נשאל ע״י <strong style={{ color: '#ccc' }}>{post.author_name}</strong> · {timeAgo(post.created_at)}
-                    {' · '}{post.views} צפיות
+                  <div className="so-user-box so-user-box-asker">
+                    <div className="so-user-box-time">נשאל {timeAgo(post.created_at)}</div>
+                    <div className="so-user-box-info">
+                      <div className="so-user-avatar-md">{post.author_name.charAt(0)}</div>
+                      <div>
+                        <div className="so-user-box-name">{post.author_name}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Replies header */}
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#e5e7eb', padding: '8px 0' }}>
-              💬 {replies.length} תגובות
+            {/* ── Answers header ── */}
+            <div className="so-answers-header">
+              <h2 className="so-answers-count">{replies.length} {replies.length === 1 ? 'תשובה' : 'תשובות'}</h2>
+              <div className="so-answers-sort">
+                מיון לפי:
+                {(['votes', 'oldest', 'newest'] as const).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setReplySort(s)}
+                    className={`so-sort-btn${replySort === s ? ' so-sort-active' : ''}`}
+                  >
+                    {{ votes: 'הצבעות', oldest: 'ישן ביותר', newest: 'חדש ביותר' }[s]}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Replies */}
-            {replies.map(reply => (
-              <div key={reply.id} className="com-card" style={{
-                padding: 20,
-                borderRight: reply.is_accepted ? '3px solid #10b981' : undefined,
-              }}>
-                <div style={{ display: 'flex', gap: 16 }}>
-
-                  {/* Vote column */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 48 }}>
-                    <button
-                      onClick={() => handleVoteReply(reply.id, 1)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#10b981' }}
-                    >▲</button>
-                    <span style={{ fontWeight: 700, fontSize: 16, color: '#e5e7eb' }}>{reply.votes}</span>
-                    <button
-                      onClick={() => handleVoteReply(reply.id, -1)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#ef4444' }}
-                    >▼</button>
-                    {reply.is_accepted && (
-                      <span style={{ color: '#10b981', fontSize: 20, marginTop: 4 }} title="תשובה מקובלת">✓</span>
-                    )}
-                  </div>
-
-                  {/* Reply body */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: '#e5e7eb', fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                      {reply.body}
+            {/* ── Answer list ── */}
+            {sortedReplies.map(reply => (
+              <div key={reply.id} className={`so-post-cell so-answer-cell${reply.is_accepted ? ' so-answer-accepted' : ''}`} id={`answer-${reply.id}`}>
+                <div className="so-vote-cell">
+                  <button onClick={() => handleVoteReply(reply.id, 1)} className="so-vote-btn so-vote-up" title="הצבע למעלה">
+                    <svg width="36" height="36" viewBox="0 0 36 36"><path d="M2 25h32L18 9 2 25Z" fill="currentColor"/></svg>
+                  </button>
+                  <div className="so-vote-count">{reply.votes}</div>
+                  <button onClick={() => handleVoteReply(reply.id, -1)} className="so-vote-btn so-vote-down" title="הצבע למטה">
+                    <svg width="36" height="36" viewBox="0 0 36 36"><path d="M2 11h32L18 27 2 11Z" fill="currentColor"/></svg>
+                  </button>
+                  {reply.is_accepted ? (
+                    <div className="so-accepted-block">
+                      <div className="so-accepted-big" title="תשובה מאושרת">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/></svg>
+                      </div>
+                      <span className="so-accepted-label">תשובה מאושרת</span>
                     </div>
-                    <div style={{ marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', fontSize: 12, color: '#888' }}>
-                      <strong style={{ color: '#ccc' }}>{reply.author_name}</strong>
-                      <span>{timeAgo(reply.created_at)}</span>
-                      {isAuthor && !reply.is_accepted && post.status !== 'answered' && (
-                        <button
-                          onClick={() => handleAcceptReply(reply.id)}
-                          style={{
-                            background: 'none', border: '1px solid #10b981', borderRadius: 6,
-                            color: '#10b981', padding: '2px 10px', cursor: 'pointer', fontSize: 11,
-                          }}
-                        >
-                          ✓ קבל כתשובה
-                        </button>
-                      )}
+                  ) : isAuthor && post.status !== 'answered' ? (
+                    <button onClick={() => handleAcceptReply(reply.id)} className="so-accept-btn" title="אשר כתשובה הטובה ביותר">
+                      <svg width="24" height="24" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/></svg>
+                      <span className="so-accept-btn-text">אשר תשובה</span>
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="so-post-content">
+                  <div className="so-post-text so-fmt-content" dangerouslySetInnerHTML={{ __html: renderBody(reply.body) }} />
+
+                  <div className="so-post-actions-row">
+                    <div className="so-post-actions">
+                      <button className="so-action-link">שתף</button>
+                    </div>
+                    <div className="so-user-box">
+                      <div className="so-user-box-time">ענה {timeAgo(reply.created_at)}</div>
+                      <div className="so-user-box-info">
+                        <div className="so-user-avatar-md">{reply.author_name.charAt(0)}</div>
+                        <div>
+                          <div className="so-user-box-name">{reply.author_name}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -293,55 +436,85 @@ export default function ForumPostPage() {
             ))}
 
             {replies.length === 0 && (
-              <div className="com-card" style={{ textAlign: 'center', padding: 32, color: '#888' }}>
-                אין תגובות עדיין — היה הראשון להגיב!
+              <div className="so-no-answers">
+                עדיין אין תשובות. היה הראשון לענות!
               </div>
             )}
 
-            {/* Reply form */}
-            <div className="com-card" style={{ padding: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#e5e7eb', marginBottom: 10 }}>✏️ הוסף תגובה</div>
-              <textarea
-                value={replyBody}
-                onChange={e => setReplyBody(e.target.value)}
-                placeholder="כתוב את תגובתך כאן..."
-                rows={4}
-                style={{
-                  width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 8, padding: 12, color: '#e5e7eb', fontSize: 14, resize: 'vertical',
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-                <button
-                  onClick={handleReply}
-                  disabled={replyBody.length < 2}
-                  className="com-cta-btn"
-                  style={{ width: 'auto', padding: '8px 24px', opacity: replyBody.length < 2 ? 0.5 : 1 }}
-                >
-                  שלח תגובה →
-                </button>
+            {/* ── Your Answer form ── */}
+            <div className="so-answer-form">
+              <h2 className="so-answer-form-title">התשובה שלך</h2>
+              <div className="so-editor-toolbar">
+                <button type="button" className="so-tb-btn" title="מודגש" onClick={() => execCmd('bold')}><b>B</b></button>
+                <button type="button" className="so-tb-btn so-tb-italic" title="נטוי" onClick={() => execCmd('italic')}><i>I</i></button>
+                <span className="so-tb-sep" />
+                <button type="button" className="so-tb-btn" title="כותרת" onClick={() => execCmd('formatBlock', 'h3')}>H</button>
+                <button type="button" className="so-tb-btn" title="רשימה ממוספרת" onClick={() => execCmd('insertOrderedList')}>1.</button>
+                <button type="button" className="so-tb-btn" title="רשימה" onClick={() => execCmd('insertUnorderedList')}>•</button>
+                <button type="button" className="so-tb-btn" title="ציטוט" onClick={() => execCmd('formatBlock', 'blockquote')}>❝</button>
+                <span className="so-tb-sep" />
+                <button type="button" className="so-tb-btn" title="תמונה" onClick={insertImageWYSIWYG}>🖼</button>
+                <div className="so-tb-color-wrap">
+                  <button type="button" className="so-tb-btn" title="צבע טקסט" onClick={() => { setShowColors(!showColors); setShowFontSize(false) }}>🎨</button>
+                  {showColors && (
+                    <div className="so-tb-color-dropdown">
+                      {Object.entries({ red: '#d32f2f', blue: '#1565c0', green: '#2e7d32', orange: '#e65100', purple: '#7b1fa2', teal: '#00695c', brown: '#4e342e' }).map(([name, hex]) => (
+                        <button key={name} className="so-tb-color-dot" style={{ background: hex }} title={name}
+                          onClick={() => { execCmd('foreColor', hex); setShowColors(false) }} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="so-tb-color-wrap">
+                  <button type="button" className="so-tb-btn" title="גודל פונט" onClick={() => { setShowFontSize(!showFontSize); setShowColors(false) }}>A<span className="so-tb-fontsize-icon">±</span></button>
+                  {showFontSize && (
+                    <div className="so-tb-fontsize-dropdown">
+                      {[{label: 'רגיל', px: '3'}, {label: 'בינוני', px: '4'}, {label: 'גדול', px: '5'}, {label: 'גדול מאוד', px: '6'}].map(opt => (
+                        <button key={opt.px} className="so-tb-fontsize-opt"
+                          onClick={() => { execCmd('fontSize', opt.px); setShowFontSize(false) }}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+              <div
+                ref={editorRef}
+                className="so-wysiwyg-editor"
+                contentEditable
+                data-placeholder="כתוב את תשובתך כאן..."
+                onFocus={() => { setShowColors(false); setShowFontSize(false) }}
+              />
+              <button
+                onClick={handleReply}
+                className="so-submit-answer-btn"
+              >
+                פרסם תשובה
+              </button>
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* ═══ Sidebar ═══ */}
           <aside className="com-sidebar">
-            <div className="com-card" style={{ padding: 16 }}>
-              <div className="com-sidebar-title">📊 סטטיסטיקות</div>
-              <div style={{ fontSize: 13, color: '#aaa', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div>👁️ {post.views} צפיות</div>
-                <div>💬 {replies.length} תגובות</div>
-                <div>👍 {post.votes} הצבעות</div>
-                <div>📅 {timeAgo(post.created_at)}</div>
+            {/* Stats widget */}
+            <div className="so-sidebar-widget">
+              <div className="so-sidebar-widget-header">סטטיסטיקות</div>
+              <div className="so-sidebar-widget-body">
+                <div className="so-sidebar-stat-row"><span>👁️</span> {post.views} צפיות</div>
+                <div className="so-sidebar-stat-row"><span>💬</span> {replies.length} {replies.length === 1 ? 'תשובה' : 'תשובות'}</div>
+                <div className="so-sidebar-stat-row"><span>👍</span> {post.votes} הצבעות</div>
+                <div className="so-sidebar-stat-row"><span>📅</span> נשאל {timeAgo(post.created_at)}</div>
               </div>
             </div>
 
+            {/* Tags widget */}
             {tags.length > 0 && (
-              <div className="com-card" style={{ padding: 16 }}>
-                <div className="com-sidebar-title">🏷️ תגיות</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div className="so-sidebar-widget">
+                <div className="so-sidebar-widget-header">תגיות קשורות</div>
+                <div className="so-sidebar-widget-body" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {tags.map(tag => (
-                    <Link key={tag} href={`/forum?tag=${tag}`} className="com-tag">{tag}</Link>
+                    <Link key={tag} href={`/forum?tag=${tag}`} className="so-tag">{tag}</Link>
                   ))}
                 </div>
               </div>
@@ -350,6 +523,10 @@ export default function ForumPostPage() {
         </div>
       </div>
 
+      {/* Medical disclaimer */}
+      <div className="so-medical-disclaimer">⚕️ המידע באתר זה הוא כללי בלבד ואינו מהווה ייעוץ רפואי. בכל מצב רפואי — פנה לרופא.</div>
+
+      {acceptToast && <div className="so-accept-toast">{acceptToast}</div>}
       <div className="com-footer-bar">Doctor Scribe AI · Medical Hub · כל הזכויות שמורות</div>
     </div>
   )

@@ -16,6 +16,11 @@ class ForumPostUpdate(BaseModel):
     status: str | None = None  # open / answered / closed
 
 
+class FirstReplyPreview(BaseModel):
+    body: str
+    author_name: str
+
+
 class ForumPostResponse(BaseModel):
     id: uuid.UUID
     author_id: uuid.UUID
@@ -27,6 +32,7 @@ class ForumPostResponse(BaseModel):
     views: int
     votes: int
     replies_count: int
+    first_reply: FirstReplyPreview | None = None
     created_at: datetime
     updated_at: datetime | None
 

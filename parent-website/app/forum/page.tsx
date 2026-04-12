@@ -6,7 +6,7 @@ import '../community-theme.css'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
 
-type Sort = 'hot' | 'new' | 'unanswered' | 'top'
+type Sort = 'new' | 'unanswered' | 'top'
 
 interface Post {
   id: string
@@ -18,6 +18,7 @@ interface Post {
   replies_count: number
   views: number
   votes: number
+  first_reply: { body: string; author_name: string } | null
   created_at: string
 }
 
@@ -26,28 +27,70 @@ interface HotTag {
   count: number
 }
 
-const STATUS_MAP: Record<string, { text: string; color: string; bg: string; border: string }> = {
-  answered: { text: '✓ נענה',     color: '#065f46', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)'  },
-  open:     { text: '❓ ללא מענה', color: '#9f1239', bg: 'rgba(244,63,94,0.08)', border: 'rgba(244,63,94,0.25)'  },
-  closed:   { text: '🔒 סגור',    color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.3)' },
-}
-
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
+  if (mins < 1)     return 'עכשיו'
   if (mins < 60)    return `לפני ${mins} דקות`
   const hours = Math.floor(mins / 60)
   if (hours < 24)   return `לפני ${hours} שעות`
   const days = Math.floor(hours / 24)
   if (days < 7)     return `לפני ${days} ימים`
   const weeks = Math.floor(days / 7)
-  return `לפני ${weeks} שבועות`
+  if (weeks < 5)    return `לפני ${weeks} שבועות`
+  const months = Math.floor(days / 30)
+  if (months < 12)  return `לפני ${months} חודשים`
+  const years = Math.floor(days / 365)
+  return `לפני ${years} שנים`
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatViews(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}m`
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}k`
+  return String(n)
 }
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null
   return localStorage.getItem('access_token')
 }
+
+async function refreshToken(): Promise<string | null> {
+  const refresh = localStorage.getItem('refresh_token')
+  if (!refresh) return null
+  try {
+    const res = await fetch(`${API}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    localStorage.setItem('access_token', data.access_token)
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    return data.access_token
+  } catch { return null }
+}
+
+async function authFetch(url: string, options: RequestInit): Promise<Response> {
+  let token = getToken()
+  if (!token) throw new Error('no_token')
+  options.headers = { ...options.headers as Record<string,string>, Authorization: `Bearer ${token}` }
+  let res = await fetch(url, options)
+  if (res.status === 401) {
+    const newToken = await refreshToken()
+    if (!newToken) throw new Error('token_expired')
+    options.headers = { ...options.headers as Record<string,string>, Authorization: `Bearer ${newToken}` }
+    res = await fetch(url, options)
+  }
+  return res
+}
+
+const PER_PAGE = 15
 
 export default function ForumPage() {
   const [search,    setSearch]    = useState('')
@@ -56,21 +99,25 @@ export default function ForumPage() {
   const [showModal, setShowModal] = useState(false)
   const [posts,     setPosts]     = useState<Post[]>([])
   const [total,     setTotal]     = useState(0)
+  const [page,      setPage]      = useState(1)
   const [hotTags,   setHotTags]   = useState<HotTag[]>([])
   const [stats,     setStats]     = useState<any>(null)
+  const [leaderboard, setLeaderboard] = useState<{name: string; score: number}[]>([])
   const [loading,   setLoading]   = useState(true)
 
-  // New post form
   const [newTitle, setNewTitle] = useState('')
   const [newBody,  setNewBody]  = useState('')
   const [newTag,   setNewTag]   = useState('')
+
+  const totalPages = Math.ceil(total / PER_PAGE)
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       params.set('sort', sort)
-      params.set('per_page', '12')
+      params.set('per_page', String(PER_PAGE))
+      params.set('page', String(page))
       if (search)    params.set('search', search)
       if (activeTag) params.set('tag', activeTag)
       if (sort === 'unanswered') params.set('status', 'open')
@@ -83,15 +130,21 @@ export default function ForumPage() {
       }
     } catch {}
     finally { setLoading(false) }
-  }, [sort, search, activeTag])
+  }, [sort, search, activeTag, page])
 
   const loadStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/forum/stats`)
-      if (res.ok) {
-        const data = await res.json()
+      const [statsRes, lbRes] = await Promise.all([
+        fetch(`${API}/forum/stats`),
+        fetch(`${API}/forum/leaderboard?limit=10`),
+      ])
+      if (statsRes.ok) {
+        const data = await statsRes.json()
         setStats(data)
         setHotTags(data.hot_tags || [])
+      }
+      if (lbRes.ok) {
+        setLeaderboard(await lbRes.json())
       }
     } catch {}
   }, [])
@@ -99,16 +152,16 @@ export default function ForumPage() {
   useEffect(() => { loadPosts() }, [loadPosts])
   useEffect(() => { loadStats() }, [loadStats])
 
+  // Reset page on filter changes
+  useEffect(() => { setPage(1) }, [sort, search, activeTag])
+
   const handleCreatePost = async () => {
-    const token = getToken()
-    if (!token) { alert('יש להתחבר כדי לפרסם שאלה'); return }
     if (newTitle.length < 5) { alert('כותרת חייבת להכיל לפחות 5 תווים'); return }
     if (newBody.length < 10) { alert('תוכן חייב להכיל לפחות 10 תווים'); return }
-
     try {
-      const res = await fetch(`${API}/forum/posts`, {
+      const res = await authFetch(`${API}/forum/posts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle, body: newBody, tags: newTag || null }),
       })
       if (res.ok) {
@@ -120,16 +173,20 @@ export default function ForumPage() {
         const err = await res.json().catch(() => null)
         alert(err?.detail || 'שגיאה ביצירת השאלה')
       }
-    } catch { alert('שגיאת רשת — נסה שוב') }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : ''
+      if (msg === 'no_token' || msg === 'token_expired') {
+        alert('יש להתחבר מחדש כדי לפרסם שאלה')
+        window.location.href = '/login'
+      } else { alert('שגיאת רשת — נסה שוב') }
+    }
   }
 
   const handleVote = async (postId: string, value: number) => {
-    const token = getToken()
-    if (!token) { alert('יש להתחבר כדי להצביע'); return }
     try {
-      const res = await fetch(`${API}/forum/posts/${postId}/vote`, {
+      const res = await authFetch(`${API}/forum/posts/${postId}/vote`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value }),
       })
       if (res.ok) loadPosts()
@@ -174,86 +231,134 @@ export default function ForumPage() {
           <span className="com-kbd">/</span>
         </div>
 
-        {/* Filter pills */}
-        <div className="com-pills">
-          {(['hot','new','unanswered','top'] as Sort[]).map(s => (
-            <button
-              key={s}
-              onClick={() => setSort(s)}
-              className={`com-pill${sort === s ? ' com-pill-active' : ''}`}
-            >
-              {{ hot: '🔥 חם', new: '🆕 חדש', unanswered: '❓ ללא מענה', top: '⭐ מובילים' }[s]}
-            </button>
-          ))}
-          <span className="com-count">{loading ? '...' : `${total} שאלות`}</span>
+        {/* Filter pills + count */}
+        <div className="so-toolbar">
+          <div className="com-pills" style={{ marginBottom: 0 }}>
+            {(['new','unanswered','top'] as Sort[]).map(s => (
+              <button
+                key={s}
+                onClick={() => setSort(s)}
+                className={`com-pill${sort === s ? ' com-pill-active' : ''}`}
+              >
+                {{ new: '🆕 חדש', unanswered: '❓ ללא מענה', top: '⭐ מובילים' }[s]}
+              </button>
+            ))}
+          </div>
+          {/* Medical disclaimer */}
+          <div className="so-medical-disclaimer">⚕️ המידע באתר זה הוא כללי בלבד ואינו מהווה ייעוץ רפואי. בכל מצב רפואי — פנה לרופא.</div>
+          <span className="so-results-count">{loading ? '...' : `${total} תוצאות`}</span>
         </div>
 
         {/* Main layout — posts + sidebar */}
         <div className="com-layout">
 
-          {/* Post list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Post list — SO style */}
+          <div className="so-question-list">
             {loading && (
-              <div className="com-card" style={{ textAlign: 'center', padding: 48, color: '#888' }}>
-                טוען שאלות...
-              </div>
+              <div className="so-empty">טוען שאלות...</div>
             )}
             {!loading && posts.length === 0 && (
-              <div className="com-card" style={{ textAlign: 'center', padding: 48, color: '#888' }}>
-                לא נמצאו שאלות מתאימות
-              </div>
+              <div className="so-empty">לא נמצאו שאלות מתאימות</div>
             )}
             {posts.map(post => {
-              const s = STATUS_MAP[post.status] || STATUS_MAP.open
               const tags = post.tags ? post.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+              const isAnswered = post.status === 'answered'
+              const hasReplies = post.replies_count > 0
               return (
-                <article key={post.id} className="com-card" style={{ cursor: 'pointer' }}>
-                  <Link href={`/forum/${post.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div className="fr-post">
+                <div key={post.id} className="so-question-row">
+                  {/* Stats sidebar */}
+                  <div className="so-stats-cell">
+                    <div className="so-stat-item" title="הצבעות">
+                      <span className="so-stat-num">{post.votes}</span>
+                      <span className="so-stat-label">הצבעות</span>
+                    </div>
+                    <div className={`so-stat-item ${isAnswered ? 'so-stat-answered' : hasReplies ? 'so-stat-has-replies' : ''}`} title="תגובות">
+                      {isAnswered && <span className="so-check">✓</span>}
+                      <span className="so-stat-num">{post.replies_count}</span>
+                      <span className="so-stat-label">{post.replies_count === 1 ? 'תגובה' : 'תגובות'}</span>
+                    </div>
+                    <div className="so-stat-item so-stat-views" title="צפיות">
+                      <span className="so-stat-num">{formatViews(post.views)}</span>
+                      <span className="so-stat-label">צפיות</span>
+                    </div>
+                  </div>
 
-                      {/* Stats column */}
-                      <div className="fr-stats-col">
-                        <div className="fr-stat-box">
-                          <div className="fr-stat-n">{post.replies_count}</div>
-                          <div className="fr-stat-l">תגובות</div>
-                        </div>
-                        <div className="fr-stat-box">
-                          <div className="fr-stat-n">{post.views}</div>
-                          <div className="fr-stat-l">צפיות</div>
-                        </div>
-                        <div className="fr-stat-box" onClick={e => { e.preventDefault(); handleVote(post.id, 1) }} style={{ cursor: 'pointer' }}>
-                          <div className="fr-stat-n">+{post.votes}</div>
-                          <div className="fr-stat-l">הצבעות</div>
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="fr-post-content">
-                        <h3 className="fr-post-title">{post.title}</h3>
-                        <div className="fr-post-meta">
-                          <span
-                            className="fr-status"
-                            style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}
+                  {/* Content */}
+                  <div className="so-content-cell">
+                    <h3 className="so-question-title">
+                      {isAnswered && <span className="so-accepted-badge" title="נענה">✓</span>}
+                      <Link href={`/forum/${post.id}`}>{post.title}</Link>
+                    </h3>
+                    <p className="so-question-excerpt">{post.body.length > 200 ? post.body.slice(0, 200) + '…' : post.body}</p>
+                    <div className="so-question-meta">
+                      <div className="so-tags-row">
+                        {tags.map(tag => (
+                          <button
+                            key={tag}
+                            onClick={() => setActiveTag(activeTag === tag ? '' : tag)}
+                            className={`so-tag${activeTag === tag ? ' so-tag-active' : ''}`}
                           >
-                            {s.text}
-                          </span>
-                          {tags.map(tag => (
-                            <button
-                              key={tag}
-                              onClick={e => { e.preventDefault(); setActiveTag(activeTag === tag ? '' : tag) }}
-                              className={`com-tag${activeTag === tag ? ' com-tag-active' : ''}`}
-                            >
-                              {tag}
-                            </button>
-                          ))}
-                          <span className="fr-post-author">{post.author_name} · {timeAgo(post.created_at)}</span>
-                        </div>
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="so-user-card">
+                        <div className="so-user-avatar">{post.author_name.charAt(0)}</div>
+                        <span className="so-user-name">{post.author_name}</span>
+                        <span className="so-time">{timeAgo(post.created_at)}</span>
                       </div>
                     </div>
-                  </Link>
-                </article>
+                  </div>
+                </div>
               )
             })}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="so-pagination">
+                <button
+                  className="so-page-btn"
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                  → הקודם
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let p: number
+                  if (totalPages <= 5) {
+                    p = i + 1
+                  } else if (page <= 3) {
+                    p = i + 1
+                  } else if (page >= totalPages - 2) {
+                    p = totalPages - 4 + i
+                  } else {
+                    p = page - 2 + i
+                  }
+                  return (
+                    <button
+                      key={p}
+                      className={`so-page-btn${page === p ? ' so-page-active' : ''}`}
+                      onClick={() => setPage(p)}
+                    >
+                      {p}
+                    </button>
+                  )
+                })}
+                {totalPages > 5 && page < totalPages - 2 && (
+                  <>
+                    <span className="so-page-dots">...</span>
+                    <button className="so-page-btn" onClick={() => setPage(totalPages)}>{totalPages}</button>
+                  </>
+                )}
+                <button
+                  className="so-page-btn"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                >
+                  הבא ←
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -286,20 +391,38 @@ export default function ForumPage() {
                   <button
                     key={t.name}
                     onClick={() => setActiveTag(activeTag === t.name ? '' : t.name)}
-                    className={`com-tag${activeTag === t.name ? ' com-tag-active' : ''}`}
+                    className={`so-tag${activeTag === t.name ? ' so-tag-active' : ''}`}
                   >
                     {t.name}
-                    <span style={{ marginRight: 5, fontWeight: 900, color: '#888' }}>{t.count}</span>
+                    <span style={{ marginRight: 5, fontWeight: 400, color: '#848d97', fontSize: 11 }}>×{t.count}</span>
                   </button>
                 ))}
                 {hotTags.length === 0 && <span style={{ color: '#888', fontSize: 13 }}>אין תגיות עדיין</span>}
               </div>
             </div>
 
-            {/* Keyboard hint */}
-            <div style={{ textAlign: 'center', fontSize: 12, color: '#888' }}>
-              <span className="com-kbd">/</span> לחיפוש · <span className="com-kbd">Esc</span> לסגירה
-            </div>
+            {/* Leaderboard */}
+            {leaderboard.length > 0 && (
+              <div className="com-card">
+                <div className="com-sidebar-title">🏆 דירוג משתמשים</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {leaderboard.map((u, i) => (
+                    <div key={i} className="so-lb-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="so-lb-rank">
+                          {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
+                        </span>
+                        <div className="so-user-avatar" style={{ width: 24, height: 24, fontSize: 11 }}>{u.name.charAt(0)}</div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#3b4045' }}>{u.name}</span>
+                      </div>
+                      <span className="so-lb-score">
+                        {u.score} נק׳
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
           </aside>
         </div>

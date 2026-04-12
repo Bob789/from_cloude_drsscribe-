@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.schemas.auth import GoogleAuthRequest, TokenResponse, RefreshRequest, UserResponse, LocalLoginRequest, PatientKeyTypeUpdate, LanguageUpdate, ProfileUpdate
+from sqlalchemy import select
 from app.services.auth_service import verify_google_token, get_or_create_user, generate_tokens, refresh_access_token, authenticate_local, logout_user
 from app.middleware.auth import get_current_user, security
 from app.middleware.rate_limit import limiter
 from app.models.user import User
+from app.utils.jwt import create_access_token, create_refresh_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -82,3 +84,31 @@ async def update_profile(
     await db.commit()
     await db.refresh(current_user)
     return current_user
+
+
+@router.post("/impersonate/{user_id}", response_model=TokenResponse)
+async def impersonate_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Admin-only: get tokens for another user (impersonation)."""
+    if current_user.role.value != "admin" if hasattr(current_user.role, 'value') else current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    import uuid as _uuid
+    target = (await db.execute(select(User).where(User.id == _uuid.UUID(user_id)))).scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    return generate_tokens(target)
+
+
+@router.get("/users", response_model=list[UserResponse])
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Admin-only: list all users."""
+    if current_user.role.value != "admin" if hasattr(current_user.role, 'value') else current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    return result.scalars().all()

@@ -98,6 +98,7 @@ def generate_tokens(user: User) -> dict:
             "id": str(user.id),
             "email": user.email,
             "name": user.name,
+            "nickname": user.nickname,
             "role": user.role.value,
             "avatar_url": user.avatar_url,
             "is_active": user.is_active,

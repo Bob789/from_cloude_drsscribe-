@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Script from 'next/script'
 
 const GOOGLE_CLIENT_ID = '459295230393-a7tahndgdhses9shhg0oue74ealf009r.apps.googleusercontent.com'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
@@ -11,6 +12,14 @@ export default function LoginPage() {
   const router = useRouter()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [gsiReady, setGsiReady] = useState(false)
+
+  useEffect(() => {
+    // Check if already loaded (e.g. cached)
+    if ((window as any).google?.accounts?.oauth2) {
+      setGsiReady(true)
+    }
+  }, [])
 
   async function handleGoogleLogin() {
     setError('')
@@ -18,11 +27,16 @@ export default function LoginPage() {
 
     try {
       // Load Google Identity Services
-      const google = (window as any).google
+      let google = (window as any).google
       if (!google?.accounts?.oauth2) {
-        setError('שגיאה בטעינת שירות Google — נסה לרענן את הדף')
-        setLoading(false)
-        return
+        // Try waiting a moment for script to finish loading
+        await new Promise(r => setTimeout(r, 1500))
+        google = (window as any).google
+        if (!google?.accounts?.oauth2) {
+          setError('שגיאה בטעינת שירות Google — נסה לרענן את הדף')
+          setLoading(false)
+          return
+        }
       }
 
       const client = google.accounts.oauth2.initTokenClient({
@@ -76,7 +90,11 @@ export default function LoginPage() {
   return (
     <>
       {/* Load Google Identity Services */}
-      <script src="https://accounts.google.com/gsi/client" async defer />
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => setGsiReady(true)}
+      />
 
       <div style={{
         minHeight: '100vh',

@@ -5,6 +5,35 @@ import { useRouter } from 'next/navigation'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
 
+async function getValidToken(): Promise<string | null> {
+  const token = localStorage.getItem('access_token')
+  if (!token) return null
+
+  // Quick check: try /auth/me
+  const res = await fetch(`${API}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (res.ok) return token
+
+  // Token expired — try refresh
+  const refresh = localStorage.getItem('refresh_token')
+  if (!refresh) return null
+
+  const refreshRes = await fetch(`${API}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refresh }),
+  })
+  if (!refreshRes.ok) return null
+
+  const data = await refreshRes.json()
+  localStorage.setItem('access_token', data.access_token)
+  localStorage.setItem('refresh_token', data.refresh_token)
+  localStorage.setItem('user', JSON.stringify(data.user))
+  window.dispatchEvent(new Event('auth-changed'))
+  return data.access_token
+}
+
 const AVATAR_OPTIONS = [
   '/avatars/avatar1.svg',
   '/avatars/avatar2.svg',
@@ -23,43 +52,54 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [user, setUser] = useState<any>(null)
+  const [allUsers, setAllUsers] = useState<any[]>([])
+  const [impersonating, setImpersonating] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
-    try {
-      const raw = localStorage.getItem('user')
-      if (raw) {
-        const u = JSON.parse(raw)
-        setUser(u)
-        setNickname(u.nickname || '')
-        setAvatarUrl(u.avatar_url || '')
+    const init = async () => {
+      const token = await getValidToken()
+      if (!token) {
+        router.push('/login')
+        return
       }
-    } catch {}
+      try {
+        const raw = localStorage.getItem('user')
+        if (raw) {
+          const u = JSON.parse(raw)
+          setUser(u)
+          setNickname(u.nickname || '')
+          setAvatarUrl(u.avatar_url || '')
+        }
+      } catch {}
 
-    // Also fetch latest from API
-    fetch(`${API}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
+      // Also fetch latest from API
+      try {
+        const res = await fetch(`${API}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
           setUser(data)
           setNickname(data.nickname || '')
           setAvatarUrl(data.avatar_url || '')
+          // If admin, load user list
+          if (data.role === 'admin') {
+            const usersRes = await fetch(`${API}/auth/users`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            if (usersRes.ok) setAllUsers(await usersRes.json())
+          }
         }
-      })
-      .catch(() => {})
+      } catch {}
+    }
+    init()
   }, [router])
 
   const handleSave = async () => {
     setSaving(true)
     setError('')
     setSuccess(false)
-    const token = localStorage.getItem('access_token')
+    const token = await getValidToken()
     if (!token) { router.push('/login'); return }
 
     try {
@@ -212,6 +252,71 @@ export default function ProfilePage() {
       {error && (
         <div style={{ marginTop: 12, color: '#ef4444', fontWeight: 600, textAlign: 'center' }}>
           {error}
+        </div>
+      )}
+
+      {/* Admin: Impersonation */}
+      {user?.role === 'admin' && allUsers.length > 0 && (
+        <div style={{ marginTop: 48, borderTop: '2px solid #e5e7eb', paddingTop: 24 }}>
+          <h2 style={{ fontSize: 20, color: '#1a2744', marginBottom: 4 }}>🔑 התחברות כמשתמש אחר</h2>
+          <p style={{ color: '#888', fontSize: 13, marginBottom: 16 }}>אדמין בלבד — לחץ על משתמש כדי להתחבר בתור שלו.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {allUsers.filter(u => u.id !== user.id).map(u => (
+              <button
+                key={u.id}
+                disabled={impersonating}
+                onClick={async () => {
+                  setImpersonating(true)
+                  try {
+                    const token = await getValidToken()
+                    if (!token) { router.push('/login'); return }
+                    const res = await fetch(`${API}/auth/impersonate/${u.id}`, {
+                      method: 'POST',
+                      headers: { Authorization: `Bearer ${token}` },
+                    })
+                    if (!res.ok) throw new Error('Failed')
+                    const data = await res.json()
+                    localStorage.setItem('access_token', data.access_token)
+                    localStorage.setItem('refresh_token', data.refresh_token)
+                    localStorage.setItem('user', JSON.stringify(data.user))
+                    window.dispatchEvent(new Event('auth-changed'))
+                    router.push('/forum')
+                  } catch {
+                    setError('שגיאה בהתחברות כמשתמש')
+                  } finally {
+                    setImpersonating(false)
+                  }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 16px', borderRadius: 10,
+                  border: '1px solid #e5e7eb', background: '#fafbfc',
+                  cursor: impersonating ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s', textAlign: 'right',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#fafbfc')}
+              >
+                {u.avatar_url ? (
+                  <img src={u.avatar_url} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #001f6b, #3366cc)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'white', fontWeight: 800, fontSize: 14,
+                  }}>
+                    {(u.nickname || u.name || '?')[0]}
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: '#333' }}>{u.nickname || u.name}</div>
+                  <div style={{ fontSize: 12, color: '#999' }}>{u.email}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

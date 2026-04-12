@@ -52,6 +52,7 @@ async def list_posts(
     # Get reply counts
     post_ids = [row.ForumPost.id for row in rows]
     reply_counts = {}
+    first_replies = {}
     if post_ids:
         rc_stmt = (
             select(ForumReply.post_id, func.count().label("cnt"))
@@ -60,6 +61,30 @@ async def list_posts(
         )
         for r in (await db.execute(rc_stmt)).all():
             reply_counts[r.post_id] = r.cnt
+
+        # First reply per post (earliest, for preview)
+        from sqlalchemy.orm import aliased
+        fr_sub = (
+            select(
+                ForumReply.post_id,
+                ForumReply.body,
+                ForumReply.author_id,
+                func.coalesce(User.nickname, User.name).label("reply_author"),
+                func.row_number().over(
+                    partition_by=ForumReply.post_id,
+                    order_by=ForumReply.created_at.asc()
+                ).label("rn")
+            )
+            .join(User, ForumReply.author_id == User.id)
+            .where(ForumReply.post_id.in_(post_ids))
+            .subquery()
+        )
+        fr_stmt = select(fr_sub).where(fr_sub.c.rn == 1)
+        for fr in (await db.execute(fr_stmt)).all():
+            first_replies[fr.post_id] = {
+                "body": fr.body[:200] if fr.body else "",
+                "author_name": fr.reply_author,
+            }
 
     posts = []
     for row in rows:
@@ -75,6 +100,7 @@ async def list_posts(
             "views": p.views,
             "votes": p.votes,
             "replies_count": reply_counts.get(p.id, 0),
+            "first_reply": first_replies.get(p.id),
             "created_at": p.created_at,
             "updated_at": p.updated_at,
         })
@@ -238,6 +264,13 @@ async def accept_reply(db: AsyncSession, reply_id: uuid.UUID, user_id: uuid.UUID
 
     reply.is_accepted = True
     post.status = PostStatus.answered
+
+    # Award 15 reputation points to the answerer
+    from app.models.user import User
+    answerer = (await db.execute(select(User).where(User.id == reply.author_id))).scalar_one_or_none()
+    if answerer:
+        answerer.reputation = (answerer.reputation or 0) + 15
+
     await db.flush()
     return True
 
@@ -317,3 +350,46 @@ async def get_stats(db: AsyncSession) -> dict:
         "active_users": active_users,
         "hot_tags": hot_tags,
     }
+
+
+async def get_leaderboard(db: AsyncSession, limit: int = 10) -> list[dict]:
+    """User scores: sum of votes on their posts + replies."""
+    post_scores = (
+        select(
+            ForumPost.author_id.label("user_id"),
+            func.coalesce(func.sum(ForumPost.votes), 0).label("score"),
+        )
+        .group_by(ForumPost.author_id)
+        .subquery()
+    )
+    reply_scores = (
+        select(
+            ForumReply.author_id.label("user_id"),
+            func.coalesce(func.sum(ForumReply.votes), 0).label("score"),
+        )
+        .group_by(ForumReply.author_id)
+        .subquery()
+    )
+
+    combined = (
+        select(
+            User.id,
+            func.coalesce(User.nickname, User.name).label("name"),
+            (
+                func.coalesce(post_scores.c.score, 0) +
+                func.coalesce(reply_scores.c.score, 0)
+            ).label("total_score"),
+        )
+        .outerjoin(post_scores, User.id == post_scores.c.user_id)
+        .outerjoin(reply_scores, User.id == reply_scores.c.user_id)
+        .where(
+            (post_scores.c.score.isnot(None)) | (reply_scores.c.score.isnot(None))
+        )
+        .order_by(
+            (func.coalesce(post_scores.c.score, 0) + func.coalesce(reply_scores.c.score, 0)).desc()
+        )
+        .limit(limit)
+    )
+
+    rows = (await db.execute(combined)).all()
+    return [{"name": r.name, "score": r.total_score} for r in rows]

@@ -49,6 +49,14 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     return await forum_service.get_stats(db)
 
 
+@router.get("/forum/leaderboard")
+async def get_leaderboard(
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+):
+    return await forum_service.get_leaderboard(db, limit=limit)
+
+
 # ── Posts (auth required) ────────────────────────────────
 
 @router.post("/forum/posts", response_model=ForumPostResponse, status_code=201)
