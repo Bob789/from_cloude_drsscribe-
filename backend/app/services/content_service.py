@@ -57,10 +57,13 @@ async def generate_article(topic: str, config: dict | None = None) -> dict:
     md_parser = MarkdownIt("commonmark", {"breaks": True}).enable("table")
     html_content = md_parser.render(md_content)
 
+    # Convert h1 to h2 in article body (title already shown in hero section)
+    html_content = re.sub(r'<h1>(.*?)</h1>', r'<h2>\1</h2>', html_content)
+
     # Add medical disclaimer if not present
     disclaimer = "מאמר זה נועד למטרות מידע כללי בלבד ואינו מהווה תחליף לייעוץ רפואי מקצועי."
     if disclaimer not in md_content:
-        html_content += f'\n<p style="color:#888;font-size:13px;margin-top:24px;border-top:1px solid #333;padding-top:12px"><em>{disclaimer}</em></p>'
+        html_content += f'\n<p><em>{disclaimer}</em></p>'
         md_content += f"\n\n---\n*{disclaimer}*"
 
     # Set author persona

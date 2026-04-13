@@ -2,11 +2,41 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { CATEGORY_META, CATEGORY_ICONS } from './articles/constants'
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
+
+function relativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days === 0) return 'היום'
+  if (days === 1) return 'אתמול'
+  if (days < 7) return `לפני ${days} ימים`
+  const weeks = Math.floor(days / 7)
+  if (days < 30) return weeks === 1 ? 'לפני שבוע' : `לפני ${weeks} שבועות`
+  const months = Math.floor(days / 30)
+  return months === 1 ? 'לפני חודש' : `לפני ${months} חודשים`
+}
 
 export default function HomePage() {
   // Stars rising animation handled globally in StarsCanvas (layout.tsx)
 
   const [width, setWidth] = useState(0)
+  const [articles, setArticles] = useState<any[]>([])
+
+  useEffect(() => {
+    async function loadArticles() {
+      try {
+        const res = await fetch(`${API}/articles?per_page=5&sort=newest`)
+        if (res.ok) {
+          const data = await res.json()
+          setArticles(data.items || [])
+        }
+      } catch {}
+    }
+    loadArticles()
+  }, [])
+
   useEffect(() => {
     setWidth(window.innerWidth)
     const onResize = () => setWidth(window.innerWidth)
@@ -90,109 +120,36 @@ export default function HomePage() {
                   <span className="section-badge">מגזין בריאות</span>
                 </div>
 
-                {/* Article 1 */}
-                <article className="article-card">
-                  <div className="card-inner">
-                    <div className="card-icon">🦴</div>
-                    <div className="card-body">
-                      <div className="card-title">כאבי גב כרוניים – מדריך מקיף לאבחון וטיפול</div>
-                      <div className="card-desc">סקירה עדכנית של גורמי כאב גב, שיטות אבחון, טיפול פיזיותרפי ותרופתי, ומתי מתייעצים לגבי ניתוח</div>
-                      <div className="card-meta-row">
-                        <span className="cat-badge" style={{color:'#2563eb',background:'rgba(37,99,235,0.1)',border:'1px solid rgba(37,99,235,0.25)'}}>אורתופדיה</span>
-                        <span className="card-time">לפני 2 ימים · 4 דקות קריאה</span>
-                      </div>
-                      <Link href="#" className="read-btn">קרא עוד →</Link>
+                {/* Dynamic Articles */}
+                {articles.map((article, idx) => {
+                  const cat = CATEGORY_META[article.category] || CATEGORY_META.general
+                  const icon = CATEGORY_ICONS[article.category] || '📄'
+                  return (
+                    <div key={article.id}>
+                      {idx > 0 && (
+                        <div className="pipe art-pipe">
+                          <div className="arch arch-right"></div>
+                          <div className="pipe-lines"><div className="pipe-line"></div><div className="pipe-line"></div></div>
+                          <div className="arch arch-left"></div>
+                        </div>
+                      )}
+                      <Link href={`/articles/${article.slug}`} className="article-card">
+                        <div className="card-inner">
+                          <div className="card-icon">{icon}</div>
+                          <div className="card-body">
+                            <div className="card-title">{article.title}</div>
+                            <div className="card-desc">{article.summary}</div>
+                            <div className="card-meta-row">
+                              <span className="cat-badge" style={{color: cat.color, background: cat.bg, border: `1px solid ${cat.color}44`}}>{cat.label}</span>
+                              <span className="card-time">{article.published_at ? relativeTime(article.published_at) : ''} · {article.read_time_minutes || 5} דקות קריאה</span>
+                            </div>
+                            <span className="read-btn">קרא עוד →</span>
+                          </div>
+                        </div>
+                      </Link>
                     </div>
-                  </div>
-                </article>
-
-                <div className="pipe art-pipe">
-                  <div className="arch arch-right"></div>
-                  <div className="pipe-lines"><div className="pipe-line"></div><div className="pipe-line"></div></div>
-                  <div className="arch arch-left"></div>
-                </div>
-
-                {/* Article 2 */}
-                <article className="article-card">
-                  <div className="card-inner">
-                    <div className="card-icon">❤️</div>
-                    <div className="card-body">
-                      <div className="card-title">יתר לחץ דם – טיפול ומענה בגיל 40+</div>
-                      <div className="card-desc">מה כדאי לדעת על תזונה, פעילות גופנית ותרופות בניהול לחץ דם גבוה</div>
-                      <div className="card-meta-row">
-                        <span className="cat-badge" style={{color:'#e11d48',background:'rgba(225,29,72,0.1)',border:'1px solid rgba(225,29,72,0.25)'}}>קרדיולוגיה</span>
-                        <span className="card-time">לפני 3 ימים · 5 דקות קריאה</span>
-                      </div>
-                      <Link href="#" className="read-btn">קרא עוד →</Link>
-                    </div>
-                  </div>
-                </article>
-
-                <div className="pipe art-pipe">
-                  <div className="arch arch-right"></div>
-                  <div className="pipe-lines"><div className="pipe-line"></div><div className="pipe-line"></div></div>
-                  <div className="arch arch-left"></div>
-                </div>
-
-                {/* Article 3 */}
-                <article className="article-card">
-                  <div className="card-inner">
-                    <div className="card-icon">🩸</div>
-                    <div className="card-body">
-                      <div className="card-title">סוכרת סוג 2 – מניעה, שליטה וחיים עם המחלה</div>
-                      <div className="card-desc">הסבר מעמיק על ניהול סוכרת, תרופות עדכניות ואסטרטגיות תזונה מבוססות מחקר</div>
-                      <div className="card-meta-row">
-                        <span className="cat-badge" style={{color:'#d97706',background:'rgba(217,119,6,0.1)',border:'1px solid rgba(217,119,6,0.25)'}}>אנדוקרינולוגיה</span>
-                        <span className="card-time">לפני שבוע · 8 דקות קריאה</span>
-                      </div>
-                      <Link href="#" className="read-btn">קרא עוד →</Link>
-                    </div>
-                  </div>
-                </article>
-
-                <div className="pipe art-pipe">
-                  <div className="arch arch-right"></div>
-                  <div className="pipe-lines"><div className="pipe-line"></div><div className="pipe-line"></div></div>
-                  <div className="arch arch-left"></div>
-                </div>
-
-                {/* Article 4 */}
-                <article className="article-card">
-                  <div className="card-inner">
-                    <div className="card-icon">😴</div>
-                    <div className="card-body">
-                      <div className="card-title">שינה בריאה – המדריך המלא לשיפור איכות השינה</div>
-                      <div className="card-desc">היגיינת שינה, הפרעות נפוצות, טיפול CBT-I ומתי לפנות למעבדת שינה לאבחון מתקדם</div>
-                      <div className="card-meta-row">
-                        <span className="cat-badge" style={{color:'#7c3aed',background:'rgba(124,58,237,0.1)',border:'1px solid rgba(124,58,237,0.25)'}}>רפואת שינה</span>
-                        <span className="card-time">לפני שבוע · 3 דקות קריאה</span>
-                      </div>
-                      <Link href="#" className="read-btn">קרא עוד →</Link>
-                    </div>
-                  </div>
-                </article>
-
-                <div className="pipe art-pipe">
-                  <div className="arch arch-right"></div>
-                  <div className="pipe-lines"><div className="pipe-line"></div><div className="pipe-line"></div></div>
-                  <div className="arch arch-left"></div>
-                </div>
-
-                {/* Article 5 */}
-                <article className="article-card">
-                  <div className="card-inner">
-                    <div className="card-icon">🥗</div>
-                    <div className="card-body">
-                      <div className="card-title">תזונה ים תיכונית – עדויות מדעיות ופרקטיקה</div>
-                      <div className="card-desc">מה המחקר אומר על הדיאטה הים-תיכונית, מחלות לב, סוכרת ודמנציה</div>
-                      <div className="card-meta-row">
-                        <span className="cat-badge" style={{color:'#0d9488',background:'rgba(13,148,136,0.1)',border:'1px solid rgba(13,148,136,0.25)'}}>תזונה</span>
-                        <span className="card-time">לפני 10 ימים · 7 דקות קריאה</span>
-                      </div>
-                      <Link href="#" className="read-btn">קרא עוד →</Link>
-                    </div>
-                  </div>
-                </article>
+                  )
+                })}
 
                 {/* Editorial box */}
                 <div className="editorial-box">
