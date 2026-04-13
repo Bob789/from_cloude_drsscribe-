@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { CATEGORY_META, CATEGORY_ICONS } from './articles/constants'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
@@ -21,8 +22,10 @@ function relativeTime(dateStr: string) {
 export default function HomePage() {
   // Stars rising animation handled globally in StarsCanvas (layout.tsx)
 
+  const router = useRouter()
   const [width, setWidth] = useState(0)
   const [articles, setArticles] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     async function loadArticles() {
@@ -84,8 +87,25 @@ export default function HomePage() {
               </h1>
               <p className="hero-sub">מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי</p>
               <div className="hero-search">
-                <input type="text" placeholder="חיפוש מאמרים, דיונים או מומחים..." />
-                <button className="search-btn"><i className="fas fa-search"></i> חיפוש</button>
+                <input
+                  type="text"
+                  placeholder="חיפוש מאמרים, דיונים או מומחים..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && searchQuery.trim().length >= 2) {
+                      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+                    }
+                  }}
+                />
+                <button
+                  className="search-btn"
+                  onClick={() => {
+                    if (searchQuery.trim().length >= 2) {
+                      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+                    }
+                  }}
+                ><i className="fas fa-search"></i> חיפוש</button>
               </div>
               <div className="hero-stats">
                 <div className="stat-item">
