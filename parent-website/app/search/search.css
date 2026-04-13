@@ -79,15 +79,15 @@
   transform: translateY(-1px);
 }
 
-/* "נמצאו X תוצאות עבור" — blue, article H2-like font */
+/* "נמצאו X תוצאות עבור" */
 .search-meta {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: #1a56db;
   margin-bottom: 14px;
   line-height: 1.4;
 }
-.search-meta strong { color: #001f6b; }
+.search-meta strong { color: #4a3580; font-weight: 400; font-size: 17px; }
 
 /* Filter tabs */
 .filter-tabs {
