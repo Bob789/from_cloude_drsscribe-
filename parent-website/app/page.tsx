@@ -26,6 +26,7 @@ export default function HomePage() {
   const [width, setWidth] = useState(0)
   const [articles, setArticles] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [stats, setStats] = useState({ articles: 0, forum_posts: 0, experts: 0 })
 
   useEffect(() => {
     async function loadArticles() {
@@ -37,7 +38,14 @@ export default function HomePage() {
         }
       } catch {}
     }
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API}/site/stats`)
+        if (res.ok) setStats(await res.json())
+      } catch {}
+    }
     loadArticles()
+    loadStats()
   }, [])
 
   useEffect(() => {
@@ -109,15 +117,15 @@ export default function HomePage() {
               </div>
               <div className="hero-stats">
                 <div className="stat-item">
-                  <div className="stat-num">150+</div>
+                  <div className="stat-num">{stats.articles.toLocaleString()}</div>
                   <div className="stat-lbl">מאמרים מקצועיים</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-num">2,500+</div>
+                  <div className="stat-num">{stats.forum_posts.toLocaleString()}</div>
                   <div className="stat-lbl">דיונים בפורום</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-num">85</div>
+                  <div className="stat-num">{stats.experts}</div>
                   <div className="stat-lbl">רופאים ומומחים</div>
                 </div>
               </div>

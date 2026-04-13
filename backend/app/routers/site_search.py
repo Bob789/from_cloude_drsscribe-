@@ -128,3 +128,26 @@ async def site_search(
         "pages": (total + per_page - 1) // per_page if total else 0,
         "query": q,
     }
+
+
+@router.get("/site/stats")
+async def site_stats(db: AsyncSession = Depends(get_db)):
+    """Public stats for the homepage: article count, forum post count, expert count."""
+    articles_count = (
+        await db.execute(
+            select(func.count()).select_from(Article).where(Article.status == ArticleStatus.published)
+        )
+    ).scalar() or 0
+
+    forum_count = (
+        await db.execute(select(func.count()).select_from(ForumPost))
+    ).scalar() or 0
+
+    # Experts are currently hardcoded in frontend (8 doctors)
+    experts_count = 8
+
+    return {
+        "articles": articles_count,
+        "forum_posts": forum_count,
+        "experts": experts_count,
+    }
