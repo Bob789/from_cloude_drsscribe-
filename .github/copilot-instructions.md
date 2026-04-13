@@ -61,10 +61,27 @@ Only after user confirms YES:
 ## Autonomy
 - Work independently — complete the full task without waiting for approval
 - Make reasonable decisions when information is missing
-- Only consult the user when an action could DELETE files, DROP tables, or DESTROY data
-- At the end of every task, provide a brief task report: what was done, what files changed, and any issues found
 - Never ask "should I proceed?" — just do it
 - If a step fails, try an alternative approach before reporting failure
+- At the end of every task, provide a brief task report: what was done, what files changed, and any issues found
+
+### Pre-approved actions (NO confirmation needed):
+- `docker-compose build` / `docker-compose up -d` / `docker-compose restart` any service
+- `docker-compose down` a single service and bring it back up
+- Running DB migrations (`alembic upgrade head`)
+- `git add` / `git commit` (local only)
+- Reading/writing files within the project directory
+- Running tests (`pytest`, `dart analyze`)
+- Installing packages (`pip install`, `npm install`, `flutter pub get`)
+- SQL SELECT, INSERT, UPDATE queries on the project database
+
+### Actions that REQUIRE user confirmation:
+- `git push` to remote (GitHub)
+- `DROP TABLE`, `DELETE FROM` without WHERE, or any destructive DB operation
+- Deleting files (`rm`, `del`) that are not temporary/generated
+- `docker-compose down` (all services at once)
+- Modifying `.env` secrets (API keys, passwords)
+- Any action outside the `c:\Doctor-Scribe\` directory
 
 ## Project Structure
 - **Backend**: Python 3.11+ / FastAPI at `backend/app/`
