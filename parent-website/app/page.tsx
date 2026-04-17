@@ -168,7 +168,12 @@ export default function HomePage() {
                       )}
                       <Link href={`/articles/${article.slug}`} className="article-card">
                         <div className="card-inner">
-                          <div className="card-icon">{icon}</div>
+                          <div className="card-thumb">
+                            {article.hero_image_url
+                              ? <img className="card-thumb-img" src={article.hero_image_url} alt={article.hero_image_alt || article.title} />
+                              : <span className="card-thumb-icon">{icon}</span>
+                            }
+                          </div>
                           <div className="card-body">
                             <div className="card-title">{article.title}</div>
                             <div className="card-desc">{article.summary}</div>
