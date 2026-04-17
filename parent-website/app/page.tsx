@@ -86,10 +86,7 @@ export default function HomePage() {
 
             {/* HERO */}
             <div className="hero">
-              <div className="hero-badge">
-                <span className="hero-dot"></span>
-                מרכז הידע הרפואי המוביל בישראל
-              </div>
+
               <h1 className="hero-title">
                 כל הידע הרפואי<br />
                 <span>במקום אחד</span>
