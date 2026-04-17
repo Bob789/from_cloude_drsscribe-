@@ -32,6 +32,7 @@ async def track_pageview(data: PageViewIn, request: Request, db: AsyncSession = 
     ip = _get_client_ip(request)
     row = SitePageView(
         session_id=data.session_id,
+        visitor_id=data.visitor_id,
         visitor_ip_hash=_hash_ip(ip),
         user_agent=request.headers.get("User-Agent"),
         referrer=data.referrer,
@@ -51,6 +52,7 @@ async def track_pageview(data: PageViewIn, request: Request, db: AsyncSession = 
 async def track_search(data: SearchLogIn, request: Request, db: AsyncSession = Depends(get_db)):
     row = SiteSearchLog(
         session_id=data.session_id,
+        visitor_id=data.visitor_id,
         query=data.query,
         results_count=data.results_count,
         clicked_article_slug=data.clicked_article_slug,
@@ -63,6 +65,7 @@ async def track_search(data: SearchLogIn, request: Request, db: AsyncSession = D
 async def track_event(data: EventIn, request: Request, db: AsyncSession = Depends(get_db)):
     row = SiteEvent(
         session_id=data.session_id,
+        visitor_id=data.visitor_id,
         event_type=data.event_type,
         event_data=data.event_data,
         page_path=data.page_path,
@@ -201,4 +204,55 @@ async def analytics_dashboard(
         "recent_searches": [{"query": r.query, "results": r.results_count, "clicked": r.clicked_article_slug, "time": r.created_at.isoformat()} for r in recent_searches_rows],
         "hourly_traffic": [{"hour": r.hour.isoformat(), "views": r.views, "sessions": r.sessions} for r in hourly_rows],
         "active_sessions": [{"session": r.session_id[:8], "last_seen": r.last_seen.isoformat(), "page": r.current_page, "device": r.device, "pages": r.page_count} for r in active_sessions_rows],
+    }
+
+
+@router.get("/visitor/{visitor_id}")
+async def visitor_history(
+    visitor_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Full browsing history of a specific visitor (by localStorage visitor_id)."""
+    pages = (await db.execute(
+        select(SitePageView)
+        .where(SitePageView.visitor_id == visitor_id)
+        .order_by(desc(SitePageView.created_at))
+        .limit(200)
+    )).scalars().all()
+
+    searches = (await db.execute(
+        select(SiteSearchLog)
+        .where(SiteSearchLog.visitor_id == visitor_id)
+        .order_by(desc(SiteSearchLog.created_at))
+        .limit(100)
+    )).scalars().all()
+
+    # Group pages by session
+    sessions: dict = {}
+    for p in pages:
+        sid = p.session_id
+        if sid not in sessions:
+            sessions[sid] = {"session_id": sid, "first_seen": p.created_at, "last_seen": p.created_at, "pages": []}
+        sessions[sid]["pages"].append({
+            "path": p.page_path,
+            "article": p.article_slug,
+            "duration": p.duration_seconds,
+            "time": p.created_at.isoformat(),
+            "referrer": p.referrer,
+        })
+        if p.created_at < sessions[sid]["first_seen"]:
+            sessions[sid]["first_seen"] = p.created_at
+        if p.created_at > sessions[sid]["last_seen"]:
+            sessions[sid]["last_seen"] = p.created_at
+
+    return {
+        "visitor_id": visitor_id,
+        "total_sessions": len(sessions),
+        "total_pageviews": len(pages),
+        "sessions": [
+            {**v, "first_seen": v["first_seen"].isoformat(), "last_seen": v["last_seen"].isoformat()}
+            for v in sorted(sessions.values(), key=lambda x: x["last_seen"], reverse=True)
+        ],
+        "searches": [{"query": s.query, "results": s.results_count, "clicked": s.clicked_article_slug, "time": s.created_at.isoformat()} for s in searches],
     }

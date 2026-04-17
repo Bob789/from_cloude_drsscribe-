@@ -5,12 +5,26 @@ import { usePathname, useSearchParams } from 'next/navigation'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
 
+/** Persistent visitor ID — survives browser restarts (localStorage) */
+function getVisitorId(): string {
+  if (typeof window === 'undefined') return ''
+  let vid = localStorage.getItem('mh_vid')
+  if (!vid) {
+    vid = crypto.randomUUID()
+    localStorage.setItem('mh_vid', vid)
+  }
+  return vid
+}
+
+/** Per-tab session ID — resets when tab/browser closes (sessionStorage) */
 function getSessionId(): string {
   if (typeof window === 'undefined') return ''
   let sid = sessionStorage.getItem('mh_sid')
   if (!sid) {
+    // New session: stamp the start time
     sid = crypto.randomUUID()
     sessionStorage.setItem('mh_sid', sid)
+    sessionStorage.setItem('mh_sid_start', Date.now().toString())
   }
   return sid
 }
@@ -54,6 +68,7 @@ function sendAnalytics(endpoint: string, data: Record<string, unknown>) {
 export function trackSearch(query: string, resultsCount: number, clickedSlug?: string) {
   sendAnalytics('search', {
     session_id: getSessionId(),
+    visitor_id: getVisitorId(),
     query,
     results_count: resultsCount,
     clicked_article_slug: clickedSlug || null,
@@ -63,6 +78,7 @@ export function trackSearch(query: string, resultsCount: number, clickedSlug?: s
 export function trackEvent(eventType: string, eventData?: Record<string, unknown>, pagePath?: string) {
   sendAnalytics('event', {
     session_id: getSessionId(),
+    visitor_id: getVisitorId(),
     event_type: eventType,
     event_data: eventData || null,
     page_path: pagePath || (typeof window !== 'undefined' ? window.location.pathname : null),
@@ -78,10 +94,12 @@ export default function SiteAnalytics() {
     enterTime.current = Date.now()
 
     const sid = getSessionId()
+    const vid = getVisitorId()
     if (!sid) return
 
     sendAnalytics('pageview', {
       session_id: sid,
+      visitor_id: vid,
       page_path: pathname,
       article_slug: extractArticleSlug(pathname),
       referrer: document.referrer || null,
@@ -95,6 +113,7 @@ export default function SiteAnalytics() {
       if (duration > 0 && duration < 3600) {
         sendAnalytics('pageview', {
           session_id: sid,
+          visitor_id: vid,
           page_path: pathname,
           article_slug: extractArticleSlug(pathname),
           duration_seconds: duration,

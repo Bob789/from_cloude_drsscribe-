@@ -4,6 +4,7 @@ from typing import Optional
 
 class PageViewIn(BaseModel):
     session_id: str = Field(..., max_length=64)
+    visitor_id: Optional[str] = Field(None, max_length=64)
     page_path: str = Field(..., max_length=500)
     article_slug: Optional[str] = Field(None, max_length=300)
     duration_seconds: Optional[int] = None
@@ -16,6 +17,7 @@ class PageViewIn(BaseModel):
 
 class SearchLogIn(BaseModel):
     session_id: str = Field(..., max_length=64)
+    visitor_id: Optional[str] = Field(None, max_length=64)
     query: str = Field(..., max_length=500)
     results_count: int = 0
     clicked_article_slug: Optional[str] = Field(None, max_length=300)
@@ -23,6 +25,7 @@ class SearchLogIn(BaseModel):
 
 class EventIn(BaseModel):
     session_id: str = Field(..., max_length=64)
+    visitor_id: Optional[str] = Field(None, max_length=64)
     event_type: str = Field(..., max_length=50)
     event_data: Optional[dict] = None
     page_path: Optional[str] = Field(None, max_length=500)

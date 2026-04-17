@@ -11,6 +11,7 @@ class SitePageView(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    visitor_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     visitor_ip_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     referrer: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -31,6 +32,7 @@ class SiteSearchLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    visitor_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     query: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     results_count: Mapped[int] = mapped_column(Integer, default=0)
     clicked_article_slug: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -43,6 +45,7 @@ class SiteEvent(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    visitor_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     event_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     page_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
