@@ -1,9 +1,13 @@
 import hashlib
-from fastapi import APIRouter, Request, Depends
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Request, Depends, Query
+from sqlalchemy import select, func, desc, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.schemas.site_analytics import PageViewIn, SearchLogIn, EventIn
 from app.models.site_analytics import SitePageView, SiteSearchLog, SiteEvent
+from app.middleware.permissions import require_admin
+from app.models.user import User
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -65,3 +69,136 @@ async def track_event(data: EventIn, request: Request, db: AsyncSession = Depend
     )
     db.add(row)
     await db.commit()
+
+
+# ── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
+
+@router.get("/dashboard")
+async def analytics_dashboard(
+    hours: int = Query(24, ge=1, le=720),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since_realtime = datetime.now(timezone.utc) - timedelta(minutes=30)
+
+    # Total pageviews in period
+    total_pv = (await db.execute(
+        select(func.count()).where(SitePageView.created_at >= since)
+    )).scalar() or 0
+
+    # Unique sessions in period
+    unique_sessions = (await db.execute(
+        select(func.count(distinct(SitePageView.session_id))).where(SitePageView.created_at >= since)
+    )).scalar() or 0
+
+    # Active now (last 30 min)
+    active_now = (await db.execute(
+        select(func.count(distinct(SitePageView.session_id))).where(SitePageView.created_at >= since_realtime)
+    )).scalar() or 0
+
+    # Avg time on page (only rows with duration)
+    avg_duration = (await db.execute(
+        select(func.avg(SitePageView.duration_seconds)).where(
+            SitePageView.created_at >= since,
+            SitePageView.duration_seconds.isnot(None),
+            SitePageView.duration_seconds > 0,
+        )
+    )).scalar()
+
+    # Top pages
+    top_pages_rows = (await db.execute(
+        select(SitePageView.page_path, func.count().label("views"))
+        .where(SitePageView.created_at >= since)
+        .group_by(SitePageView.page_path)
+        .order_by(desc("views"))
+        .limit(15)
+    )).all()
+
+    # Top referrers
+    top_referrers_rows = (await db.execute(
+        select(SitePageView.referrer, func.count().label("count"))
+        .where(SitePageView.created_at >= since, SitePageView.referrer.isnot(None), SitePageView.referrer != "")
+        .group_by(SitePageView.referrer)
+        .order_by(desc("count"))
+        .limit(10)
+    )).all()
+
+    # Device breakdown
+    device_rows = (await db.execute(
+        select(SitePageView.device_type, func.count().label("count"))
+        .where(SitePageView.created_at >= since, SitePageView.device_type.isnot(None))
+        .group_by(SitePageView.device_type)
+        .order_by(desc("count"))
+    )).all()
+
+    # UTM sources
+    utm_rows = (await db.execute(
+        select(SitePageView.utm_source, func.count().label("count"))
+        .where(SitePageView.created_at >= since, SitePageView.utm_source.isnot(None))
+        .group_by(SitePageView.utm_source)
+        .order_by(desc("count"))
+        .limit(10)
+    )).all()
+
+    # Top searches
+    top_searches_rows = (await db.execute(
+        select(SiteSearchLog.query, func.count().label("count"), func.avg(SiteSearchLog.results_count).label("avg_results"))
+        .where(SiteSearchLog.created_at >= since)
+        .group_by(SiteSearchLog.query)
+        .order_by(desc("count"))
+        .limit(20)
+    )).all()
+
+    # Recent searches (last 50)
+    recent_searches_rows = (await db.execute(
+        select(SiteSearchLog.query, SiteSearchLog.results_count, SiteSearchLog.clicked_article_slug, SiteSearchLog.created_at)
+        .where(SiteSearchLog.created_at >= since)
+        .order_by(desc(SiteSearchLog.created_at))
+        .limit(50)
+    )).all()
+
+    # Hourly traffic (last 24h buckets)
+    hourly_rows = (await db.execute(
+        select(
+            func.date_trunc("hour", SitePageView.created_at).label("hour"),
+            func.count().label("views"),
+            func.count(distinct(SitePageView.session_id)).label("sessions"),
+        )
+        .where(SitePageView.created_at >= datetime.now(timezone.utc) - timedelta(hours=24))
+        .group_by("hour")
+        .order_by("hour")
+    )).all()
+
+    # Active sessions detail (last 30 min — latest page per session)
+    active_sessions_rows = (await db.execute(
+        select(
+            SitePageView.session_id,
+            func.max(SitePageView.created_at).label("last_seen"),
+            func.max(SitePageView.page_path).label("current_page"),
+            func.max(SitePageView.device_type).label("device"),
+            func.count().label("page_count"),
+        )
+        .where(SitePageView.created_at >= since_realtime)
+        .group_by(SitePageView.session_id)
+        .order_by(desc("last_seen"))
+        .limit(50)
+    )).all()
+
+    return {
+        "summary": {
+            "total_pageviews": total_pv,
+            "unique_sessions": unique_sessions,
+            "active_now": active_now,
+            "avg_duration_seconds": round(avg_duration) if avg_duration else None,
+            "period_hours": hours,
+        },
+        "top_pages": [{"path": r.page_path, "views": r.views} for r in top_pages_rows],
+        "top_referrers": [{"referrer": r.referrer, "count": r.count} for r in top_referrers_rows],
+        "devices": [{"type": r.device_type, "count": r.count} for r in device_rows],
+        "utm_sources": [{"source": r.utm_source, "count": r.count} for r in utm_rows],
+        "top_searches": [{"query": r.query, "count": r.count, "avg_results": round(r.avg_results or 0)} for r in top_searches_rows],
+        "recent_searches": [{"query": r.query, "results": r.results_count, "clicked": r.clicked_article_slug, "time": r.created_at.isoformat()} for r in recent_searches_rows],
+        "hourly_traffic": [{"hour": r.hour.isoformat(), "views": r.views, "sessions": r.sessions} for r in hourly_rows],
+        "active_sessions": [{"session": r.session_id[:8], "last_seen": r.last_seen.isoformat(), "page": r.current_page, "device": r.device, "pages": r.page_count} for r in active_sessions_rows],
+    }

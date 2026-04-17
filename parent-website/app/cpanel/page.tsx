@@ -9,7 +9,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
 const GOOGLE_CLIENT_ID = '459295230393-a7tahndgdhses9shhg0oue74ealf009r.apps.googleusercontent.com'
 const ADMIN_EMAIL = 'yossil1306@gmail.com'
 
-type Tab = 'stats' | 'users' | 'messages' | 'errors' | 'content'
+type Tab = 'stats' | 'users' | 'messages' | 'errors' | 'content' | 'analytics'
 
 function useAdminData(token: string | null) {
   const [stats, setStats] = useState<any>(null)
@@ -77,6 +77,25 @@ export default function CpanelPage() {
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult] = useState<any>(null)
   const [_editArticle, _setEditArticle] = useState<any>(null) // reserved for future editor
+
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState<any>(null)
+  const [analyticsHours, setAnalyticsHours] = useState(24)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+
+  const fetchAnalytics = useCallback(async (h = analyticsHours) => {
+    if (!token) return
+    setAnalyticsLoading(true)
+    try {
+      const res = await fetch(`${API}/analytics/dashboard?hours=${h}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setAnalyticsData(await res.json())
+    } catch {}
+    finally { setAnalyticsLoading(false) }
+  }, [token, analyticsHours])
+
+  useEffect(() => { if (tab === 'analytics') fetchAnalytics() }, [tab])
 
   const fetchContent = useCallback(async () => {
     if (!token) return
@@ -388,6 +407,7 @@ export default function CpanelPage() {
             { key: 'messages', label: `✉️ הודעות${unreadCount > 0 ? ` (${unreadCount})` : ''}` },
             { key: 'errors', label: `🚨 שגיאות (${errors.length})` },
             { key: 'content', label: '📰 תוכן' },
+            { key: 'analytics', label: '📊 אנליטיקס' },
           ] as { key: Tab; label: string }[]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`btn ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
@@ -885,6 +905,208 @@ export default function CpanelPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ══ ANALYTICS ══ */}
+        {tab === 'analytics' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Period selector + refresh */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {[1, 6, 24, 72, 168, 720].map(h => (
+                <button key={h} onClick={() => { setAnalyticsHours(h); fetchAnalytics(h) }}
+                  className={`btn ${analyticsHours === h ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: 12 }}>
+                  {h === 1 ? 'שעה אחרונה' : h === 6 ? '6 שעות' : h === 24 ? '24 שעות' : h === 72 ? '3 ימים' : h === 168 ? 'שבוע' : '30 יום'}
+                </button>
+              ))}
+              <button onClick={() => fetchAnalytics(analyticsHours)} className="btn btn-secondary" style={{ padding: '6px 14px', fontSize: 12 }}>🔄 רענן</button>
+            </div>
+
+            {analyticsLoading && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 40 }}>טוען נתוני אנליטיקס...</div>}
+
+            {!analyticsLoading && analyticsData && (
+              <>
+                {/* Summary cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                  {[
+                    { label: 'מבקרים עכשיו', value: analyticsData.summary.active_now, icon: '🟢', color: '#34d399' },
+                    { label: 'סשנים ייחודיים', value: analyticsData.summary.unique_sessions, icon: '👤', color: '#38bdf8' },
+                    { label: 'צפיות בדפים', value: analyticsData.summary.total_pageviews, icon: '📄', color: '#a78bfa' },
+                    { label: 'זמן ממוצע בדף', value: analyticsData.summary.avg_duration_seconds ? `${Math.floor(analyticsData.summary.avg_duration_seconds / 60)}:${String(analyticsData.summary.avg_duration_seconds % 60).padStart(2,'0')} דק׳` : 'אין נתון', icon: '⏱', color: '#fb923c' },
+                  ].map(s => (
+                    <div key={s.label} className="card" style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 24, marginBottom: 6 }}>{s.icon}</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value ?? '—'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Active sessions now */}
+                {analyticsData.active_sessions?.length > 0 && (
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>🟢 מבקרים פעילים (30 דקות אחרונות)</div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            {['סשן', 'עמוד נוכחי', 'מכשיר', 'דפים שנצפו', 'פעיל לפני'].map(h => (
+                              <th key={h} style={{ textAlign: 'right', padding: '6px 12px', color: 'var(--muted)', fontWeight: 600 }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analyticsData.active_sessions.map((s: any, i: number) => {
+                            const ago = Math.round((Date.now() - new Date(s.last_seen).getTime()) / 60000)
+                            return (
+                              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#34d399' }}>#{s.session}</td>
+                                <td style={{ padding: '8px 12px', color: 'var(--text)' }}>{s.page}</td>
+                                <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{s.device || 'לא ידוע'}</td>
+                                <td style={{ padding: '8px 12px', color: 'var(--muted)', textAlign: 'center' }}>{s.pages}</td>
+                                <td style={{ padding: '8px 12px', color: ago < 5 ? '#34d399' : 'var(--muted)' }}>{ago === 0 ? 'עכשיו' : `לפני ${ago} דק׳`}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Two column: top pages + searches */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+                  {/* Top pages */}
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>📄 עמודים פופולריים</div>
+                    {analyticsData.top_pages.length === 0
+                      ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>אין נתונים עדיין</div>
+                      : analyticsData.top_pages.map((p: any, i: number) => {
+                          const maxV = analyticsData.top_pages[0].views
+                          return (
+                            <div key={i} style={{ marginBottom: 8 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                                <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>{p.path}</span>
+                                <span style={{ color: '#a78bfa', fontWeight: 700 }}>{p.views}</span>
+                              </div>
+                              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }}>
+                                <div style={{ height: '100%', borderRadius: 2, background: '#a78bfa', width: `${(p.views / maxV) * 100}%` }} />
+                              </div>
+                            </div>
+                          )
+                        })
+                    }
+                  </div>
+
+                  {/* Top searches */}
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>🔍 חיפושים נפוצים</div>
+                    {analyticsData.top_searches.length === 0
+                      ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>אין חיפושים עדיין</div>
+                      : analyticsData.top_searches.map((s: any, i: number) => {
+                          const maxC = analyticsData.top_searches[0].count
+                          return (
+                            <div key={i} style={{ marginBottom: 8 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                                <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>{s.query}</span>
+                                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{s.count}x</span>
+                              </div>
+                              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }}>
+                                <div style={{ height: '100%', borderRadius: 2, background: '#38bdf8', width: `${(s.count / maxC) * 100}%` }} />
+                              </div>
+                            </div>
+                          )
+                        })
+                    }
+                  </div>
+                </div>
+
+                {/* Two column: referrers + devices */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>🔗 מקורות תנועה</div>
+                    {analyticsData.top_referrers.length === 0
+                      ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>תנועה ישירה בלבד</div>
+                      : analyticsData.top_referrers.map((r: any, i: number) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 12 }}>
+                            <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '78%' }}>{r.referrer}</span>
+                            <span style={{ color: '#fb923c', fontWeight: 700 }}>{r.count}</span>
+                          </div>
+                        ))
+                    }
+                  </div>
+
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>📱 מכשירים</div>
+                    {analyticsData.devices.length === 0
+                      ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>אין נתונים עדיין</div>
+                      : analyticsData.devices.map((d: any, i: number) => {
+                          const icon = d.type === 'mobile' ? '📱' : d.type === 'tablet' ? '📟' : '🖥'
+                          const label = d.type === 'mobile' ? 'נייד' : d.type === 'tablet' ? 'טאבלט' : 'מחשב'
+                          return (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 12 }}>
+                              <span style={{ color: 'var(--text)' }}>{icon} {label}</span>
+                              <span style={{ color: '#34d399', fontWeight: 700 }}>{d.count}</span>
+                            </div>
+                          )
+                        })
+                    }
+                  </div>
+                </div>
+
+                {/* Recent searches */}
+                {analyticsData.recent_searches?.length > 0 && (
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>🕐 חיפושים אחרונים</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
+                      {analyticsData.recent_searches.map((s: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, fontSize: 12 }}>
+                          <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <span style={{ color: '#38bdf8' }}>🔍</span>
+                            <span style={{ color: 'var(--text)' }}>{s.query}</span>
+                            {s.clicked && <span style={{ color: '#34d399', fontSize: 11 }}>→ {s.clicked}</span>}
+                          </span>
+                          <span style={{ color: 'var(--muted)', fontSize: 11 }}>
+                            {s.results} תוצאות · {new Date(s.time).toLocaleTimeString('he-IL')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hourly traffic chart (ASCII bars) */}
+                {analyticsData.hourly_traffic?.length > 0 && (
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>📈 תנועה שעתית (24 שעות)</div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 80, overflowX: 'auto' }}>
+                      {(() => {
+                        const maxV = Math.max(...analyticsData.hourly_traffic.map((h: any) => h.views), 1)
+                        return analyticsData.hourly_traffic.map((h: any, i: number) => {
+                          const height = Math.max(4, (h.views / maxV) * 72)
+                          const hour = new Date(h.hour).getHours()
+                          return (
+                            <div key={i} title={`${hour}:00 — ${h.views} צפיות`} style={{ flex: '1 0 auto', minWidth: 18 }}>
+                              <div style={{ height, background: 'linear-gradient(to top, #a78bfa, #38bdf8)', borderRadius: '3px 3px 0 0', opacity: 0.85 }} />
+                              <div style={{ fontSize: 9, color: 'var(--muted)', textAlign: 'center', marginTop: 2 }}>{hour}</div>
+                            </div>
+                          )
+                        })
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!analyticsLoading && !analyticsData && (
+              <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 60 }}>
+                אין נתוני אנליטיקס עדיין. המידע יצטבר כשמבקרים ייכנסו לאתר.
+              </div>
+            )}
           </div>
         )}
 
