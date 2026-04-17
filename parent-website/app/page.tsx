@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CATEGORY_META, CATEGORY_ICONS } from './articles/constants'
+import { FEATURES } from '@/lib/featureFlags'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
 
@@ -93,11 +94,11 @@ export default function HomePage() {
                 כל הידע הרפואי<br />
                 <span>במקום אחד</span>
               </h1>
-              <p className="hero-sub">מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי</p>
+              <p className="hero-sub">{FEATURES.forum ? 'מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי' : 'מאמרים רפואיים מקצועיים — ידע רפואי מהימן ונגיש'}</p>
               <div className="hero-search">
                 <input
                   type="text"
-                  placeholder="חיפוש מאמרים, דיונים או מומחים..."
+                  placeholder={FEATURES.forum ? "חיפוש מאמרים, דיונים או מומחים..." : "חיפוש מאמרים רפואיים..."}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => {
@@ -120,14 +121,18 @@ export default function HomePage() {
                   <div className="stat-num">{stats.articles.toLocaleString()}</div>
                   <div className="stat-lbl">מאמרים מקצועיים</div>
                 </div>
+                {FEATURES.forum && (
                 <div className="stat-item">
                   <div className="stat-num">{stats.forum_posts.toLocaleString()}</div>
                   <div className="stat-lbl">דיונים בפורום</div>
                 </div>
+                )}
+                {FEATURES.experts && (
                 <div className="stat-item">
                   <div className="stat-num">{stats.experts}</div>
                   <div className="stat-lbl">רופאים ומומחים</div>
                 </div>
+                )}
               </div>
             </div>
 
@@ -192,6 +197,7 @@ export default function HomePage() {
               <aside className="sidebar">
 
                 {/* Doctor Scribe AI */}
+                {FEATURES.product && (
                 <div className="scribe-widget">
                   <span className="sponsored-tag">SPONSORED</span>
                   <div className="scribe-title">🎤 Doctor Scribe AI</div>
@@ -205,8 +211,10 @@ export default function HomePage() {
                   <Link href="/product" className="scribe-btn">נסו חינם ל-14 יום</Link>
                   <div className="scribe-sub">אין צורך בכרטיס אשראי</div>
                 </div>
+                )}
 
                 {/* Experts */}
+                {FEATURES.experts && (
                 <div className="side-card">
                   <div className="side-title">🩺 מומחים מובילים</div>
                   <div className="expert-list">
@@ -241,8 +249,10 @@ export default function HomePage() {
                   </div>
                   <Link href="/experts" className="side-link">לכל המומחים →</Link>
                 </div>
+                )}
 
                 {/* Forum hot topics */}
+                {FEATURES.forum && (
                 <div className="side-card">
                   <div className="side-title">💬 חם בפורום</div>
                   <div className="forum-list">
@@ -282,11 +292,13 @@ export default function HomePage() {
                   </div>
                   <Link href="/forum" className="side-link">לפורום המלא →</Link>
                 </div>
+                )}
 
               </aside>
             </div>
 
             {/* BOTTOM CTA */}
+            {FEATURES.product && (
             <div className="bottom-cta">
               <div className="cta-eyebrow">DOCTOR SCRIBE AI</div>
               <h2 className="cta-title">אתם מטפלים —<br /><span>ה-AI כותב</span></h2>
@@ -296,6 +308,7 @@ export default function HomePage() {
                 <Link href="/product" className="cta-ghost">דמו אונליין</Link>
               </div>
             </div>
+            )}
 
       </div>
   )

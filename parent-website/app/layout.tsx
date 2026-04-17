@@ -22,6 +22,7 @@ import Footer               from '@/components/Footer'
 import StarsCanvas          from '@/components/StarsCanvas'
 import AccessibilityWidget  from '@/components/AccessibilityWidget'
 import Link         from 'next/link'
+import { FEATURES } from '@/lib/featureFlags'
 
 export const metadata: Metadata = {
   title: 'Medical Hub + Doctor Scribe AI',
@@ -50,9 +51,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <StarsCanvas />
 
         {/* Yellow top-bar — same on every page */}
+        {FEATURES.product && (
         <div className="hp-topbar">
           <Link href="/product">חדש: תמלול רפואי אוטומטי לקליניקות — Doctor Scribe AI ←</Link>
         </div>
+        )}
 
         {/* Shared header — blue + gold, auto-detects active page */}
         <Header />

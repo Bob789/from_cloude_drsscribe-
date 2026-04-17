@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
+import { FEATURES } from '@/lib/featureFlags'
 
 export default function Header() {
   const pathname   = usePathname() ?? '/'
@@ -136,11 +137,11 @@ export default function Header() {
     <>
       <Link href="/"         className={`gh-link${isHome     ? ' gh-link-active' : ''}`} onClick={close}>דף הבית</Link>
       <Link href="/articles" className={`gh-link${isArticles ? ' gh-link-active' : ''}`} onClick={close}>מאמרים</Link>
-      <Link href="/forum"    className={`gh-link${isForum    ? ' gh-link-active' : ''}`} onClick={close}>פורום</Link>
-      <Link href="/experts"  className={`gh-link${isExperts  ? ' gh-link-active' : ''}`} onClick={close}>מומחים</Link>
+      {FEATURES.forum && <Link href="/forum"    className={`gh-link${isForum    ? ' gh-link-active' : ''}`} onClick={close}>פורום</Link>}
+      {FEATURES.experts && <Link href="/experts"  className={`gh-link${isExperts  ? ' gh-link-active' : ''}`} onClick={close}>מומחים</Link>}
       <Link href="/about"    className="gh-link" onClick={close}>אודות</Link>
       {authSection}
-      <Link href="/product"  className="gh-btn gh-btn-cta" onClick={close}>Doctor Scribe AI</Link>
+      {FEATURES.product && <Link href="/product"  className="gh-btn gh-btn-cta" onClick={close}>Doctor Scribe AI</Link>}
     </>
   )
 

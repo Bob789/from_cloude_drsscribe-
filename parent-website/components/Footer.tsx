@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { FEATURES } from '@/lib/featureFlags'
 
 export default function Footer() {
   return (
@@ -6,9 +7,9 @@ export default function Footer() {
       <div className="footer-logo">MedicalHub</div>
       <div className="footer-links">
         <Link href="/articles">מאמרים</Link>
-        <Link href="/forum">פורום</Link>
-        <Link href="/experts">מומחים</Link>
-        <Link href="/product">Doctor Scribe AI</Link>
+        {FEATURES.forum && <Link href="/forum">פורום</Link>}
+        {FEATURES.experts && <Link href="/experts">מומחים</Link>}
+        {FEATURES.product && <Link href="/product">Doctor Scribe AI</Link>}
       </div>
       <div className="footer-legal">
         <Link href="/terms">תנאי שימוש</Link>
