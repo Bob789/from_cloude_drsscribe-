@@ -265,6 +265,30 @@ async def admin_delete_article(
     return {"ok": True}
 
 
+@router.post("/admin/articles/{article_id}/generate-image")
+async def admin_regenerate_article_image(
+    article_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Generate (or regenerate) the hero image for an existing article."""
+    from app.services.image_service import find_hero_image
+
+    article = (await db.execute(select(Article).where(Article.id == article_id))).scalars().first()
+    if not article:
+        raise NotFoundError("מאמר", str(article_id))
+
+    topic = article.source_topic or article.title
+    image = await find_hero_image(topic, article.category or "general")
+    if not image:
+        return {"ok": False, "error": "Failed to generate image — check API keys and MinIO"}
+
+    article.hero_image_url = image["url"]
+    article.hero_image_alt = image.get("alt", article.title)
+    await db.commit()
+    return {"ok": True, "hero_image_url": image["url"], "attribution": image.get("attribution")}
+
+
 # ── Generation endpoints ──────────────────────────────────────────────────────
 
 @router.post("/admin/articles/generate", status_code=status.HTTP_201_CREATED)

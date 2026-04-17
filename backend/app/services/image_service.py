@@ -122,8 +122,8 @@ async def generate_with_gpt_image(topic: str, category: str) -> dict | None:
             n=1,
         )
 
-        import base64, uuid, io, httpx
-        from app.services.storage_service import get_minio_client
+        import base64, uuid
+        from app.services.storage_service import get_s3_client
 
         b64 = resp.data[0].b64_json
         if not b64:
@@ -131,30 +131,25 @@ async def generate_with_gpt_image(topic: str, category: str) -> dict | None:
 
         image_bytes = base64.b64decode(b64)
 
-        # Upload to MinIO and return a persistent URL
+        # Upload to S3/MinIO and return a persistent public URL
         try:
-            minio = get_minio_client()
+            s3 = get_s3_client()
             object_name = f"article-images/{uuid.uuid4()}.jpg"
-            bucket = getattr(settings, 'MINIO_BUCKET', 'drscribe-audio')
+            bucket = settings.S3_BUCKET
 
-            from minio.commonconfig import ENABLED
-            import minio as minio_pkg
-            from io import BytesIO
-
-            minio.put_object(
-                bucket, object_name,
-                BytesIO(image_bytes), len(image_bytes),
-                content_type="image/jpeg",
+            s3.put_object(
+                Bucket=bucket,
+                Key=object_name,
+                Body=image_bytes,
+                ContentType="image/jpeg",
             )
-            # Build public URL (MinIO or S3-compatible)
-            minio_endpoint = getattr(settings, 'MINIO_ENDPOINT', 'minio:9000')
-            url = f"http://{minio_endpoint}/{bucket}/{object_name}"
+            # Use public endpoint so the browser can load the image
+            public_base = getattr(settings, 'S3_PUBLIC_ENDPOINT', settings.S3_ENDPOINT).rstrip('/')
+            url = f"{public_base}/{object_name}"
             return {"url": url, "alt": topic, "attribution": "AI generated"}
         except Exception as upload_err:
-            logger.warning("gpt_image_minio_upload_failed", error=str(upload_err))
-            # Fallback: return as base64 data-URL (works but heavy)
-            data_url = f"data:image/jpeg;base64,{b64}"
-            return {"url": data_url, "alt": topic, "attribution": "AI generated"}
+            logger.warning("gpt_image_s3_upload_failed", error=str(upload_err))
+            return None
 
     except Exception as e:
         logger.error("gpt_image_error", error=str(e))

@@ -34,7 +34,7 @@ class Article(Base):
     tags: Mapped[list | None] = mapped_column(JSONB, default=list, server_default="[]")
     author_name: Mapped[str] = mapped_column(String(255), default="Doctor Scribe AI", server_default="Doctor Scribe AI")
     author_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    hero_image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    hero_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     hero_image_alt: Mapped[str | None] = mapped_column(String(500), nullable=True)
     seo_title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     seo_description: Mapped[str | None] = mapped_column(String(300), nullable=True)
