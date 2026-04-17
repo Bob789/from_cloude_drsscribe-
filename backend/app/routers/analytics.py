@@ -7,6 +7,7 @@ from app.database import get_db
 from app.schemas.site_analytics import PageViewIn, SearchLogIn, EventIn
 from app.models.site_analytics import SitePageView, SiteSearchLog, SiteEvent
 from app.middleware.permissions import require_admin
+from app.middleware.rate_limit import limiter
 from app.models.user import User
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -18,9 +19,8 @@ def _hash_ip(ip: str) -> str:
 
 
 def _get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # Trust X-Real-IP set by nginx ($remote_addr) — cannot be spoofed by client.
+    # X-Forwarded-For is NOT used here: a client can inject arbitrary values into it.
     real_ip = request.headers.get("X-Real-IP", "")
     if real_ip:
         return real_ip
@@ -28,6 +28,7 @@ def _get_client_ip(request: Request) -> str:
 
 
 @router.post("/pageview", status_code=204)
+@limiter.limit("30/minute")
 async def track_pageview(data: PageViewIn, request: Request, db: AsyncSession = Depends(get_db)):
     ip = _get_client_ip(request)
     row = SitePageView(
@@ -49,6 +50,7 @@ async def track_pageview(data: PageViewIn, request: Request, db: AsyncSession = 
 
 
 @router.post("/search", status_code=204)
+@limiter.limit("20/minute")
 async def track_search(data: SearchLogIn, request: Request, db: AsyncSession = Depends(get_db)):
     row = SiteSearchLog(
         session_id=data.session_id,
@@ -62,6 +64,7 @@ async def track_search(data: SearchLogIn, request: Request, db: AsyncSession = D
 
 
 @router.post("/event", status_code=204)
+@limiter.limit("20/minute")
 async def track_event(data: EventIn, request: Request, db: AsyncSession = Depends(get_db)):
     row = SiteEvent(
         session_id=data.session_id,
