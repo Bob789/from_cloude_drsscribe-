@@ -188,8 +188,8 @@ export default function HomePage() {
                 <div className="editorial-box">
                   <span className="ed-tag">✍️ מדורור רופא</span>
                   <div className="ed-title">רוצים לכתוב עבור Medical Hub?</div>
-                  <div className="ed-text">אם אתם רופאים, אחיות או מטפלים מוסמכים, הצטרפו לצוות הכותבים שלנו ושתפו ידע מקצועי</div>
-                  <Link href="/join-writers" className="ed-btn">להגשת מועמדות לכתיבה →</Link>
+                  <div className="ed-text">אם אתם רופאים, אחיות, מטפלים מוסמכים או משתמש שרוצה להגיב למאמרים או פוסטים, הצטרפו לקהילה, השתתפו ותשפיעו.</div>
+                  <Link href="https://drsscribe.com/login" className="ed-btn">התחבר →</Link>
                 </div>
               </div>
 
