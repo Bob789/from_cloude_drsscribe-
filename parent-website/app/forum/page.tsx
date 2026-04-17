@@ -245,7 +245,7 @@ export default function ForumPage() {
             ))}
           </div>
           {/* Medical disclaimer */}
-          <div className="so-medical-disclaimer">⚕️ המידע באתר זה הוא כללי בלבד ואינו מהווה ייעוץ רפואי. בכל מצב רפואי — פנה לרופא.</div>
+          <div className="so-medical-disclaimer">⚕️ המידע באתר זה הוא כללי בלבד ואינו מהווה ייעוץ רפואי. בכל מצב רפואי פנו לרופא.</div>
           <span className="so-results-count">{loading ? '...' : `${total} תוצאות`}</span>
         </div>
 

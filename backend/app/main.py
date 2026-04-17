@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
 from app.config import settings
-from app.routers import auth, patients, visits, visits_manual, recordings, transcriptions, summaries, search, tags, websocket, dashboard, admin, reports, health, patient_files, custom_fields, question_templates, appointments, messages, articles, forum, site_search
+from app.routers import auth, patients, visits, visits_manual, recordings, transcriptions, summaries, search, tags, websocket, dashboard, admin, reports, health, patient_files, custom_fields, question_templates, appointments, messages, articles, forum, site_search, analytics
 from app.middleware.rate_limit import setup_rate_limiting
 from app.middleware.audit import AuditMiddleware
 from app.middleware.metrics import setup_metrics
@@ -90,3 +90,4 @@ app.include_router(websocket.router, prefix="/api")
 app.include_router(articles.router, prefix="/api")
 app.include_router(forum.router, prefix="/api")
 app.include_router(site_search.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")

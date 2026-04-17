@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { trackSearch } from '@/components/SiteAnalytics'
 import './search.css'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
@@ -52,6 +53,7 @@ function SearchContent() {
         setResults(data.items || [])
         setTotal(data.total || 0)
         setTotalPages(data.pages || 0)
+        trackSearch(query, data.total || 0)
       })
       .catch(() => {})
       .finally(() => setLoading(false))

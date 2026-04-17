@@ -16,6 +16,7 @@ from app.models.patient_file import PatientFile
 from app.models.recording_chunk import RecordingChunk
 from app.models.user_activity_log import UserActivityLog
 from app.models.forum import ForumPost, ForumReply, ForumVote, PostStatus
+from app.models.site_analytics import SitePageView, SiteSearchLog, SiteEvent
 
 __all__ = [
     "User", "UserRole",
@@ -36,4 +37,5 @@ __all__ = [
     "RecordingChunk",
     "UserActivityLog",
     "ForumPost", "ForumReply", "ForumVote", "PostStatus",
+    "SitePageView", "SiteSearchLog", "SiteEvent",
 ]

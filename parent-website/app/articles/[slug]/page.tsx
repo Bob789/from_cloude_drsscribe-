@@ -69,10 +69,32 @@ export default function ArticlePage() {
         {article.seo_keywords?.length > 0 && <meta name="keywords" content={article.seo_keywords.join(', ')} />}
         <meta property="og:title" content={article.title} />
         <meta property="og:description" content={article.summary || ''} />
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content={`https://medicalhub.co.il/articles/${slug}`} />
         {article.hero_image_url && <meta property="og:image" content={article.hero_image_url} />}
+        <meta name="robots" content="index, follow" />
         <link rel="canonical" href={`https://medicalhub.co.il/articles/${slug}`} />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Article',
+              headline: article.title,
+              description: article.seo_description || article.summary || '',
+              image: article.hero_image_url || undefined,
+              author: { '@type': 'Person', name: article.author_name },
+              datePublished: article.published_at || article.created_at,
+              dateModified: article.updated_at || article.created_at,
+              publisher: { '@type': 'Organization', name: 'Medical Hub' },
+              mainEntityOfPage: `https://medicalhub.co.il/articles/${slug}`,
+              wordCount: article.content_html ? Math.round(article.content_html.replace(/<[^>]+>/g, '').split(/\s+/).length) : undefined,
+              articleSection: categoryLabel,
+            }),
+          }}
+        />
       </head>
 
       <div className="article-block">

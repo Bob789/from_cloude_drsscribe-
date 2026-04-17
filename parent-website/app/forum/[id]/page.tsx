@@ -524,7 +524,7 @@ export default function ForumPostPage() {
       </div>
 
       {/* Medical disclaimer */}
-      <div className="so-medical-disclaimer">⚕️ המידע באתר זה הוא כללי בלבד ואינו מהווה ייעוץ רפואי. בכל מצב רפואי — פנה לרופא.</div>
+      <div className="so-medical-disclaimer">⚕️ המידע באתר זה הוא כללי בלבד ואינו מהווה ייעוץ רפואי. בכל מצב רפואי פנו לרופא.</div>
 
       {acceptToast && <div className="so-accept-toast">{acceptToast}</div>}
       <div className="com-footer-bar">Doctor Scribe AI · Medical Hub · כל הזכויות שמורות</div>

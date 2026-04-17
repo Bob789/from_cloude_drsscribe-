@@ -94,7 +94,7 @@ export default function HomePage() {
                 כל הידע הרפואי<br />
                 <span>במקום אחד</span>
               </h1>
-              <p className="hero-sub">{FEATURES.forum ? 'מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים — ידע רפואי מקצועי' : 'מאמרים רפואיים מקצועיים — ידע רפואי מהימן ונגיש'}</p>
+              <p className="hero-sub">{FEATURES.forum ? 'מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים, ידע רפואי מקצועי' : 'מאמרים רפואיים מקצועיים, ידע רפואי מהימן ונגיש'}</p>
               <div className="hero-search">
                 <input
                   type="text"
@@ -301,7 +301,7 @@ export default function HomePage() {
             {FEATURES.product && (
             <div className="bottom-cta">
               <div className="cta-eyebrow">DOCTOR SCRIBE AI</div>
-              <h2 className="cta-title">אתם מטפלים —<br /><span>ה-AI כותב</span></h2>
+              <h2 className="cta-title">אתם מטפלים,<br /><span>ה-AI כותב</span></h2>
               <p className="cta-sub">תמלול וסיכום אוטומטי של ביקורים רפואיים בעברית. לקליניקות פרטיות ורופאים עצמאיים</p>
               <div className="cta-btns">
                 <Link href="/product" className="cta-primary">התחילו ניסיון חינם</Link>
