@@ -873,7 +873,7 @@ export default function CpanelPage() {
                               <div style={{ display: 'flex', gap: 6 }}>
                                 {a.status === 'draft' && <button onClick={() => changeArticleStatus(a.id, 'published')} className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}>פרסם</button>}
                                 {a.status === 'published' && <button onClick={() => changeArticleStatus(a.id, 'draft')} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>הסתר</button>}
-                                {a.slug && <a href={`https://drsscribe.com/articles/${a.slug}?preview=1`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11, textDecoration: 'none' }}>👁</a>}
+                                {a.slug && <a href={`/articles/${a.slug}?preview=1`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11, textDecoration: 'none' }}>👁</a>}
                                 <button onClick={() => deleteArticle(a.id)} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11, color: '#f87171' }}>🗑</button>
                               </div>
                             </td>

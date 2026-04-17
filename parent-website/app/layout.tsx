@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="he" dir="rtl" className={`${heebo.variable} ${rubik.variable}`}>
       <head>
-        <link rel="privacy-policy" href="https://drsscribe.com/privacy-policy" />
+        <link rel="privacy-policy" href="https://medicalhub.co.il/privacy" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body>

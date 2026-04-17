@@ -70,7 +70,7 @@ export default function ArticlePage() {
         <meta property="og:title" content={article.title} />
         <meta property="og:description" content={article.summary || ''} />
         {article.hero_image_url && <meta property="og:image" content={article.hero_image_url} />}
-        <link rel="canonical" href={`https://drsscribe.com/articles/${slug}`} />
+        <link rel="canonical" href={`https://medicalhub.co.il/articles/${slug}`} />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
