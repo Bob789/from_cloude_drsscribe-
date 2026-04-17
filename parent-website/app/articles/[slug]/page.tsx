@@ -136,10 +136,17 @@ export default function ArticlePage() {
               <div className="arch arch-left"></div>
             </div>
 
-            <div
-              className="article-body"
-              dangerouslySetInnerHTML={{ __html: article.content_html || '' }}
-            />
+            <div className="article-body">
+              {article.hero_image_url && (
+                <div className="article-accent-img">
+                  <img
+                    src={article.hero_image_url}
+                    alt={article.hero_image_alt || article.title}
+                  />
+                </div>
+              )}
+              <div dangerouslySetInnerHTML={{ __html: article.content_html || '' }} />
+            </div>
 
             {article.tags?.length > 0 && (
               <div className="tags-section">

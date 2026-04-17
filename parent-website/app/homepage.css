@@ -256,12 +256,15 @@
   box-shadow: 0 8px 28px rgba(0,51,153,0.12);
 }
 .hp .card-inner { display: flex; gap: 16px; align-items: flex-start; }
-.hp .card-icon {
-  width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+.hp .card-thumb {
+  width: 60px; height: 60px; border-radius: 14px; flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(26,86,219,0.18);
   background: rgba(26,86,219,0.08);
-  border: 1px solid rgba(26,86,219,0.18); font-size: 24px;
+  display: flex; align-items: center; justify-content: center;
 }
+.hp .card-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hp .card-thumb-icon { font-size: 22px; line-height: 1; }
 .hp .card-body { flex: 1; min-width: 0; }
 .hp .card-title {
   font-size: 15px; font-weight: 800; color: #001f6b;

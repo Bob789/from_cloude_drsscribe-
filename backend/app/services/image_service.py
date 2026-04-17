@@ -89,20 +89,99 @@ async def search_pexels(query: str) -> dict | None:
         return None
 
 
+async def generate_with_gpt_image(topic: str, category: str) -> dict | None:
+    """
+    Generate a photorealistic editorial image with gpt-image-1.
+    Prompt is crafted to produce stock-photo look, no AI artifacts.
+    Returns {"url": <data-url or minio-url>, "alt": ..., "attribution": "AI generated"}
+    """
+    try:
+        from openai import AsyncOpenAI
+        from app.config import settings
+        api_key = getattr(settings, 'OPENAI_API_KEY', '')
+        if not api_key:
+            return None
+
+        client = AsyncOpenAI(api_key=api_key)
+
+        # Photorealistic prompt — avoids illustrative / "AI art" look
+        prompt = (
+            f"Photorealistic editorial photograph, natural lighting, "
+            f"shot on Canon EOS R5 with 35mm f/2.8 lens, shallow depth of field, "
+            f"documentary medical photography style. "
+            f"Subject matter: {topic}. Medical domain: {category}. "
+            f"Clean professional composition, warm tones, honest and human. "
+            f"No text, no watermarks, no synthetic or illustrated look."
+        )
+
+        resp = await client.images.generate(
+            model="gpt-image-1",
+            prompt=prompt,
+            size="1024x1024",
+            quality="high",
+            n=1,
+        )
+
+        import base64, uuid, io, httpx
+        from app.services.storage_service import get_minio_client
+
+        b64 = resp.data[0].b64_json
+        if not b64:
+            return None
+
+        image_bytes = base64.b64decode(b64)
+
+        # Upload to MinIO and return a persistent URL
+        try:
+            minio = get_minio_client()
+            object_name = f"article-images/{uuid.uuid4()}.jpg"
+            bucket = getattr(settings, 'MINIO_BUCKET', 'drscribe-audio')
+
+            from minio.commonconfig import ENABLED
+            import minio as minio_pkg
+            from io import BytesIO
+
+            minio.put_object(
+                bucket, object_name,
+                BytesIO(image_bytes), len(image_bytes),
+                content_type="image/jpeg",
+            )
+            # Build public URL (MinIO or S3-compatible)
+            minio_endpoint = getattr(settings, 'MINIO_ENDPOINT', 'minio:9000')
+            url = f"http://{minio_endpoint}/{bucket}/{object_name}"
+            return {"url": url, "alt": topic, "attribution": "AI generated"}
+        except Exception as upload_err:
+            logger.warning("gpt_image_minio_upload_failed", error=str(upload_err))
+            # Fallback: return as base64 data-URL (works but heavy)
+            data_url = f"data:image/jpeg;base64,{b64}"
+            return {"url": data_url, "alt": topic, "attribution": "AI generated"}
+
+    except Exception as e:
+        logger.error("gpt_image_error", error=str(e))
+        return None
+
+
 async def find_hero_image(topic: str, category: str = "general") -> dict | None:
-    """Find a hero image for an article. Tries Unsplash first, then Pexels."""
+    """
+    Find/generate a hero image for an article.
+    Priority: gpt-image-1 → Unsplash → Pexels → generic fallback.
+    """
     search_term = CATEGORY_IMAGE_TERMS.get(category, "medical health")
 
-    # Try Unsplash first
+    # Primary: generate with gpt-image-1 (photorealistic, topic-specific)
+    result = await generate_with_gpt_image(topic, category)
+    if result:
+        return result
+
+    # Fallback 1: Unsplash stock photo
     result = await search_unsplash(f"{search_term} {topic}")
     if result:
         return result
 
-    # Fallback to Pexels
+    # Fallback 2: Pexels
     result = await search_pexels(f"{search_term} {topic}")
     if result:
         return result
 
-    # Fallback to generic medical image
-    result = await search_unsplash("medical healthcare professional")
-    return result
+    # Fallback 3: generic medical image
+    return await search_unsplash("medical healthcare professional")

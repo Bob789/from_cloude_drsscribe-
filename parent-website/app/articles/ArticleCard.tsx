@@ -30,7 +30,12 @@ export default function ArticleCard({ article, activeTag, onTagClick, showDivide
 
       <Link href={`/articles/${article.slug}`} className="article-card" data-testid="article-card">
         <div className="card-inner">
-          <div className="card-icon">{icon}</div>
+          <div className="card-thumb">
+            {article.hero_image_url
+              ? <img src={article.hero_image_url} alt={article.hero_image_alt || article.title} className="card-thumb-img" />
+              : <span className="card-thumb-icon">{icon}</span>
+            }
+          </div>
           <div className="card-body">
             <div className="card-title">{article.title}</div>
             <div className="card-desc">{article.summary}</div>

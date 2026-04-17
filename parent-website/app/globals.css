@@ -684,20 +684,46 @@ h1.hero-title:hover .grad-text {
 .article-card:hover::before { opacity: 1; animation: shimmer 1.5s infinite; }
 .article-card:hover::after  { opacity: 1; }
 
-.article-card:hover .article-img {
+.article-card:hover .card-thumb {
   transform: scale(1.05) rotate(-2deg);
   border-color: rgba(255,255,255,0.2);
 }
 
-.article-img {
+/* Card thumbnail — image or emoji fallback */
+.card-thumb {
   flex-shrink: 0;
   width: 90px; height: 90px;
-  background: rgba(30,38,56,0.5);
-  border: 1px solid var(--border);
   border-radius: 12px;
-  display: flex; alignItems: center; justify-content: center;
-  font-size: 2.2rem;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(30,38,56,0.5);
+  display: flex; align-items: center; justify-content: center;
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s;
+}
+.card-thumb-img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+.card-thumb-icon { font-size: 2.2rem; line-height: 1; }
+
+/* Article page — small accent image, floated, doesn't dominate */
+.article-accent-img {
+  float: right;
+  margin: 4px 0 20px 24px;
+  width: 200px;
+  shape-outside: margin-box;
+}
+.article-accent-img img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.13);
+  display: block;
+}
+@media (max-width: 600px) {
+  .article-accent-img { float: none; width: 100%; margin: 0 0 16px 0; }
+  .article-accent-img img { height: 160px; }
 }
 
 .article-body { flex: 1; }
@@ -1032,7 +1058,8 @@ footer {
   .hero-stats .num { font-size: 1.4rem; }
   .sidebar-card { margin-bottom: 20px; }
   .article-card { flex-direction: column; align-items: flex-start; }
-  .article-img { width: 60px; height: 60px; font-size: 1.5rem; }
+  .card-thumb { width: 60px; height: 60px; }
+  .card-thumb-icon { font-size: 1.5rem; }
 }
 @media (min-width: 821px) {
   /* .hamburger { display: none; } removed to show menu on desktop */
