@@ -45,6 +45,8 @@ class Article(Base):
     generation_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     fact_check_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     fact_check_status: Mapped[FactCheckStatus] = mapped_column(Enum(FactCheckStatus), default=FactCheckStatus.unchecked, server_default="unchecked")
+    quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    quality_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     read_time_minutes: Mapped[int] = mapped_column(Integer, default=5, server_default="5")
     views: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     likes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

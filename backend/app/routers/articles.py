@@ -16,12 +16,33 @@ from app.models.article import (
     ArticleGenerationJob, ArticleJobStatus,
     TrendingTopic,
 )
+from app.models.glossary import GlossaryTerm
 from app.exceptions import NotFoundError
+from app.config import settings
 
 router = APIRouter(tags=["articles"])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _format_review_notes(review: dict) -> str | None:
+    """Format Mistral review result into a readable string for the admin panel."""
+    if review.get("skipped"):
+        return f"Review skipped: {review.get('reason', 'unknown')}"
+    lines = [
+        f"ציון כולל: {review.get('total_score')}/100",
+        f"  מבנה: {review.get('structure_score')}/25",
+        f"  שלמות: {review.get('completeness_score')}/25",
+        f"  אחריות רפואית: {review.get('responsibility_score')}/25",
+        f"  שפה: {review.get('language_score')}/25",
+    ]
+    issues = review.get("issues") or []
+    if issues:
+        lines.append("בעיות: " + " | ".join(issues))
+    strengths = review.get("strengths") or []
+    if strengths:
+        lines.append("חוזקות: " + " | ".join(strengths))
+    return "\n".join(lines)
 
 def _article_card(a: Article) -> dict:
     return {
@@ -301,6 +322,7 @@ async def admin_generate_article(
     """Trigger AI article generation. Runs synchronously for now (fast enough for single articles)."""
     from app.services.content_service import generate_article, generate_seo_metadata
     from app.services.image_service import find_hero_image
+    from app.services.review_service import review_article
 
     # Create job record
     job = ArticleGenerationJob(
@@ -316,7 +338,15 @@ async def admin_generate_article(
         # Step 1: Generate article content
         result = await generate_article(topic, config)
 
-        # Step 2: Generate SEO metadata
+        # Step 2: Quality review by Mistral
+        job.status = ArticleJobStatus.seo_gen  # reuse status slot
+        await db.flush()
+        review = await review_article(
+            title=result.get("title", topic),
+            content_markdown=result.get("content_markdown", ""),
+        )
+
+        # Step 3: Generate SEO metadata
         job.status = ArticleJobStatus.seo_gen
         await db.flush()
         seo = await generate_seo_metadata(result.get("title", ""), result.get("content_markdown", ""))
@@ -357,6 +387,8 @@ async def admin_generate_article(
             generation_prompt=result.get("generation_prompt"),
             read_time_minutes=result.get("read_time_minutes", 5),
             created_by=current_user.id,
+            quality_score=review.get("total_score"),
+            quality_notes=_format_review_notes(review),
         )
         db.add(article)
         await db.flush()
@@ -364,6 +396,29 @@ async def admin_generate_article(
         job.article_id = article.id
         job.status = ArticleJobStatus.done
         job.completed_at = datetime.now(timezone.utc)
+
+        # Auto-publish if quality score meets threshold
+        score = review.get("total_score")
+        if score is not None and not review.get("skipped") and score >= settings.ARTICLE_QUALITY_THRESHOLD:
+            article.status = ArticleStatus.published
+            article.published_at = datetime.now(timezone.utc)
+
+        # Save glossary terms extracted by AI (skip already-existing terms)
+        for item in (result.get("glossary") or []):
+            term_text = (item.get("term") or "").strip()[:200]
+            definition = (item.get("definition") or "").strip()
+            if not term_text or not definition:
+                continue
+            exists = (await db.execute(
+                select(GlossaryTerm).where(GlossaryTerm.term == term_text)
+            )).scalar_one_or_none()
+            if not exists:
+                db.add(GlossaryTerm(
+                    term=term_text,
+                    definition=definition,
+                    category=result.get("category") or None,
+                ))
+
         await db.commit()
 
         return {
@@ -372,6 +427,8 @@ async def admin_generate_article(
             "article_id": str(article.id),
             "title": article.title,
             "slug": article.slug,
+            "quality_score": score,
+            "auto_published": article.status == ArticleStatus.published,
         }
 
     except Exception as e:

@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4.1"
 
+    MISTRAL_API_KEY: str = ""
+    MISTRAL_REVIEW_MODEL: str = "mistral-large-latest"
+    ARTICLE_QUALITY_THRESHOLD: int = 90
+
     MEILISEARCH_URL: str = "http://localhost:7700"
     MEILISEARCH_KEY: str = ""
 
