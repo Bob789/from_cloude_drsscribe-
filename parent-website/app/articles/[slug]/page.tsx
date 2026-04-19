@@ -126,7 +126,7 @@ export default function ArticlePage() {
       const imgHtml = `<div class="article-accent-img"><img src="${src}" alt="${alt}" /></div>`
       // Insert after first </h1>, </h2>, or </h3>; fall back to before first <p>
       if (/<\/h[123]>/i.test(html)) {
-        html = html.replace(/<\/h[123]>/i, (m) => m + imgHtml)
+        html = html.replace(/<\/h[123]>/i, (m: string) => m + imgHtml)
       } else {
         html = html.replace(/<p/i, imgHtml + '<p')
       }
