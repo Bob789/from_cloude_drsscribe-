@@ -74,6 +74,23 @@ def _article_card(a: Article) -> dict:
         "quality_notes": a.quality_notes,
     }
 
+def _article_full(a: Article) -> dict:
+    """Card fields + full content + SEO + source/generation metadata."""
+    data = _article_card(a)
+    data.update({
+        "content_html": a.content_html,
+        "content_markdown": a.content_markdown,
+        "seo_title": a.seo_title,
+        "seo_description": a.seo_description,
+        "seo_keywords": a.seo_keywords or [],
+        "source_topic": a.source_topic,
+        "source_type": a.source_type,
+        "generation_prompt": a.generation_prompt,
+        "fact_check_notes": a.fact_check_notes,
+        "updated_at": a.updated_at.isoformat() if a.updated_at else None,
+    })
+    return data
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBLIC ENDPOINTS (no auth)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -135,9 +152,11 @@ async def get_article(slug: str, preview: str = Query(None), db: AsyncSession = 
         raise NotFoundError("מאמר", slug)
 
     article.views += 1
+    # Snapshot the response BEFORE commit to avoid MissingGreenlet on lazy refresh
+    result = _article_full(article)
     await db.commit()
 
-    return _article_full(article)
+    return result
 
 
 @router.get("/articles/tags")

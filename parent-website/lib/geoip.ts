@@ -115,10 +115,10 @@ const COUNTRY_MAP: Record<string, { lang: LangCode; flag: string }> = {
 
 const DEFAULT_RESULT: GeoResult = { lang: 'en', flag: '🌐', countryCode: 'XX' }
 
-const LS_LANG_KEY        = 'mh_lang'
-const LS_FLAG_KEY        = 'mh_flag'
-const LS_CC_KEY          = 'mh_cc'
-const LS_USER_OVERRIDE   = 'mh_user_override'
+const LS_LANG_KEY        = 'mh_lang_v2'
+const LS_FLAG_KEY        = 'mh_flag_v2'
+const LS_CC_KEY          = 'mh_cc_v2'
+const LS_USER_OVERRIDE   = 'mh_user_override_v2'
 
 // Representative flag for each language (used when user manually picks)
 const LANG_DEFAULT_FLAG: Record<string, string> = {
@@ -159,27 +159,34 @@ export function setLangOverride(lang: LangCode): void {
 }
 
 export async function detectGeo(): Promise<GeoResult> {
-  const cached = getCachedGeo()
   // If user manually selected a language, never override it
   try {
-    if (cached && localStorage.getItem(LS_USER_OVERRIDE) === '1') return cached
+    if (localStorage.getItem(LS_USER_OVERRIDE) === '1') {
+      const cached = getCachedGeo()
+      if (cached) return cached
+    }
   } catch {}
-  if (cached) return cached
 
+  // Call same-origin server endpoint — no mixed-content / CORS issues.
+  // Server reads X-Real-IP from Nginx and resolves country via HTTPS provider,
+  // with Accept-Language as fallback.
   try {
-    const res = await fetch('https://ip-api.com/json/?fields=countryCode', {
-      signal: AbortSignal.timeout(3000),
+    const res = await fetch('/api/geo', {
+      signal: AbortSignal.timeout(4000),
+      cache: 'no-store',
     })
     if (!res.ok) throw new Error('geo fetch failed')
     const data = await res.json()
-    const cc: string = (data.countryCode ?? '').toUpperCase()
-    const mapped = COUNTRY_MAP[cc]
-    const result: GeoResult = mapped
-      ? { lang: mapped.lang, flag: mapped.flag, countryCode: cc }
-      : { ...DEFAULT_RESULT, countryCode: cc }
+    const lang: LangCode = (data.lang ?? 'en') as LangCode
+    const flag: string = data.flag ?? '🌐'
+    const countryCode: string = (data.countryCode ?? 'XX').toUpperCase()
+    const result: GeoResult = { lang, flag, countryCode }
     setCachedGeo(result)
     return result
   } catch {
+    // Last-resort fallback: use cached value if any, otherwise English
+    const cached = getCachedGeo()
+    if (cached) return cached
     return DEFAULT_RESULT
   }
 }

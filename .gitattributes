@@ -1,0 +1,30 @@
+# Normalize line endings: store LF in repo, auto-convert on Windows checkout
+* text=auto eol=lf
+
+# Binaries — no conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.jar binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.pem binary
+*.key binary
+*.p12 binary
+
+# Flutter/Dart generated
+*.g.dart text eol=lf
+*.freezed.dart text eol=lf
