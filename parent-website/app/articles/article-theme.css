@@ -659,13 +659,16 @@
   border-top: 1px solid rgba(0,51,153,0.15);
   background: #fcf9c6;
 }
-.article-main .tag-chip {
+.article-main .tag-chip,
+.tags-section .tag-chip {
   padding: 6px 14px;
   border-radius: 20px;
   background: rgba(26,86,219,0.1);
   color: #1a56db;
   font-size: 13px; font-weight: 600;
   border: 1px solid rgba(26,86,219,0.2);
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ===== LEGAL NOTICE ===== */

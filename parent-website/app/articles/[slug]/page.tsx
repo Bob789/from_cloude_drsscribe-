@@ -297,12 +297,12 @@ export default function ArticlePage() {
 
             {/* COMMENTS SECTION */}
             <div style={{ padding: '0 24px 32px', direction: 'rtl' }}>
-              <h3 style={{ color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: 12 }}>
+              <h3 style={{ color: '#003399', fontSize: 20, fontWeight: 700, marginBottom: 20, borderBottom: '1px solid rgba(0,51,153,0.15)', paddingBottom: 12 }}>
                 {t('comments_title', { n: comments.length })}
               </h3>
 
               {comments.length === 0 && (
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 20 }}>{t('comments_first')}</p>
+                <p style={{ color: '#383ce4', fontSize: 14, marginBottom: 20 }}>{t('comments_first')}</p>
               )}
 
               {comments.map((c: any) => (
