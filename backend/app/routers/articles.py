@@ -14,7 +14,7 @@ from app.models.user import User
 from app.models.article import (
     Article, ArticleStatus, FactCheckStatus,
     ArticleGenerationJob, ArticleJobStatus,
-    TrendingTopic,
+    TrendingTopic, ArticleComment,
 )
 from app.models.glossary import GlossaryTerm
 from app.exceptions import NotFoundError
@@ -25,16 +25,22 @@ router = APIRouter(tags=["articles"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _format_review_notes(review: dict) -> str | None:
+def _format_review_notes(review: dict, attempt: int = 1) -> str | None:
     """Format Mistral review result into a readable string for the admin panel."""
+    if review.get("expired"):
+        return "⚠️ MISTRAL_API_KEY פג תוקף או לא תקין — יש לעדכן ב-.env"
     if review.get("skipped"):
         return f"Review skipped: {review.get('reason', 'unknown')}"
+    prefix = f"[ניסיון {attempt}] " if attempt > 1 else ""
     lines = [
-        f"ציון כולל: {review.get('total_score')}/100",
-        f"  מבנה: {review.get('structure_score')}/25",
-        f"  שלמות: {review.get('completeness_score')}/25",
-        f"  אחריות רפואית: {review.get('responsibility_score')}/25",
-        f"  שפה: {review.get('language_score')}/25",
+        f"{prefix}ציון כולל: {review.get('total_score')}/100",
+        f"  מבנה: {review.get('structure_score')}/15",
+        f"  שלמות: {review.get('completeness_score')}/15",
+        f"  אחריות רפואית: {review.get('responsibility_score')}/15",
+        f"  שפה: {review.get('language_score')}/15",
+        f"  דיוק עובדתי: {review.get('factual_score')}/15",
+        f"  לוגיקה וסגנון: {review.get('logic_style_score')}/15",
+        f"  בטיחות ורלוונטיות: {review.get('safety_score')}/10",
     ]
     issues = review.get("issues") or []
     if issues:
@@ -64,24 +70,9 @@ def _article_card(a: Article) -> dict:
         "fact_check_status": a.fact_check_status.value if a.fact_check_status else "unchecked",
         "published_at": a.published_at.isoformat() if a.published_at else None,
         "created_at": a.created_at.isoformat() if a.created_at else None,
+        "quality_score": a.quality_score,
+        "quality_notes": a.quality_notes,
     }
-
-
-def _article_full(a: Article) -> dict:
-    d = _article_card(a)
-    d.update({
-        "content_html": a.content_html,
-        "content_markdown": a.content_markdown,
-        "seo_title": a.seo_title,
-        "seo_description": a.seo_description,
-        "seo_keywords": a.seo_keywords or [],
-        "source_topic": a.source_topic,
-        "source_type": a.source_type,
-        "fact_check_notes": a.fact_check_notes,
-        "generation_prompt": a.generation_prompt,
-    })
-    return d
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBLIC ENDPOINTS (no auth)
@@ -149,6 +140,24 @@ async def get_article(slug: str, preview: str = Query(None), db: AsyncSession = 
     return _article_full(article)
 
 
+@router.get("/articles/tags")
+async def list_article_tags(db: AsyncSession = Depends(get_db)):
+    """List all unique tags used in published articles with counts."""
+    from sqlalchemy import text
+    result = await db.execute(
+        text("""
+            SELECT tag, COUNT(*) as count
+            FROM articles, jsonb_array_elements_text(tags) AS tag
+            WHERE status = 'published' AND tags IS NOT NULL AND jsonb_array_length(tags) > 0
+            GROUP BY tag
+            ORDER BY count DESC
+            LIMIT 100
+        """)
+    )
+    tags = [{"tag": row[0], "count": int(row[1])} for row in result.all()]
+    return {"tags": tags}
+
+
 @router.post("/articles/{slug}/like")
 async def like_article(slug: str, db: AsyncSession = Depends(get_db)):
     """Like an article."""
@@ -160,6 +169,65 @@ async def like_article(slug: str, db: AsyncSession = Depends(get_db)):
     article.likes += 1
     await db.commit()
     return {"likes": article.likes}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# COMMENTS ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/articles/{slug}/comments")
+async def list_comments(slug: str, db: AsyncSession = Depends(get_db)):
+    """List visible comments for an article."""
+    article = (await db.execute(
+        select(Article).where(Article.slug == slug, Article.status == ArticleStatus.published)
+    )).scalars().first()
+    if not article:
+        raise NotFoundError("מאמר", slug)
+
+    stmt = (
+        select(ArticleComment, User)
+        .join(User, ArticleComment.author_id == User.id)
+        .where(ArticleComment.article_id == article.id, ArticleComment.is_visible == True)
+        .order_by(ArticleComment.created_at.asc())
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "id": str(c.id),
+            "body": c.body,
+            "author_name": u.nickname or u.name,
+            "author_avatar": u.avatar_url,
+            "created_at": c.created_at.isoformat(),
+        }
+        for c, u in rows
+    ]
+
+
+@router.post("/articles/{slug}/comments", status_code=201)
+async def add_comment(
+    slug: str,
+    body: str = Body(..., embed=True, min_length=2, max_length=2000),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add a comment to an article. Requires authentication."""
+    article = (await db.execute(
+        select(Article).where(Article.slug == slug, Article.status == ArticleStatus.published)
+    )).scalars().first()
+    if not article:
+        raise NotFoundError("מאמר", slug)
+
+    comment = ArticleComment(article_id=article.id, author_id=current_user.id, body=body)
+    db.add(comment)
+    await db.commit()
+    await db.refresh(comment)
+    return {
+        "id": str(comment.id),
+        "body": comment.body,
+        "author_name": current_user.nickname or current_user.name,
+        "author_avatar": current_user.avatar_url,
+        "created_at": comment.created_at.isoformat(),
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -322,7 +390,7 @@ async def admin_generate_article(
     """Trigger AI article generation. Runs synchronously for now (fast enough for single articles)."""
     from app.services.content_service import generate_article, generate_seo_metadata
     from app.services.image_service import find_hero_image
-    from app.services.review_service import review_article
+    from app.services.review_service import review_article, fix_article_with_gpt
 
     # Create job record
     job = ArticleGenerationJob(
@@ -338,20 +406,57 @@ async def admin_generate_article(
         # Step 1: Generate article content
         result = await generate_article(topic, config)
 
-        # Step 2: Quality review by Mistral
-        job.status = ArticleJobStatus.seo_gen  # reuse status slot
+        # Step 2: Quality review by Mistral (attempt 1)
+        job.status = ArticleJobStatus.seo_gen
         await db.flush()
         review = await review_article(
             title=result.get("title", topic),
             content_markdown=result.get("content_markdown", ""),
         )
 
+        score = review.get("total_score")
+        retry_attempted = False
+        retry_score = None
+        mistral_expired = review.get("expired", False)
+
+        # Step 2b: If score < threshold and Mistral gave issues → ask GPT to fix, re-review
+        threshold = settings.ARTICLE_QUALITY_THRESHOLD
+        if (
+            score is not None
+            and score < threshold
+            and not review.get("skipped")
+            and review.get("issues")
+        ):
+            retry_attempted = True
+            issues = review.get("issues", [])
+            fixed = await fix_article_with_gpt(
+                title=result.get("title", topic),
+                content_markdown=result.get("content_markdown", ""),
+                issues=issues,
+            )
+            if fixed and fixed.get("content_markdown"):
+                # Merge fixed fields back into result
+                for field in ("title", "subtitle", "content_markdown", "summary"):
+                    if fixed.get(field):
+                        result[field] = fixed[field]
+
+                # Re-review fixed article
+                review2 = await review_article(
+                    title=result.get("title", topic),
+                    content_markdown=result.get("content_markdown", ""),
+                )
+                retry_score = review2.get("total_score")
+                if retry_score is not None and retry_score > (score or 0):
+                    # Use better review result
+                    review = review2
+                    score = retry_score
+
         # Step 3: Generate SEO metadata
         job.status = ArticleJobStatus.seo_gen
         await db.flush()
         seo = await generate_seo_metadata(result.get("title", ""), result.get("content_markdown", ""))
 
-        # Step 3: Find hero image
+        # Step 4: Find hero image
         job.status = ArticleJobStatus.image_search
         await db.flush()
         image = await find_hero_image(topic, result.get("category", "general"))
@@ -363,6 +468,20 @@ async def admin_generate_article(
         while (await db.execute(select(Article).where(Article.slug == slug))).scalars().first():
             slug = f"{base_slug}-{counter}"
             counter += 1
+
+        # Build quality notes — include retry info if applicable
+        quality_notes_parts = [_format_review_notes(review, attempt=2 if retry_attempted else 1)]
+        if retry_attempted:
+            if retry_score is not None and retry_score >= threshold:
+                quality_notes_parts.insert(0, f"✅ תוקן אוטומטית ע\"י GPT | ציון לפני תיקון: {score}/100")
+            else:
+                quality_notes_parts.insert(0, f"⚠️ לא תוקן בהצלחה | ציון לפני תיקון: {score}/100")
+
+        # Mistral key expiry alert
+        if mistral_expired:
+            quality_notes_parts.insert(0, "🔑 MISTRAL_API_KEY פג תוקף — יש לעדכן ב-.env")
+
+        quality_notes = "\n\n".join(quality_notes_parts)
 
         # Create article
         article = Article(
@@ -387,8 +506,8 @@ async def admin_generate_article(
             generation_prompt=result.get("generation_prompt"),
             read_time_minutes=result.get("read_time_minutes", 5),
             created_by=current_user.id,
-            quality_score=review.get("total_score"),
-            quality_notes=_format_review_notes(review),
+            quality_score=score,
+            quality_notes=quality_notes,
         )
         db.add(article)
         await db.flush()
@@ -398,10 +517,11 @@ async def admin_generate_article(
         job.completed_at = datetime.now(timezone.utc)
 
         # Auto-publish if quality score meets threshold
-        score = review.get("total_score")
-        if score is not None and not review.get("skipped") and score >= settings.ARTICLE_QUALITY_THRESHOLD:
+        auto_published = False
+        if score is not None and not review.get("skipped") and score >= threshold:
             article.status = ArticleStatus.published
             article.published_at = datetime.now(timezone.utc)
+            auto_published = True
 
         # Save glossary terms extracted by AI (skip already-existing terms)
         for item in (result.get("glossary") or []):
@@ -428,7 +548,11 @@ async def admin_generate_article(
             "title": article.title,
             "slug": article.slug,
             "quality_score": score,
-            "auto_published": article.status == ArticleStatus.published,
+            "auto_published": auto_published,
+            "retry_attempted": retry_attempted,
+            "retry_score": retry_score,
+            "mistral_expired": mistral_expired,
+            "issues": review.get("issues") or [],
         }
 
     except Exception as e:

@@ -4,10 +4,13 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { FEATURES } from '@/lib/featureFlags'
+import { useLanguage } from '@/components/LanguageProvider'
+import LanguagePicker from '@/components/LanguagePicker'
 
 export default function Header() {
   const pathname   = usePathname() ?? '/'
   const router     = useRouter()
+  const { t } = useLanguage()
   const isArticles = pathname.startsWith('/articles')
   const isForum    = pathname.startsWith('/forum')
   const isExperts  = pathname.startsWith('/experts')
@@ -73,15 +76,15 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const displayName = user?.nickname || user?.name || 'משתמש'
+  const displayName = user?.nickname || user?.name || t('nav_profile')
 
   const authSection = user ? (
     <>
-      <span className="gh-user-greeting">שלום, {displayName}</span>
-      <button onClick={handleLogout} className="gh-btn gh-btn-login" style={{ cursor: 'pointer' }}>יציאה</button>
+      <span className="gh-user-greeting">{t('greeting', { name: displayName })}</span>
+      <button onClick={handleLogout} className="gh-btn gh-btn-login" style={{ cursor: 'pointer' }}>{t('nav_logout')}</button>
     </>
   ) : (
-    <Link href="/login" className="gh-btn gh-btn-login" onClick={close}>התחברות</Link>
+    <Link href="/login" className="gh-btn gh-btn-login" onClick={close}>{t('nav_login')}</Link>
   )
 
   const brandSection = (
@@ -89,7 +92,7 @@ export default function Header() {
       <button
         className="gh-brand gh-brand-btn"
         onClick={() => setProfileOpen(o => !o)}
-        aria-label="תפריט פרופיל"
+        aria-label={t('nav_profile')}
         aria-expanded={profileOpen}
       >
         {user?.avatar_url ? (
@@ -113,18 +116,18 @@ export default function Header() {
               <div className="gh-profile-dropdown-divider" />
               <Link href="/profile" className="gh-profile-dropdown-item" onClick={() => setProfileOpen(false)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3 2.5-5 6-5s6 2 6 5"/></svg>
-                פרופיל
+                {t('nav_profile')}
               </Link>
               <button className="gh-profile-dropdown-item" onClick={() => { handleLogout(); setProfileOpen(false); }}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3"/><path d="M10 11l3-3-3-3"/><path d="M13 8H6"/></svg>
-                יציאה
+                {t('nav_logout')}
               </button>
             </>
           ) : (
             <>
               <Link href="/login" className="gh-profile-dropdown-item" onClick={() => setProfileOpen(false)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 2h3a1 1 0 011 1v10a1 1 0 01-1 1h-3"/><path d="M6 11l-3-3 3-3"/><path d="M3 8h7"/></svg>
-                התחברות
+                {t('nav_login')}
               </Link>
             </>
           )}
@@ -135,13 +138,14 @@ export default function Header() {
 
   const navLinks = (
     <>
-      <Link href="/"         className={`gh-link${isHome     ? ' gh-link-active' : ''}`} onClick={close}>דף הבית</Link>
-      <Link href="/articles" className={`gh-link${isArticles ? ' gh-link-active' : ''}`} onClick={close}>מאמרים</Link>
-      {FEATURES.forum && <Link href="/forum"    className={`gh-link${isForum    ? ' gh-link-active' : ''}`} onClick={close}>פורום</Link>}
-      {FEATURES.experts && <Link href="/experts"  className={`gh-link${isExperts  ? ' gh-link-active' : ''}`} onClick={close}>מומחים</Link>}
-      <Link href="/about"    className="gh-link" onClick={close}>אודות</Link>
+      <Link href="/"         className={`gh-link${isHome     ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_home')}</Link>
+      <Link href="/articles" className={`gh-link${isArticles ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_articles')}</Link>
+      {FEATURES.forum && <Link href="/forum"    className={`gh-link${isForum    ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_forum')}</Link>}
+      {FEATURES.experts && <Link href="/experts"  className={`gh-link${isExperts  ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_experts')}</Link>}
+      <Link href="/about"    className="gh-link" onClick={close}>{t('nav_about')}</Link>
       {authSection}
-      {FEATURES.product && <Link href="/product"  className="gh-btn gh-btn-cta" onClick={close}>Doctor Scribe AI</Link>}
+      <LanguagePicker />
+      {FEATURES.product && <Link href="/product"  className="gh-btn gh-btn-cta" onClick={close}>{t('nav_product')}</Link>}
     </>
   )
 
@@ -162,7 +166,7 @@ export default function Header() {
         <button
           className="gh-hamburger"
           onClick={() => setMenuOpen(o => !o)}
-          aria-label={menuOpen ? 'סגור תפריט' : 'פתח תפריט'}
+          aria-label={menuOpen ? t('nav_about') : t('nav_home')}
           aria-expanded={menuOpen}
         >
           {menuOpen

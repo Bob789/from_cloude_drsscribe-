@@ -3,27 +3,17 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CATEGORY_META, CATEGORY_ICONS } from './articles/constants'
 import { FEATURES } from '@/lib/featureFlags'
+import ArticleCard from './articles/ArticleCard'
+import { useLanguage } from '@/components/LanguageProvider'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
-
-function relativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days === 0) return 'היום'
-  if (days === 1) return 'אתמול'
-  if (days < 7) return `לפני ${days} ימים`
-  const weeks = Math.floor(days / 7)
-  if (days < 30) return weeks === 1 ? 'לפני שבוע' : `לפני ${weeks} שבועות`
-  const months = Math.floor(days / 30)
-  return months === 1 ? 'לפני חודש' : `לפני ${months} חודשים`
-}
 
 export default function HomePage() {
   // Stars rising animation handled globally in StarsCanvas (layout.tsx)
 
   const router = useRouter()
+  const { t } = useLanguage()
   const [width, setWidth] = useState(0)
   const [articles, setArticles] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -88,14 +78,13 @@ export default function HomePage() {
             <div className="hero">
 
               <h1 className="hero-title">
-                כל הידע הרפואי<br />
-                <span>במקום אחד</span>
+                {t('hero_title')}
               </h1>
-              <p className="hero-sub">{FEATURES.forum ? 'מאמרים מקצועיים, פורום פעיל עם מענה רופאים ורשימת מומחים, ידע רפואי מקצועי' : 'מאמרים רפואיים מקצועיים, ידע רפואי מהימן ונגיש'}</p>
+              <p className="hero-sub">{t('hero_subtitle')}</p>
               <div className="hero-search">
                 <input
                   type="text"
-                  placeholder={FEATURES.forum ? "חיפוש מאמרים, דיונים או מומחים..." : "חיפוש מאמרים רפואיים..."}
+                  placeholder={t('filter_search')}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => {
@@ -111,23 +100,23 @@ export default function HomePage() {
                       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
                     }
                   }}
-                ><i className="fas fa-search"></i> חיפוש</button>
+                ><i className="fas fa-search"></i> {t('filter_search')}</button>
               </div>
               <div className="hero-stats">
                 <div className="stat-item">
                   <div className="stat-num">{stats.articles.toLocaleString()}</div>
-                  <div className="stat-lbl">מאמרים מקצועיים</div>
+                  <div className="stat-lbl">{t('stat_articles')}</div>
                 </div>
                 {FEATURES.forum && (
                 <div className="stat-item">
                   <div className="stat-num">{stats.forum_posts.toLocaleString()}</div>
-                  <div className="stat-lbl">דיונים בפורום</div>
+                  <div className="stat-lbl">{t('stat_forum')}</div>
                 </div>
                 )}
                 {FEATURES.experts && (
                 <div className="stat-item">
                   <div className="stat-num">{stats.experts}</div>
-                  <div className="stat-lbl">רופאים ומומחים</div>
+                  <div className="stat-lbl">{t('stat_experts')}</div>
                 </div>
                 )}
               </div>
@@ -145,53 +134,30 @@ export default function HomePage() {
               <div className="articles-col">
                 <div className="section-label">
                   <div className="section-title">
-                    <i className="fas fa-newspaper"></i> מאמרים אחרונים
+                    <i className="fas fa-newspaper"></i> {t('section_latest')}
                   </div>
-                  <span className="section-badge">מגזין בריאות</span>
+                  <span className="section-badge">Medical Hub</span>
                 </div>
 
                 {/* Dynamic Articles */}
-                {articles.map((article, idx) => {
-                  const cat = CATEGORY_META[article.category] || CATEGORY_META.general
-                  const icon = CATEGORY_ICONS[article.category] || '📄'
-                  return (
-                    <div key={article.id}>
-                      {idx > 0 && (
-                        <div className="pipe art-pipe">
-                          <div className="arch arch-right"></div>
-                          <div className="pipe-lines"><div className="pipe-line"></div><div className="pipe-line"></div></div>
-                          <div className="arch arch-left"></div>
-                        </div>
-                      )}
-                      <Link href={`/articles/${article.slug}`} className="article-card">
-                        <div className="card-inner">
-                          <div className="card-thumb">
-                            {article.hero_image_url
-                              ? <img className="card-thumb-img" src={article.hero_image_url} alt={article.hero_image_alt || article.title} />
-                              : <span className="card-thumb-icon">{icon}</span>
-                            }
-                          </div>
-                          <div className="card-body">
-                            <div className="card-title">{article.title}</div>
-                            <div className="card-desc">{article.summary}</div>
-                            <div className="card-meta-row">
-                              <span className="cat-badge" style={{color: cat.color, background: cat.bg, border: `1px solid ${cat.color}44`}}>{cat.label}</span>
-                              <span className="card-time">{article.published_at ? relativeTime(article.published_at) : ''} · {article.read_time_minutes || 5} דקות קריאה</span>
-                            </div>
-                            <span className="read-btn">קרא עוד →</span>
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
-                  )
-                })}
+                <div id="article-page-root">
+                  {articles.map((article, index) => (
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      activeTag=""
+                      onTagClick={(tag) => router.push(`/articles?tag=${encodeURIComponent(tag)}`)}
+                      showDivider={index > 0}
+                    />
+                  ))}
+                </div>
 
                 {/* Editorial box */}
                 <div className="editorial-box">
-                  <span className="ed-tag">✍️ מדורור רופא</span>
-                  <div className="ed-title">רוצים לכתוב עבור Medical Hub?</div>
-                  <div className="ed-text">אם אתם רופאים, אחיות, מטפלים מוסמכים או משתמש שרוצה להגיב למאמרים או פוסטים, הצטרפו לקהילה, השתתפו ותשפיעו.</div>
-                  <Link href="https://drsscribe.com/login" className="ed-btn">התחבר →</Link>
+                  <span className="ed-tag">{t('editorial_tag')}</span>
+                  <div className="ed-title">{t('editorial_title')}</div>
+                  <div className="ed-text">{t('editorial_text')}</div>
+                  <Link href="http://localhost:3001/login" className="ed-btn">{t('editorial_btn')}</Link>
                 </div>
               </div>
 

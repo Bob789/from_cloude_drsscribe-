@@ -713,6 +713,33 @@
 }
 .like-btn:hover { background: rgba(220,38,38,0.15); transform: scale(1.04); }
 
+/* ===== BREADCRUMBS ===== */
+.breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px 20px;
+  background: linear-gradient(to left, #1a2a3a, #2a3a4a);
+  font-size: 12px;
+  direction: rtl;
+}
+.breadcrumb-bar a {
+  color: rgba(255,255,255,0.65);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.breadcrumb-bar a:hover { color: #fcf9c6; text-decoration: underline; }
+.bc-sep { color: rgba(255,255,255,0.3); font-size: 13px; margin: 0 2px; }
+.bc-current {
+  color: rgba(255,255,255,0.9);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
 /* ===== RELATED ARTICLES ===== */
 .related-section {
   padding: 20px 24px 28px;
@@ -774,3 +801,73 @@
   .related-section { padding: 16px 16px 20px; }
   .article-main .page-header-bar { padding: 12px 16px; }
 }
+
+/* ===== GLOSSARY TOOLTIPS ===== */
+.glossary-term {
+  border-bottom: 2px dotted #1a56db;
+  color: inherit;
+  cursor: help;
+  position: relative;
+  display: inline;
+}
+
+.glossary-term::after {
+  content: attr(data-def);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 50%;
+  transform: translateX(50%);
+  background: #001f6b;
+  color: #fff;
+  font-size: 13px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 10px 14px;
+  border-radius: 10px;
+  width: max-content;
+  max-width: 280px;
+  white-space: normal;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255,255,255,0.15);
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  text-align: right;
+  direction: rtl;
+}
+
+.glossary-term::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  right: 50%;
+  transform: translateX(50%);
+  border: 6px solid transparent;
+  border-top-color: #001f6b;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.glossary-term:hover::after,
+.glossary-term:hover::before {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .glossary-term::after {
+    right: auto;
+    left: 0;
+    transform: none;
+    max-width: 220px;
+  }
+  .glossary-term::before {
+    right: auto;
+    left: 10px;
+    transform: none;
+  }
+}
+

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Heebo, Rubik } from 'next/font/google'
 import './globals.css'
 import './homepage.css'
+import './articles/article-theme.css'
 import CookieBanner         from '@/components/CookieBanner'
 
 const heebo = Heebo({
@@ -23,8 +24,8 @@ import Footer               from '@/components/Footer'
 import StarsCanvas          from '@/components/StarsCanvas'
 import AccessibilityWidget  from '@/components/AccessibilityWidget'
 import SiteAnalytics        from '@/components/SiteAnalytics'
-import Link         from 'next/link'
-import { FEATURES } from '@/lib/featureFlags'
+import TopBar               from '@/components/TopBar'
+import { LanguageProvider } from '@/components/LanguageProvider'
 
 export const metadata: Metadata = {
   title: 'Medical Hub + Doctor Scribe AI',
@@ -67,9 +68,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={`${heebo.variable} ${rubik.variable}`}>
+    <html lang="he" dir="rtl" className={`${heebo.variable} ${rubik.variable}`} suppressHydrationWarning>
       <head>
         <link rel="privacy-policy" href="https://medicalhub.co.il/privacy" />
+        <link rel="alternate" type="application/rss+xml" title="Medical Hub — מאמרים רפואיים" href="https://medicalhub.co.il/rss.xml" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         <script
           type="application/ld+json"
@@ -91,32 +93,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        {/* Stars floating in background — fixed, covers all pages */}
-        <StarsCanvas />
+        <LanguageProvider>
+          {/* Stars floating in background — fixed, covers all pages */}
+          <StarsCanvas />
 
-        {/* Yellow top-bar — same on every page */}
-        {FEATURES.product && (
-        <div className="hp-topbar">
-          <Link href="/product">חדש: תמלול רפואי אוטומטי לקליניקות, Doctor Scribe AI ←</Link>
-        </div>
-        )}
+          {/* Yellow top-bar — same on every page */}
+          <TopBar />
 
-        {/* Shared header — blue + gold, auto-detects active page */}
-        <Header />
+          {/* Shared header — blue + gold, auto-detects active page */}
+          <Header />
 
-        {/* Page content — yellow block written ONCE here, applies to all pages */}
-        <main>
-          <div className="site-block">
-            {children}
-          </div>
-        </main>
+          {/* Page content — yellow block written ONCE here, applies to all pages */}
+          <main>
+            <div className="site-block">
+              {children}
+            </div>
+          </main>
 
-        {/* Shared footer */}
-        <Footer />
+          {/* Shared footer */}
+          <Footer />
 
-        <CookieBanner />
-        <AccessibilityWidget />
-        <Suspense fallback={null}><SiteAnalytics /></Suspense>
+          <CookieBanner />
+          <AccessibilityWidget />
+          <Suspense fallback={null}><SiteAnalytics /></Suspense>
+        </LanguageProvider>
       </body>
     </html>
   )

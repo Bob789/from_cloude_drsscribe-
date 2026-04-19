@@ -1,24 +1,12 @@
 # Stage 1: Build Flutter Web
-FROM debian:bookworm-slim AS build
-
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    curl git unzip xz-utils zip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Flutter
-ENV FLUTTER_HOME=/opt/flutter
-ENV PATH="$FLUTTER_HOME/bin:$PATH"
-RUN git clone --depth 1 --branch stable https://github.com/flutter/flutter.git $FLUTTER_HOME \
-    && flutter precache --web \
-    && flutter config --enable-web \
-    && dart --disable-analytics
+# Use pre-built Flutter image to avoid cloning Flutter from GitHub on every build
+FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
 # Install dependencies first (cache layer)
 COPY pubspec.yaml pubspec.lock* ./
-RUN flutter pub get
+RUN flutter pub get --no-example
 
 # Copy source and build
 COPY . .

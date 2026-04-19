@@ -78,6 +78,12 @@ export default function CpanelPage() {
   const [genResult, setGenResult] = useState<any>(null)
   const [_editArticle, _setEditArticle] = useState<any>(null) // reserved for future editor
 
+  // Glossary state
+  const [glossaryTerms, setGlossaryTerms] = useState<any[]>([])
+  const [newTerm, setNewTerm] = useState('')
+  const [newDefinition, setNewDefinition] = useState('')
+  const [glossarySaving, setGlossarySaving] = useState(false)
+
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [analyticsHours, setAnalyticsHours] = useState(24)
@@ -112,7 +118,41 @@ export default function CpanelPage() {
     } catch {}
   }, [token])
 
-  useEffect(() => { if (tab === 'content') fetchContent() }, [tab, fetchContent])
+  useEffect(() => {
+    if (tab === 'content') {
+      fetchContent()
+      fetch(`${API}/glossary`).then(r => r.ok ? r.json() : []).then(setGlossaryTerms).catch(() => {})
+    }
+  }, [tab, fetchContent])
+
+  const addGlossaryTerm = async () => {
+    if (!token || !newTerm.trim() || !newDefinition.trim()) return
+    setGlossarySaving(true)
+    try {
+      const res = await fetch(`${API}/admin/glossary`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ term: newTerm.trim(), definition: newDefinition.trim() }),
+      })
+      if (res.ok) {
+        setNewTerm('')
+        setNewDefinition('')
+        const updated = await fetch(`${API}/glossary`).then(r => r.json())
+        setGlossaryTerms(updated)
+      }
+    } catch {}
+    finally { setGlossarySaving(false) }
+  }
+
+  const deleteGlossaryTerm = async (id: string) => {
+    if (!token) return
+    await fetch(`${API}/admin/glossary/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const updated = await fetch(`${API}/glossary`).then(r => r.json())
+    setGlossaryTerms(updated)
+  }
 
   const generateArticle = async () => {
     if (!token || !genTopic.trim()) return
@@ -824,9 +864,49 @@ export default function CpanelPage() {
                   {generating ? '⏳ מייצר מאמר...' : '✨ ייצר מאמר'}
                 </button>
                 {genResult && (
-                  <span style={{ fontSize: 13, color: genResult.ok ? '#34d399' : '#f87171' }}>
-                    {genResult.ok ? `✓ ${genResult.title}` : `✕ ${genResult.error}`}
-                  </span>
+                  <div style={{ marginTop: 12 }}>
+                    {genResult.ok ? (
+                      <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 10, padding: '12px 16px', fontSize: 13 }}>
+                        <div style={{ fontWeight: 700, color: '#34d399', marginBottom: 6 }}>✓ {genResult.title}</div>
+                        {/* Mistral key expired alert */}
+                        {genResult.mistral_expired && (
+                          <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 8, color: '#f87171', fontWeight: 700 }}>
+                            🔑 MISTRAL_API_KEY פג תוקף — יש לעדכן ב-.env
+                          </div>
+                        )}
+                        {/* Quality score */}
+                        {genResult.quality_score != null && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, color: genResult.quality_score >= 90 ? '#34d399' : genResult.quality_score >= 70 ? '#facc15' : '#f87171', fontSize: 15 }}>
+                              ציון Mistral: {genResult.quality_score}/100
+                            </span>
+                            {genResult.auto_published
+                              ? <span style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>✅ פורסם אוטומטית</span>
+                              : <span style={{ background: 'rgba(250,204,21,0.15)', color: '#facc15', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>⏳ שמור כטיוטה (מתחת לסף {90})</span>
+                            }
+                            {genResult.retry_attempted && (
+                              <span style={{ background: 'rgba(56,189,248,0.1)', color: '#38bdf8', padding: '2px 10px', borderRadius: 20, fontSize: 11 }}>
+                                🔄 תוקן ע&quot;י GPT → ציון חדש: {genResult.retry_score ?? '—'}/100
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Issues from Mistral */}
+                        {genResult.issues?.length > 0 && genResult.quality_score < 90 && (
+                          <div style={{ background: 'rgba(239,68,68,0.07)', borderRadius: 8, padding: '8px 12px' }}>
+                            <div style={{ fontWeight: 700, color: '#f87171', marginBottom: 4, fontSize: 12 }}>⚠️ בעיות שנמצאו ע&quot;י Mistral:</div>
+                            {genResult.issues.map((iss: string, i: number) => (
+                              <div key={i} style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, paddingRight: 8 }}>• {iss}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ color: '#f87171', fontSize: 13, background: 'rgba(239,68,68,0.08)', padding: '8px 12px', borderRadius: 8 }}>
+                        ✕ {genResult.error}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -861,7 +941,7 @@ export default function CpanelPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: 'rgba(56,189,248,0.05)', borderBottom: '1px solid var(--border)' }}>
-                        {['כותרת', 'קטגוריה', 'סטטוס', 'בדיקת עובדות', 'צפיות', 'תאריך', 'פעולות'].map(h => (
+                        {['כותרת', 'קטגוריה', 'סטטוס', 'ציון', 'בדיקת עובדות', 'צפיות', 'תאריך', 'פעולות'].map(h => (
                           <th key={h} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -886,6 +966,21 @@ export default function CpanelPage() {
                             <td style={{ padding: '10px 14px' }}>
                               <span style={{ padding: '2px 10px', borderRadius: 20, background: sc.bg, color: sc.color, fontSize: 11 }}>{statusLabels[a.status] || a.status}</span>
                             </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              {a.quality_score != null ? (
+                                <span
+                                  title={a.quality_notes || ''}
+                                  style={{
+                                    fontWeight: 700, fontSize: 12, cursor: a.quality_notes ? 'help' : 'default',
+                                    color: a.quality_score >= 90 ? '#34d399' : a.quality_score >= 70 ? '#facc15' : '#f87171',
+                                  }}
+                                >
+                                  {a.quality_score}
+                                  {a.quality_notes?.includes('פג תוקף') && ' 🔑'}
+                                  {a.quality_notes?.includes('תוקן') && ' 🔄'}
+                                </span>
+                              ) : <span style={{ color: 'var(--muted)', fontSize: 11 }}>—</span>}
+                            </td>
                             <td style={{ padding: '10px 14px', textAlign: 'center' }}>{fcLabels[a.fact_check_status] || '⬜'}</td>
                             <td style={{ padding: '10px 14px', color: 'var(--muted)' }}>{a.views}</td>
                             <td style={{ padding: '10px 14px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{a.created_at?.substring(0, 10)}</td>
@@ -904,6 +999,57 @@ export default function CpanelPage() {
                   </table>
                 </div>
               )}
+            </div>
+
+            {/* ── Glossary Management ── */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 15 }}>
+                📖 מילון מושגים ({glossaryTerms.length})
+              </div>
+              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Add new term */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <input
+                    type="text"
+                    placeholder="מושג (עברית)..."
+                    value={newTerm}
+                    onChange={e => setNewTerm(e.target.value)}
+                    className="search-input"
+                    style={{ padding: '8px 12px', fontSize: 13, flex: '1 1 140px', minWidth: 100 }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="הגדרה..."
+                    value={newDefinition}
+                    onChange={e => setNewDefinition(e.target.value)}
+                    className="search-input"
+                    style={{ padding: '8px 12px', fontSize: 13, flex: '3 1 240px', minWidth: 180 }}
+                    onKeyDown={e => { if (e.key === 'Enter') addGlossaryTerm() }}
+                  />
+                  <button
+                    onClick={addGlossaryTerm}
+                    disabled={glossarySaving || !newTerm.trim() || !newDefinition.trim()}
+                    className="btn btn-primary"
+                    style={{ padding: '8px 18px', fontSize: 13, opacity: glossarySaving ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                  >
+                    {glossarySaving ? '...' : '+ הוסף'}
+                  </button>
+                </div>
+                {/* Terms list */}
+                {glossaryTerms.length === 0 ? (
+                  <div style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>אין מושגים עדיין</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
+                    {glossaryTerms.map((t: any) => (
+                      <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)' }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: '#38bdf8', whiteSpace: 'nowrap', minWidth: 80 }}>{t.term}</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)', flex: 1, lineHeight: 1.5 }}>{t.definition}</span>
+                        <button onClick={() => deleteGlossaryTerm(t.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 14, padding: '0 4px', flexShrink: 0 }}>🗑</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

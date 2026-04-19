@@ -10,7 +10,7 @@ from app.models.clinic import Clinic
 from app.models.question_template import QuestionTemplate
 from app.models.appointment import Appointment
 from app.models.admin_message import AdminMessage
-from app.models.article import Article
+from app.models.article import Article, ArticleComment
 from app.models.custom_field import CustomField
 from app.models.patient_file import PatientFile
 from app.models.recording_chunk import RecordingChunk
@@ -32,6 +32,7 @@ __all__ = [
     "Appointment",
     "AdminMessage",
     "Article",
+    "ArticleComment",
     "CustomField",
     "PatientFile",
     "RecordingChunk",
