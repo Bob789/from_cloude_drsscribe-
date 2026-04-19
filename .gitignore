@@ -119,6 +119,7 @@ meili_data/
 temp/
 private/
 docs/
+!docs/agent-conversation.md
 keys/
 
 # parent-website
