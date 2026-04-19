@@ -358,7 +358,7 @@ export default function ArticlePage() {
               ) : (
                 <div style={{ marginTop: 20, padding: '16px 20px', background: 'rgba(255,255,255,0.05)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
                   <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>
-                    <Link href="http://localhost:3001/login" style={{ color: '#93c5fd', fontWeight: 600 }}>{t('comment_login_prompt')}</Link>
+                    <Link href={`${process.env.NEXT_PUBLIC_MEDSCRIBE_URL || 'https://app.drsscribe.com'}/login`} style={{ color: '#93c5fd', fontWeight: 600 }}>{t('comment_login_prompt')}</Link>
                     {' '}{t('comment_login_link')}
                   </span>
                 </div>
