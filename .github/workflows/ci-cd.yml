@@ -140,7 +140,7 @@ jobs:
               bash -c "cd /app && PYTHONPATH=/app python -m alembic upgrade head"
 
             echo "=== Restarting services ==="
-            sudo docker-compose -f docker-compose.prod.yml up -d --no-deps backend parent-website frontend
+            sudo docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans --no-deps backend parent-website frontend
             sudo docker-compose -f docker-compose.prod.yml restart nginx
 
             echo "=== Starting ds-platform ==="
