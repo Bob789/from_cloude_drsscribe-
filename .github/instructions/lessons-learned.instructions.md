@@ -31,6 +31,12 @@ description: "Use when debugging errors, fixing bugs, troubleshooting deployment
 - **Tags have no doctor_id column** — isolation requires JOIN: Tag → Summary → Visit → filter `Visit.doctor_id`
 - Full troubleshooting log with detection methods: `docs/troubleshooting.md`
 
+## CSS / Frontend
+
+- **CSS selector לא עובד — בדוק את ה-HTML wrapper**: אם CSS כתוב `.parent .child` והדף לא מכיל `div.parent`, ה-selector לא יתאים לעולם. תמיד לאמת שה-wrapper קיים בפועל ב-JSX לפני כתיבת scoped selector. תיקון: הוסף selector נוסף ישיר (`.tags-section .tag-chip`) במקום להניח שיש wrapper.
+- **טקסט לבן על רקע בהיר**: `color: white` / `rgba(255,255,255,0.5)` בלתי נראה על `background: #fcf9c6` (צהוב). תמיד לבדוק contrast כשמשנים רקע של container. צבעי כותרות מאמר: `#003399` לכותרות, `#383ce4` לטקסט רגיל.
+- **`float` עם `margin-top` גורם לתמונה לרדת**: `margin: 2.6rem 0 20px 24px` על אלמנט floated דוחה אותו כ-41px מתחת לפסקה הראשונה. כדי שתמונה תתחיל בגובה ה-`<p>` הראשון — `margin-top: 0`.
+
 ## nginx
 - **`proxy_pass` עם משתנה ($var) + URI suffix חותך את שאר הנתיב**: כאשר `proxy_pass` מכיל משתנה (`set $upstream ...`) וגם URI suffix (כגון `/drscribe-audio/`), nginx **לא** מחליף את ה-location prefix — הוא שולח רק את ה-suffix לבד, ללא שאר הנתיב. MinIO מקבל `/drscribe-audio/` בלבד ומחזיר `AccessDenied` (list bucket).
   - **שגיאה**: `proxy_pass $minio_upstream/drscribe-audio/;` → MinIO מקבל `/drscribe-audio/` בלי שם הקובץ
