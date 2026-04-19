@@ -113,13 +113,26 @@ export default function ArticlePage() {
     load()
   }, [slug, searchParams])
 
-  // Inject glossary tooltips into article HTML once both are loaded
+  // Inject glossary tooltips + accent image into article HTML once both are loaded
   useEffect(() => {
-    if (article?.content_html && glossary.length > 0) {
-      setProcessedHtml(injectGlossaryTooltips(article.content_html, glossary))
-    } else if (article?.content_html) {
-      setProcessedHtml(article.content_html)
+    if (!article?.content_html) return
+    let html = article.content_html
+
+    // Inject accent image after the first heading so the float starts
+    // alongside the first <p>, not above it
+    if (article.hero_image_url) {
+      const alt = (article.hero_image_alt || article.title || '').replace(/"/g, '&quot;')
+      const src = article.hero_image_url.replace(/"/g, '%22')
+      const imgHtml = `<div class="article-accent-img"><img src="${src}" alt="${alt}" /></div>`
+      // Insert after first </h1>, </h2>, or </h3>; fall back to before first <p>
+      if (/<\/h[123]>/i.test(html)) {
+        html = html.replace(/<\/h[123]>/i, (m) => m + imgHtml)
+      } else {
+        html = html.replace(/<p/i, imgHtml + '<p')
+      }
     }
+
+    setProcessedHtml(glossary.length > 0 ? injectGlossaryTooltips(html, glossary) : html)
   }, [article, glossary])
 
   const handleLike = async () => {
@@ -270,14 +283,6 @@ export default function ArticlePage() {
             </div>
 
             <div className="article-body">
-              {article.hero_image_url && (
-                <div className="article-accent-img">
-                  <img
-                    src={article.hero_image_url}
-                    alt={article.hero_image_alt || article.title}
-                  />
-                </div>
-              )}
               <div dangerouslySetInnerHTML={{ __html: processedHtml || article.content_html || '' }} />
             </div>
 
