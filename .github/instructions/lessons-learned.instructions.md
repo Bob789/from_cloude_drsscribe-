@@ -31,6 +31,23 @@ description: "Use when debugging errors, fixing bugs, troubleshooting deployment
 - **Tags have no doctor_id column** — isolation requires JOIN: Tag → Summary → Visit → filter `Visit.doctor_id`
 - Full troubleshooting log with detection methods: `docs/troubleshooting.md`
 
+## nginx
+- **`proxy_pass` עם משתנה ($var) + URI suffix חותך את שאר הנתיב**: כאשר `proxy_pass` מכיל משתנה (`set $upstream ...`) וגם URI suffix (כגון `/drscribe-audio/`), nginx **לא** מחליף את ה-location prefix — הוא שולח רק את ה-suffix לבד, ללא שאר הנתיב. MinIO מקבל `/drscribe-audio/` בלבד ומחזיר `AccessDenied` (list bucket).
+  - **שגיאה**: `proxy_pass $minio_upstream/drscribe-audio/;` → MinIO מקבל `/drscribe-audio/` בלי שם הקובץ
+  - **תיקון**: להפריד בין rewrite לבין proxy_pass:
+    ```nginx
+    set $minio_upstream http://minio:9000;   # חייב לפני rewrite
+    rewrite ^/media/(.*)$ /drscribe-audio/$1 break;
+    proxy_pass $minio_upstream;              # בלי URI suffix
+    ```
+  - **סדר חשוב**: `set` חייב לבוא לפני `rewrite ... break`, אחרת המשתנה לא מוגדר.
+
+## MinIO
+- **MinIO InvalidAccessKeyId**: Credentials mismatch between `.env` and `docker-compose.yml`.
+- **403 על קבצי מדיה (article-images)**: MinIO bucket פרטי כברירת מחדל — anonymous read חסום. תיקון: `mc anonymous set download local/<bucket>/article-images`
+- **Policies סותרים ב-MinIO**: `article-images/*` (none) + `article-images*` (readonly) — הספציפי יותר מנצח וחוסם. תמיד בדוק `mc anonymous list` לפני דיבוג nginx. ניקוי: `mc anonymous set none .../article-images/` ואז `mc anonymous set download .../article-images`
+- **`minio-init` service**: הוסף לdocker-compose.prod.yml כ-service נפרד עם `image: minio/mc` שרץ פעם אחת אחרי MinIO ומגדיר policies אוטומטית. מחייב healthcheck על service ה-minio.
+
 ## General
 - **500 on endpoints**: First check if the DB table exists (`\dt` in psql), then check model imports in `__init__.py`.
-- **MinIO InvalidAccessKeyId**: Credentials mismatch between `.env` and `docker-compose.yml`.
+- **SQLAlchemy async MissingGreenlet**: גישה לattribute של מודל אחרי `db.commit()` גורמת לשגיאה כי session נסגר. תמיד לשמור snapshot של הנתונים (`result = build_response(obj)`) לפני ה-commit.
