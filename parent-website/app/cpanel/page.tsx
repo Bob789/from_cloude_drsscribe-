@@ -89,14 +89,19 @@ export default function CpanelPage() {
   const [analyticsHours, setAnalyticsHours] = useState(24)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
-  // Dev-only flag: dev-tools router is disabled in production by the backend
-  // (returns 403). Detect by hostname so the tab is hidden on drsscribe.com.
-  const [isDevHost, setIsDevHost] = useState(false)
+  // Dev-tools password (kept only in sessionStorage; sent as X-Dev-Tools-Password header).
+  const [devToolsPassword, setDevToolsPassword] = useState<string>('')
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const h = window.location.hostname
-    setIsDevHost(h === 'localhost' || h === '127.0.0.1' || h.endsWith('.local'))
+    setDevToolsPassword(window.sessionStorage.getItem('devToolsPassword') || '')
   }, [])
+  const saveDevToolsPassword = (val: string) => {
+    setDevToolsPassword(val)
+    if (typeof window !== 'undefined') {
+      if (val) window.sessionStorage.setItem('devToolsPassword', val)
+      else window.sessionStorage.removeItem('devToolsPassword')
+    }
+  }
 
   const fetchAnalytics = useCallback(async (h = analyticsHours) => {
     if (!token) return
@@ -163,21 +168,28 @@ export default function CpanelPage() {
 
   const fetchDevTools = useCallback(async () => {
     if (!token) return
+    if (!devToolsPassword) { setDevToolsError('הזן סיסמת Dev Tools מתחת'); return }
     setDevToolsBusy(true); setDevToolsError(null)
     try {
-      const res = await fetch(`${API}/admin/dev-tools/status`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`${API}/admin/dev-tools/status`, {
+        headers: { Authorization: `Bearer ${token}`, 'X-Dev-Tools-Password': devToolsPassword },
+      })
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
       setDevToolsState(await res.json())
     } catch (e: any) {
       setDevToolsError(e.message || String(e))
     } finally { setDevToolsBusy(false) }
-  }, [token])
+  }, [token, devToolsPassword])
 
   const devToolsAction = async (action: 'start' | 'stop') => {
     if (!token) return
+    if (!devToolsPassword) { setDevToolsError('הזן סיסמת Dev Tools מתחת'); return }
     setDevToolsBusy(true); setDevToolsError(null)
     try {
-      const res = await fetch(`${API}/admin/dev-tools/${action}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`${API}/admin/dev-tools/${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'X-Dev-Tools-Password': devToolsPassword },
+      })
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
       const data = await res.json()
       setDevToolsState(data.state || null)
@@ -186,7 +198,7 @@ export default function CpanelPage() {
     } finally { setDevToolsBusy(false) }
   }
 
-  useEffect(() => { if (tab === 'devtools' && isDevHost) fetchDevTools() }, [tab, fetchDevTools, isDevHost])
+  useEffect(() => { if (tab === 'devtools' && devToolsPassword) fetchDevTools() }, [tab, fetchDevTools, devToolsPassword])
 
   useEffect(() => { if (tab === 'analytics') fetchAnalytics() }, [tab])
 
@@ -535,7 +547,7 @@ export default function CpanelPage() {
             { key: 'errors', label: `🚨 שגיאות (${errors.length})` },
             { key: 'content', label: '📰 תוכן' },
             { key: 'analytics', label: '📊 אנליטיקס' },
-            ...(isDevHost ? [{ key: 'devtools' as Tab, label: '🛠️ Dev Tools' }] : []),
+            { key: 'devtools', label: '🛠️ Dev Tools' },
           ] as { key: Tab; label: string }[]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`btn ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
@@ -1350,8 +1362,33 @@ export default function CpanelPage() {
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>🛠️ Dev Tools — שליטה בקונטיינר</h2>
             <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
               שירות פנימי לצילום מסך ויצירת HTML שטוח של דפי האפליקציה.
-              רץ על פורט 8090. זמין רק בסביבת dev.
+              רץ על פורט 8090. דורש סיסמה ייעודית (DEV_TOOLS_PASSWORD בשרת).
             </p>
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+              <label style={{ fontSize: 13, color: 'var(--muted)' }}>סיסמת Dev Tools:</label>
+              <input
+                type="password"
+                value={devToolsPassword}
+                onChange={(e) => saveDevToolsPassword(e.target.value)}
+                placeholder="DEV_TOOLS_PASSWORD"
+                style={{
+                  padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'rgba(0,0,0,0.3)', color: 'inherit', fontFamily: 'monospace',
+                  minWidth: 220,
+                }}
+              />
+              <button onClick={fetchDevTools} disabled={!devToolsPassword || devToolsBusy}
+                className="btn btn-secondary" style={{ padding: '8px 16px' }}>
+                בדוק חיבור
+              </button>
+              {devToolsPassword && (
+                <button onClick={() => saveDevToolsPassword('')}
+                  className="btn btn-secondary" style={{ padding: '8px 16px' }}>
+                  נקה סיסמה
+                </button>
+              )}
+            </div>
 
             {devToolsError && (
               <div style={{ padding: 12, marginBottom: 16, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 8, color: '#fca5a5', fontSize: 13 }}>
