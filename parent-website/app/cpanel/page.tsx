@@ -89,6 +89,15 @@ export default function CpanelPage() {
   const [analyticsHours, setAnalyticsHours] = useState(24)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
+  // Dev-only flag: dev-tools router is disabled in production by the backend
+  // (returns 403). Detect by hostname so the tab is hidden on drsscribe.com.
+  const [isDevHost, setIsDevHost] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const h = window.location.hostname
+    setIsDevHost(h === 'localhost' || h === '127.0.0.1' || h.endsWith('.local'))
+  }, [])
+
   const fetchAnalytics = useCallback(async (h = analyticsHours) => {
     if (!token) return
     setAnalyticsLoading(true)
@@ -177,7 +186,7 @@ export default function CpanelPage() {
     } finally { setDevToolsBusy(false) }
   }
 
-  useEffect(() => { if (tab === 'devtools') fetchDevTools() }, [tab, fetchDevTools])
+  useEffect(() => { if (tab === 'devtools' && isDevHost) fetchDevTools() }, [tab, fetchDevTools, isDevHost])
 
   useEffect(() => { if (tab === 'analytics') fetchAnalytics() }, [tab])
 
@@ -526,7 +535,7 @@ export default function CpanelPage() {
             { key: 'errors', label: `🚨 שגיאות (${errors.length})` },
             { key: 'content', label: '📰 תוכן' },
             { key: 'analytics', label: '📊 אנליטיקס' },
-            { key: 'devtools', label: '🛠️ Dev Tools' },
+            ...(isDevHost ? [{ key: 'devtools' as Tab, label: '🛠️ Dev Tools' }] : []),
           ] as { key: Tab; label: string }[]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`btn ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
