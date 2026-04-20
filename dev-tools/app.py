@@ -13,9 +13,7 @@ Auth: all capture endpoints require header `X-Dev-Token` matching DEV_TOOLS_TOKE
 """
 from __future__ import annotations
 
-import base64
 import html as html_lib
-import io
 import json
 import os
 import time
@@ -207,18 +205,19 @@ async def capture_flatten(
     pw, browser, context, page, console_errors = await _render_page(req)
     try:
         snapshot = await page.evaluate(FLATTEN_JS)
-        # Also grab a screenshot to embed alongside, useful as a visual reference.
-        png_bytes = await page.screenshot(full_page=True, type="png")
     finally:
         await context.close()
         await browser.close()
         await pw.stop()
 
-    html_doc = _build_flat_html(snapshot, png_bytes)
+    html_doc = _build_flat_html(snapshot)
+    headers = {"Content-Disposition": 'inline; filename="flatten.html"'}
+    if console_errors:
+        headers["X-Console-Errors"] = " | ".join(console_errors[:5])[:1000]
     return Response(
         content=html_doc,
         media_type="text/html; charset=utf-8",
-        headers={"Content-Disposition": 'inline; filename="flatten.html"'},
+        headers=headers,
     )
 
 
@@ -226,110 +225,18 @@ def _esc(s: str) -> str:
     return html_lib.escape(s or "", quote=True)
 
 
-def _style_to_css(style: dict[str, str]) -> str:
-    return ";".join(f"{k}:{v}" for k, v in style.items())
+def _build_flat_html(snapshot: dict[str, Any]) -> str:
+    """Return static flattened HTML from page-evaluated snapshot payload."""
+    html_doc = snapshot.get("html") if isinstance(snapshot, dict) else None
+    if isinstance(html_doc, str) and html_doc.strip():
+        return html_doc
 
-
-def _build_flat_html(snapshot: dict[str, Any], png_bytes: bytes) -> str:
-    """Turn the raw snapshot into one self-contained absolute-positioned HTML page."""
-    doc_w = int(snapshot.get("docW", DEFAULT_VIEWPORT_W))
-    doc_h = int(snapshot.get("docH", DEFAULT_VIEWPORT_H))
-    elements: list[dict[str, Any]] = snapshot.get("elements", [])
-    title = snapshot.get("title", "Captured Page")
-    src_url = snapshot.get("url", "")
-
-    png_b64 = base64.b64encode(png_bytes).decode("ascii")
-
-    parts: list[str] = []
-    parts.append("<!doctype html>")
-    parts.append('<html><head><meta charset="utf-8">')
-    parts.append(f"<title>{_esc(title)} — Flattened</title>")
-    parts.append(
-        "<style>"
-        "body{margin:0;font-family:system-ui,sans-serif;background:#0b0d10;color:#eaeaea}"
-        ".meta{padding:12px 16px;background:#11151a;border-bottom:1px solid #222;"
-        "position:sticky;top:0;z-index:9999;font-size:13px}"
-        ".meta a{color:#8ab4ff}"
-        ".tabs{display:flex;gap:8px;margin-top:8px}"
-        ".tabs button{background:#1a1f26;color:#eaeaea;border:1px solid #2a2f36;"
-        "padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px}"
-        ".tabs button.active{background:#2a4060;border-color:#3a5a80}"
-        ".pane{display:none;position:relative}"
-        ".pane.active{display:block}"
-        f"#stage{{position:relative;width:{doc_w}px;height:{doc_h}px;background:#fff;color:#000;"
-        f"margin:16px auto;box-shadow:0 0 30px rgba(0,0,0,.5);overflow:hidden}}"
-        ".el{position:absolute;box-sizing:border-box;white-space:nowrap;overflow:hidden;"
-        "display:flex;align-items:center;justify-content:flex-start;pointer-events:none;"
-        "text-overflow:ellipsis}"
-        ".el[data-tag=img]{justify-content:center}"
-        f"#screenshot img{{display:block;max-width:100%;width:{doc_w}px;margin:16px auto;"
-        f"box-shadow:0 0 30px rgba(0,0,0,.5)}}"
-        "</style>"
+    title = _esc(str(snapshot.get("title", "Flattened Page")))
+    src_url = _esc(str(snapshot.get("url", "")))
+    return (
+        "<!doctype html><html><head><meta charset=\"utf-8\">"
+        f"<title>{title}</title></head><body>"
+        "<h1>Flatten failed</h1>"
+        f"<p>Source: <a href=\"{src_url}\">{src_url}</a></p>"
+        "</body></html>"
     )
-    parts.append("</head><body>")
-
-    parts.append('<div class="meta">')
-    parts.append(
-        f"<div><strong>Flattened capture</strong> &middot; "
-        f'source: <a href="{_esc(src_url)}" target="_blank">{_esc(src_url)}</a> '
-        f"&middot; size: {doc_w}×{doc_h} &middot; elements: {len(elements)}</div>"
-    )
-    parts.append(
-        '<div class="tabs">'
-        '<button class="active" data-pane="flat">Flat HTML</button>'
-        '<button data-pane="screenshot">Screenshot</button>'
-        "</div>"
-    )
-    parts.append("</div>")
-
-    # --- Flat pane ---
-    parts.append('<div class="pane active" id="flat"><div id="stage">')
-    for idx, el in enumerate(elements):
-        x, y, w, h = int(el.get("x", 0)), int(el.get("y", 0)), int(el.get("w", 0)), int(el.get("h", 0))
-        if x + w < 0 or y + h < 0 or x > doc_w or y > doc_h:
-            continue
-        css = _style_to_css(el.get("style", {}))
-        text = el.get("text", "")
-        aria = el.get("ariaLabel", "")
-        role = el.get("role", "")
-        img_src = el.get("imgSrc")
-        tag = el.get("tag", "div")
-
-        # Force monotonic z-index based on DOM source order so later elements
-        # (typically text/icons inside containers) render on top of earlier
-        # ones (containers/backgrounds).
-        attrs = (
-            f'style="left:{x}px;top:{y}px;width:{w}px;height:{h}px;z-index:{idx};{_esc(css)}" '
-            f'data-tag="{_esc(tag)}"'
-        )
-        if role:
-            attrs += f' role="{_esc(role)}"'
-        if aria:
-            attrs += f' aria-label="{_esc(aria)}"'
-
-        if img_src and img_src.startswith(("http://", "https://", "data:")):
-            parts.append(f'<div class="el" {attrs}><img src="{_esc(img_src)}" '
-                         f'style="width:100%;height:100%;object-fit:contain" alt=""></div>')
-        else:
-            display_text = text or aria or ""
-            parts.append(f'<div class="el" {attrs}>{_esc(display_text)}</div>')
-    parts.append("</div></div>")
-
-    # --- Screenshot pane ---
-    parts.append('<div class="pane" id="screenshot">')
-    parts.append(f'<img src="data:image/png;base64,{png_b64}" alt="Full page screenshot">')
-    parts.append("</div>")
-
-    parts.append(
-        "<script>"
-        "document.querySelectorAll('.tabs button').forEach(b=>{"
-        "b.addEventListener('click',()=>{"
-        "document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));"
-        "document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));"
-        "b.classList.add('active');"
-        "document.getElementById(b.dataset.pane).classList.add('active');"
-        "});});"
-        "</script>"
-    )
-    parts.append("</body></html>")
-    return "".join(parts)

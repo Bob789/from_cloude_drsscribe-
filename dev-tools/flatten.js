@@ -1,83 +1,121 @@
-// Runs inside the target page. Walks the DOM, captures geometry + computed styles,
-// and returns a self-contained absolute-positioned HTML snapshot.
-// Designed primarily for Flutter Web pages where most useful info lives in the
-// rendered DOM (semantics layer + CanvasKit fallback). Works on plain HTML too.
+// Runs inside the target page and returns a single static HTML document that
+// preserves the visual layout by inlining computed styles for every element.
+// It also converts <canvas> to <img data:...> so rendered output is preserved
+// for CanvasKit/Flutter pages.
 (() => {
-  const RELEVANT_STYLES = [
-    'color', 'background-color', 'background-image', 'font-family', 'font-size',
-    'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-align',
-    'text-decoration', 'border-radius', 'box-shadow', 'opacity',
-    'visibility', 'direction'
-  ];
-  // NOTE: We intentionally OMIT properties that affect geometry, since each
-  // element is re-positioned absolutely with explicit left/top/width/height
-  // taken from getBoundingClientRect (which already accounts for them):
-  //   - transform, margin, padding, border (border affects box size)
-  //   - display, overflow, z-index (handled by the wrapper / source order)
+  const ABS_URL_ATTRS = ['src', 'href', 'poster'];
 
-  const html = document.documentElement;
-  const docW = Math.max(html.scrollWidth, window.innerWidth);
-  const docH = Math.max(html.scrollHeight, window.innerHeight);
-
-  const out = [];
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
-  let node = walker.currentNode;
-
-  function isVisible(el, style) {
-    if (style.display === 'none' || style.visibility === 'hidden') return false;
-    if (parseFloat(style.opacity) === 0) return false;
-    return true;
+  function toCssText(style) {
+    const out = [];
+    for (let i = 0; i < style.length; i += 1) {
+      const prop = style[i];
+      const val = style.getPropertyValue(prop);
+      if (!val) continue;
+      const prio = style.getPropertyPriority(prop);
+      out.push(`${prop}:${val}${prio ? ' !important' : ''};`);
+    }
+    return out.join('');
   }
 
-  while (node) {
-    const el = node;
-    const rect = el.getBoundingClientRect();
-    const style = window.getComputedStyle(el);
+  function absolutizeUrl(urlLike) {
+    if (!urlLike) return urlLike;
+    try {
+      return new URL(urlLike, document.baseURI).href;
+    } catch {
+      return urlLike;
+    }
+  }
 
-    if (rect.width > 0 && rect.height > 0 && isVisible(el, style)) {
-      const styleObj = {};
-      for (const prop of RELEVANT_STYLES) {
-        const v = style.getPropertyValue(prop);
-        if (v && v !== 'none' && v !== 'normal' && v !== 'auto' && v !== '0px') {
-          styleObj[prop] = v;
-        }
+  function absolutizeCssUrls(value) {
+    if (!value || value.indexOf('url(') === -1) return value;
+    return value.replace(/url\((['"]?)(.*?)\1\)/g, (m, q, raw) => {
+      const trimmed = (raw || '').trim();
+      if (!trimmed || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('#')) {
+        return m;
       }
+      return `url(${q}${absolutizeUrl(trimmed)}${q})`;
+    });
+  }
 
-      // Capture only direct text (not from children, to avoid duplication)
-      let text = '';
-      for (const child of el.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) {
-          const t = (child.textContent || '').trim();
-          if (t) text += t + ' ';
-        }
-      }
-      text = text.trim();
+  const cloneRoot = document.documentElement.cloneNode(true);
+  const srcEls = document.documentElement.querySelectorAll('*');
+  const dstEls = cloneRoot.querySelectorAll('*');
 
-      // Capture images as src
-      let imgSrc = null;
-      if (el.tagName === 'IMG' && el.src) imgSrc = el.src;
+  for (let i = 0; i < srcEls.length; i += 1) {
+    const src = srcEls[i];
+    const dst = dstEls[i];
+    if (!dst) continue;
 
-      // Capture aria-label / role for Flutter semantics layer
-      const ariaLabel = el.getAttribute('aria-label') || '';
-      const role = el.getAttribute('role') || '';
+    const computed = window.getComputedStyle(src);
+    let cssText = toCssText(computed);
+    cssText = absolutizeCssUrls(cssText);
+    if (cssText) dst.setAttribute('style', cssText);
 
-      if (text || imgSrc || ariaLabel || Object.keys(styleObj).length > 2) {
-        out.push({
-          tag: el.tagName.toLowerCase(),
-          x: Math.round(rect.left + window.scrollX),
-          y: Math.round(rect.top + window.scrollY),
-          w: Math.round(rect.width),
-          h: Math.round(rect.height),
-          text,
-          ariaLabel,
-          role,
-          imgSrc,
-          style: styleObj,
-        });
+    for (const attr of ABS_URL_ATTRS) {
+      if (src.hasAttribute(attr)) {
+        const v = src.getAttribute(attr);
+        if (v) dst.setAttribute(attr, absolutizeUrl(v));
       }
     }
-    node = walker.nextNode();
+
+    if (src.tagName === 'IMG') {
+      const img = src;
+      if (img.currentSrc) dst.setAttribute('src', img.currentSrc);
+    }
+
+    if (src.tagName === 'A') {
+      const anchor = src;
+      if (anchor.href) dst.setAttribute('href', anchor.href);
+    }
+
+    if (src.tagName === 'CANVAS') {
+      try {
+        const canvas = src;
+        const dataUrl = canvas.toDataURL('image/png');
+        const imgEl = document.createElement('img');
+        imgEl.setAttribute('src', dataUrl);
+        imgEl.setAttribute('width', String(canvas.width));
+        imgEl.setAttribute('height', String(canvas.height));
+        imgEl.setAttribute('style', cssText || '');
+        dst.replaceWith(imgEl);
+      } catch {
+        // Keep canvas as-is if export is blocked (e.g. tainted canvas).
+      }
+    }
+
+    if (src.tagName === 'INPUT' || src.tagName === 'TEXTAREA') {
+      const value = src.value;
+      if (typeof value === 'string') dst.setAttribute('value', value);
+    }
+
+    if (src.tagName === 'SELECT') {
+      const selectedIndex = src.selectedIndex;
+      const options = dst.querySelectorAll('option');
+      options.forEach((opt, idx) => {
+        if (idx === selectedIndex) opt.setAttribute('selected', 'selected');
+        else opt.removeAttribute('selected');
+      });
+    }
   }
 
-  return { docW, docH, elements: out, url: location.href, title: document.title };
+  cloneRoot.querySelectorAll('script').forEach((el) => el.remove());
+
+  // External stylesheets are not needed after computed-style inlining.
+  cloneRoot.querySelectorAll('link[rel="stylesheet"]').forEach((el) => el.remove());
+
+  const head = cloneRoot.querySelector('head');
+  if (head) {
+    const metaCharset = document.createElement('meta');
+    metaCharset.setAttribute('charset', 'utf-8');
+    head.prepend(metaCharset);
+  }
+
+  const htmlDoc = `<!doctype html>${cloneRoot.outerHTML}`;
+  return {
+    html: htmlDoc,
+    url: location.href,
+    title: document.title,
+    width: Math.max(document.documentElement.scrollWidth, window.innerWidth),
+    height: Math.max(document.documentElement.scrollHeight, window.innerHeight),
+  };
 })();

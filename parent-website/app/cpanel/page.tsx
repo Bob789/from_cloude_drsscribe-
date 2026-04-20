@@ -89,20 +89,6 @@ export default function CpanelPage() {
   const [analyticsHours, setAnalyticsHours] = useState(24)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
-  // Dev-tools password (kept only in sessionStorage; sent as X-Dev-Tools-Password header).
-  const [devToolsPassword, setDevToolsPassword] = useState<string>('')
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    setDevToolsPassword(window.sessionStorage.getItem('devToolsPassword') || '')
-  }, [])
-  const saveDevToolsPassword = (val: string) => {
-    setDevToolsPassword(val)
-    if (typeof window !== 'undefined') {
-      if (val) window.sessionStorage.setItem('devToolsPassword', val)
-      else window.sessionStorage.removeItem('devToolsPassword')
-    }
-  }
-
   const fetchAnalytics = useCallback(async (h = analyticsHours) => {
     if (!token) return
     setAnalyticsLoading(true)
@@ -133,6 +119,53 @@ export default function CpanelPage() {
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [captureResult, setCaptureResult] = useState<{ kind: 'png' | 'html'; url: string; filename: string } | null>(null)
 
+  const ensureGoogleOAuth = async (): Promise<any | null> => {
+    const w = window as any
+    if (w.google?.accounts?.oauth2) return w.google
+
+    const waitForGoogle = (timeoutMs: number) => new Promise<any | null>((resolve) => {
+      const started = Date.now()
+      const timer = setInterval(() => {
+        if (w.google?.accounts?.oauth2) {
+          clearInterval(timer)
+          resolve(w.google)
+          return
+        }
+        if (Date.now() - started > timeoutMs) {
+          clearInterval(timer)
+          resolve(null)
+        }
+      }, 120)
+    })
+
+    const preloaded = await waitForGoogle(1800)
+    if (preloaded) return preloaded
+
+    let script = document.querySelector('script[data-google-gsi="1"]') as HTMLScriptElement | null
+    if (!script) {
+      script = document.createElement('script')
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.defer = true
+      script.setAttribute('data-google-gsi', '1')
+      document.head.appendChild(script)
+    }
+
+    await new Promise<void>((resolve) => {
+      let resolved = false
+      const finish = () => {
+        if (resolved) return
+        resolved = true
+        resolve()
+      }
+      script!.addEventListener('load', finish, { once: true })
+      script!.addEventListener('error', finish, { once: true })
+      setTimeout(finish, 3500)
+    })
+
+    return await waitForGoogle(2000)
+  }
+
   const runCapture = async (kind: 'screenshot' | 'flatten') => {
     setCaptureBusy(true); setCaptureError(null); setCaptureResult(null)
     try {
@@ -154,11 +187,22 @@ export default function CpanelPage() {
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const ts = new Date().toISOString().replace(/[:.]/g, '-')
+      const filename = kind === 'screenshot' ? `capture-${ts}.png` : `flatten-${ts}.html`
       setCaptureResult({
         kind: kind === 'screenshot' ? 'png' : 'html',
         url,
-        filename: kind === 'screenshot' ? `capture-${ts}.png` : `flatten-${ts}.html`,
+        filename,
       })
+      // Auto-trigger download so the user always gets the file, even if the
+      // preview iframe/img fails to render (e.g. CSP, X-Frame-Options).
+      try {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      } catch { /* preview link still works as fallback */ }
     } catch (e: any) {
       setCaptureError(e.message || String(e))
     } finally {
@@ -168,27 +212,25 @@ export default function CpanelPage() {
 
   const fetchDevTools = useCallback(async () => {
     if (!token) return
-    if (!devToolsPassword) { setDevToolsError('הזן סיסמת Dev Tools מתחת'); return }
     setDevToolsBusy(true); setDevToolsError(null)
     try {
       const res = await fetch(`${API}/admin/dev-tools/status`, {
-        headers: { Authorization: `Bearer ${token}`, 'X-Dev-Tools-Password': devToolsPassword },
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
       setDevToolsState(await res.json())
     } catch (e: any) {
       setDevToolsError(e.message || String(e))
     } finally { setDevToolsBusy(false) }
-  }, [token, devToolsPassword])
+  }, [token])
 
   const devToolsAction = async (action: 'start' | 'stop') => {
     if (!token) return
-    if (!devToolsPassword) { setDevToolsError('הזן סיסמת Dev Tools מתחת'); return }
     setDevToolsBusy(true); setDevToolsError(null)
     try {
       const res = await fetch(`${API}/admin/dev-tools/${action}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'X-Dev-Tools-Password': devToolsPassword },
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
       const data = await res.json()
@@ -198,7 +240,7 @@ export default function CpanelPage() {
     } finally { setDevToolsBusy(false) }
   }
 
-  useEffect(() => { if (tab === 'devtools' && devToolsPassword) fetchDevTools() }, [tab, fetchDevTools, devToolsPassword])
+  useEffect(() => { if (tab === 'devtools') fetchDevTools() }, [tab, fetchDevTools])
 
   useEffect(() => { if (tab === 'analytics') fetchAnalytics() }, [tab])
 
@@ -293,9 +335,9 @@ export default function CpanelPage() {
     setLoginError('')
     setLoginLoading(true)
     try {
-      const google = (window as any).google
+      const google = await ensureGoogleOAuth()
       if (!google?.accounts?.oauth2) {
-        setLoginError('שגיאה בטעינת שירות Google — נסה לרענן את הדף')
+        setLoginError('שגיאה בטעינת שירות Google — בדוק חיבור אינטרנט או חסימת סקריפטים ונסה שוב')
         setLoginLoading(false)
         return
       }
@@ -489,7 +531,7 @@ export default function CpanelPage() {
   if (!token) {
     return (
       <>
-        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" data-google-gsi="1" />
         <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, #0b1020, #060a15)', padding: 24 }}>
           <div style={{ width: '100%', maxWidth: 400, background: 'rgba(18,26,51,0.85)', border: '1px solid var(--border)', borderRadius: 24, padding: 48 }}>
             <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -1362,32 +1404,14 @@ export default function CpanelPage() {
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>🛠️ Dev Tools — שליטה בקונטיינר</h2>
             <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
               שירות פנימי לצילום מסך ויצירת HTML שטוח של דפי האפליקציה.
-              רץ על פורט 8090. דורש סיסמה ייעודית (DEV_TOOLS_PASSWORD בשרת).
+              רץ על פורט 8090.
             </p>
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-              <label style={{ fontSize: 13, color: 'var(--muted)' }}>סיסמת Dev Tools:</label>
-              <input
-                type="password"
-                value={devToolsPassword}
-                onChange={(e) => saveDevToolsPassword(e.target.value)}
-                placeholder="DEV_TOOLS_PASSWORD"
-                style={{
-                  padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)',
-                  background: 'rgba(0,0,0,0.3)', color: 'inherit', fontFamily: 'monospace',
-                  minWidth: 220,
-                }}
-              />
-              <button onClick={fetchDevTools} disabled={!devToolsPassword || devToolsBusy}
+              <button onClick={fetchDevTools} disabled={devToolsBusy}
                 className="btn btn-secondary" style={{ padding: '8px 16px' }}>
                 בדוק חיבור
               </button>
-              {devToolsPassword && (
-                <button onClick={() => saveDevToolsPassword('')}
-                  className="btn btn-secondary" style={{ padding: '8px 16px' }}>
-                  נקה סיסמה
-                </button>
-              )}
             </div>
 
             {devToolsError && (

@@ -5,23 +5,14 @@ Allows admins to start/stop/check the `medscribe-dev-tools` container from the
 cpanel UI without needing terminal access. Uses the Docker SDK against the
 mounted /var/run/docker.sock.
 
-Gated by **two** layers:
-  1. `require_admin` (JWT + role=admin)
-  2. A shared password (`DEV_TOOLS_PASSWORD` env var) sent in the
-     `X-Dev-Tools-Password` header. If the env var is empty/unset, the
-     endpoints are disabled entirely (returns 403).
-
-The old `is_dev` gate was removed so admins can manage the container in
-production too — but only when they know the password.
+Access is gated by `require_admin` (JWT + role=admin).
 """
 from __future__ import annotations
 
-import os
-import secrets
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.config import settings
 from app.middleware.permissions import require_admin
@@ -58,26 +49,6 @@ def _get_docker_client():
         ) from exc
 
 
-def _ensure_password(x_dev_tools_password: str | None) -> None:
-    """Verify the shared dev-tools password.
-
-    The password lives only in the server env (`DEV_TOOLS_PASSWORD`) and is
-    never sent to the client. If unset/empty, all endpoints are disabled.
-    """
-    expected = os.getenv("DEV_TOOLS_PASSWORD", "").strip()
-    if not expected:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Dev-tools control is disabled (DEV_TOOLS_PASSWORD not set on server)",
-        )
-    provided = (x_dev_tools_password or "").strip()
-    if not provided or not secrets.compare_digest(provided, expected):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid dev-tools password",
-        )
-
-
 def _container_state(client) -> dict[str, Any]:
     try:
         c = client.containers.get(CONTAINER_NAME)
@@ -95,9 +66,7 @@ def _container_state(client) -> dict[str, Any]:
 @router.get("/status")
 async def status_endpoint(
     _: User = Depends(require_admin),
-    x_dev_tools_password: str | None = Header(default=None, alias="X-Dev-Tools-Password"),
 ) -> dict[str, Any]:
-    _ensure_password(x_dev_tools_password)
     client = _get_docker_client()
     state = _container_state(client)
     state["image"] = IMAGE_NAME
@@ -108,9 +77,7 @@ async def status_endpoint(
 @router.post("/start")
 async def start_endpoint(
     current_user: User = Depends(require_admin),
-    x_dev_tools_password: str | None = Header(default=None, alias="X-Dev-Tools-Password"),
 ) -> dict[str, Any]:
-    _ensure_password(x_dev_tools_password)
     client = _get_docker_client()
 
     # Already running?
@@ -156,9 +123,7 @@ async def start_endpoint(
 @router.post("/stop")
 async def stop_endpoint(
     current_user: User = Depends(require_admin),
-    x_dev_tools_password: str | None = Header(default=None, alias="X-Dev-Tools-Password"),
 ) -> dict[str, Any]:
-    _ensure_password(x_dev_tools_password)
     client = _get_docker_client()
     state = _container_state(client)
     if not state["exists"] or not state["running"]:
