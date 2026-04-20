@@ -11,10 +11,11 @@ export default function Header() {
   const pathname   = usePathname() ?? '/'
   const router     = useRouter()
   const { t } = useLanguage()
-  const isArticles = pathname.startsWith('/articles')
-  const isForum    = pathname.startsWith('/forum')
-  const isExperts  = pathname.startsWith('/experts')
-  const isHome     = pathname === '/'
+  const isArticles   = pathname.startsWith('/articles')
+  const isForum      = pathname.startsWith('/forum')
+  const isExperts    = pathname.startsWith('/experts')
+  const isSimulation = pathname.startsWith('/simulation')
+  const isHome       = pathname === '/'
   const [menuOpen, setMenuOpen] = useState(false)
   const [user, setUser] = useState<{ name?: string; nickname?: string; avatar_url?: string } | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -140,6 +141,7 @@ export default function Header() {
     <>
       <Link href="/"         className={`gh-link${isHome     ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_home')}</Link>
       <Link href="/articles" className={`gh-link${isArticles ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_articles')}</Link>
+      <Link href="/simulation" className={`gh-link${isSimulation ? ' gh-link-active' : ''}`} onClick={close}>סימולציות</Link>
       {FEATURES.forum && <Link href="/forum"    className={`gh-link${isForum    ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_forum')}</Link>}
       {FEATURES.experts && <Link href="/experts"  className={`gh-link${isExperts  ? ' gh-link-active' : ''}`} onClick={close}>{t('nav_experts')}</Link>}
       <Link href="/about"    className="gh-link" onClick={close}>{t('nav_about')}</Link>
