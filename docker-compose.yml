@@ -34,6 +34,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     volumes:
       - ./backend:/app
       # Allow backend to control dev-tools container from cpanel (dev only)
@@ -122,8 +124,37 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - medscribe-network
+
+  # === MinIO bucket bootstrap (creates bucket + sets public read policy) ===
+  # Runs once on `up`, makes hero images publicly readable so the website's
+  # <img> tags work without signed URLs. Idempotent — safe to re-run.
+  minio-init:
+    image: minio/mc:latest
+    container_name: medscribe-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-changeme_minio_password}
+      S3_BUCKET: ${S3_BUCKET:-drscribe-audio}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$S3_ACCESS_KEY $$S3_SECRET_KEY &&
+      mc mb --ignore-existing local/$$S3_BUCKET &&
+      mc anonymous set download local/$$S3_BUCKET &&
+      echo 'MinIO bucket bootstrap complete: $$S3_BUCKET is publicly readable'
+      "
+    networks:
+      - medscribe-network
+    restart: "no"
 
   # === Meilisearch ===
   meilisearch:
