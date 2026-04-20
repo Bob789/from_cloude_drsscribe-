@@ -10,6 +10,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "0"
     deploy:
       resources:
         limits:
