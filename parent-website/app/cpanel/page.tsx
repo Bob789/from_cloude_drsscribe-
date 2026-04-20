@@ -9,7 +9,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://app.drsscribe.com/api'
 const GOOGLE_CLIENT_ID = '459295230393-a7tahndgdhses9shhg0oue74ealf009r.apps.googleusercontent.com'
 const ADMIN_EMAIL = 'yossil1306@gmail.com'
 
-type Tab = 'stats' | 'users' | 'messages' | 'errors' | 'content' | 'analytics'
+type Tab = 'stats' | 'users' | 'messages' | 'errors' | 'content' | 'analytics' | 'devtools'
 
 function useAdminData(token: string | null) {
   const [stats, setStats] = useState<any>(null)
@@ -100,6 +100,84 @@ export default function CpanelPage() {
     } catch {}
     finally { setAnalyticsLoading(false) }
   }, [token, analyticsHours])
+
+  // Dev Tools state
+  const [devToolsState, setDevToolsState] = useState<any>(null)
+  const [devToolsBusy, setDevToolsBusy] = useState(false)
+  const [devToolsError, setDevToolsError] = useState<string | null>(null)
+
+  // Capture form state
+  const [captureUrl, setCaptureUrl] = useState('http://localhost/he')
+  const [captureFullPage, setCaptureFullPage] = useState(true)
+  const [captureWaitMs, setCaptureWaitMs] = useState(2500)
+  const [captureViewportW, setCaptureViewportW] = useState(1440)
+  const [captureViewportH, setCaptureViewportH] = useState(900)
+  const [captureUseAuth, setCaptureUseAuth] = useState(false)
+  const [captureLocale, setCaptureLocale] = useState('he-IL')
+  const [devToolsToken, setDevToolsToken] = useState('dev-token-change-me')
+  const [captureBusy, setCaptureBusy] = useState(false)
+  const [captureError, setCaptureError] = useState<string | null>(null)
+  const [captureResult, setCaptureResult] = useState<{ kind: 'png' | 'html'; url: string; filename: string } | null>(null)
+
+  const runCapture = async (kind: 'screenshot' | 'flatten') => {
+    setCaptureBusy(true); setCaptureError(null); setCaptureResult(null)
+    try {
+      const body: any = {
+        url: captureUrl,
+        full_page: captureFullPage,
+        wait_ms: captureWaitMs,
+        locale: captureLocale,
+        viewport_width: captureViewportW,
+        viewport_height: captureViewportH,
+      }
+      if (captureUseAuth && token) body.auth_token = token
+      const res = await fetch(`/cpanel/api/capture?kind=${kind}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const ts = new Date().toISOString().replace(/[:.]/g, '-')
+      setCaptureResult({
+        kind: kind === 'screenshot' ? 'png' : 'html',
+        url,
+        filename: kind === 'screenshot' ? `capture-${ts}.png` : `flatten-${ts}.html`,
+      })
+    } catch (e: any) {
+      setCaptureError(e.message || String(e))
+    } finally {
+      setCaptureBusy(false)
+    }
+  }
+
+  const fetchDevTools = useCallback(async () => {
+    if (!token) return
+    setDevToolsBusy(true); setDevToolsError(null)
+    try {
+      const res = await fetch(`${API}/admin/dev-tools/status`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+      setDevToolsState(await res.json())
+    } catch (e: any) {
+      setDevToolsError(e.message || String(e))
+    } finally { setDevToolsBusy(false) }
+  }, [token])
+
+  const devToolsAction = async (action: 'start' | 'stop') => {
+    if (!token) return
+    setDevToolsBusy(true); setDevToolsError(null)
+    try {
+      const res = await fetch(`${API}/admin/dev-tools/${action}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+      const data = await res.json()
+      setDevToolsState(data.state || null)
+    } catch (e: any) {
+      setDevToolsError(e.message || String(e))
+    } finally { setDevToolsBusy(false) }
+  }
+
+  useEffect(() => { if (tab === 'devtools') fetchDevTools() }, [tab, fetchDevTools])
 
   useEffect(() => { if (tab === 'analytics') fetchAnalytics() }, [tab])
 
@@ -448,6 +526,7 @@ export default function CpanelPage() {
             { key: 'errors', label: `🚨 שגיאות (${errors.length})` },
             { key: 'content', label: '📰 תוכן' },
             { key: 'analytics', label: '📊 אנליטיקס' },
+            { key: 'devtools', label: '🛠️ Dev Tools' },
           ] as { key: Tab; label: string }[]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`btn ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
@@ -1253,6 +1332,245 @@ export default function CpanelPage() {
                 אין נתוני אנליטיקס עדיין. המידע יצטבר כשמבקרים ייכנסו לאתר.
               </div>
             )}
+          </div>
+        )}
+
+        {/* ══ DEV TOOLS ══ */}
+        {tab === 'devtools' && (
+          <div className="card" style={{ padding: 24 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>🛠️ Dev Tools — שליטה בקונטיינר</h2>
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
+              שירות פנימי לצילום מסך ויצירת HTML שטוח של דפי האפליקציה.
+              רץ על פורט 8090. זמין רק בסביבת dev.
+            </p>
+
+            {devToolsError && (
+              <div style={{ padding: 12, marginBottom: 16, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 8, color: '#fca5a5', fontSize: 13 }}>
+                ❌ {devToolsError}
+              </div>
+            )}
+
+            {devToolsState && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
+                <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>מצב</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: devToolsState.running ? '#34d399' : '#9ca3af' }}>
+                    {devToolsState.running ? '● פועל' : '○ מושבת'}
+                  </div>
+                </div>
+                <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>סטטוס</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{devToolsState.status || '—'}</div>
+                </div>
+                <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>פורט</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{devToolsState.host_port || 8090}</div>
+                </div>
+                {devToolsState.id && (
+                  <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Container ID</div>
+                    <div style={{ fontSize: 13, fontFamily: 'monospace' }}>{devToolsState.id}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => devToolsAction('start')}
+                disabled={devToolsBusy || devToolsState?.running}
+                className="btn"
+                style={{
+                  padding: '12px 24px',
+                  background: devToolsState?.running ? 'rgba(255,255,255,0.05)' : '#10b981',
+                  color: devToolsState?.running ? 'var(--muted)' : 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  cursor: (devToolsBusy || devToolsState?.running) ? 'not-allowed' : 'pointer',
+                  opacity: (devToolsBusy || devToolsState?.running) ? 0.5 : 1,
+                }}
+              >
+                ▶ {devToolsState?.exists ? 'הפעל' : 'צור והפעל'}
+              </button>
+              <button
+                onClick={() => devToolsAction('stop')}
+                disabled={devToolsBusy || !devToolsState?.running}
+                className="btn"
+                style={{
+                  padding: '12px 24px',
+                  background: !devToolsState?.running ? 'rgba(255,255,255,0.05)' : '#ef4444',
+                  color: !devToolsState?.running ? 'var(--muted)' : 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  cursor: (devToolsBusy || !devToolsState?.running) ? 'not-allowed' : 'pointer',
+                  opacity: (devToolsBusy || !devToolsState?.running) ? 0.5 : 1,
+                }}
+              >
+                ■ כבה
+              </button>
+              <button
+                onClick={fetchDevTools}
+                disabled={devToolsBusy}
+                className="btn btn-secondary"
+                style={{ padding: '12px 24px' }}
+              >
+                🔄 רענן
+              </button>
+            </div>
+
+            {devToolsBusy && (
+              <div style={{ marginTop: 16, color: 'var(--muted)', fontSize: 13 }}>טוען...</div>
+            )}
+
+            <div style={{ marginTop: 32, padding: 20, background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 10 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📸 צילום דף / שטוח HTML</h3>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+                הזיני URL מלא של הדף שתרצי לצלם (Frontend, Parent-website, או כל אתר חיצוני). הקונטיינר ייפתח Chromium, יטען את הדף, ויחזיר PNG או קובץ HTML עצמאי.
+              </p>
+
+              <div style={{ display: 'grid', gap: 12 }}>
+                <label style={{ display: 'block' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>URL מלא של הדף</div>
+                  <input
+                    type="text"
+                    value={captureUrl}
+                    onChange={e => setCaptureUrl(e.target.value)}
+                    placeholder="http://localhost/he או https://drsscribe.com/he"
+                    style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#eaeaea', fontSize: 14, fontFamily: 'monospace' }}
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                    💡 דוגמאות: <code>http://localhost/he</code> (Flutter) · <code>http://parent-website:3000/cpanel</code> (Next.js פנימי) · <code>https://drsscribe.com/he/dashboard</code> (חיצוני)
+                  </div>
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                  <label>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Preset מכשיר</div>
+                    <select
+                      onChange={e => {
+                        const v = e.target.value
+                        if (v === 'mobile') { setCaptureViewportW(390); setCaptureViewportH(844) }
+                        else if (v === 'tablet') { setCaptureViewportW(820); setCaptureViewportH(1180) }
+                        else if (v === 'laptop') { setCaptureViewportW(1366); setCaptureViewportH(768) }
+                        else if (v === 'desktop') { setCaptureViewportW(1920); setCaptureViewportH(1080) }
+                        else if (v === 'wide') { setCaptureViewportW(2560); setCaptureViewportH(1440) }
+                      }}
+                      defaultValue=""
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#eaeaea', fontSize: 13 }}
+                    >
+                      <option value="">בחר/י...</option>
+                      <option value="mobile">📱 Mobile (390×844)</option>
+                      <option value="tablet">📱 Tablet (820×1180)</option>
+                      <option value="laptop">💻 Laptop (1366×768)</option>
+                      <option value="desktop">🖥 Desktop (1920×1080)</option>
+                      <option value="wide">🖥 Wide (2560×1440)</option>
+                    </select>
+                  </label>
+                  <label>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>רוחב Viewport</div>
+                    <input type="number" value={captureViewportW} onChange={e => setCaptureViewportW(Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#eaeaea', fontSize: 13 }} />
+                  </label>
+                  <label>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>גובה Viewport (לא משפיע על דף מלא)</div>
+                    <input type="number" value={captureViewportH} onChange={e => setCaptureViewportH(Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#eaeaea', fontSize: 13 }} />
+                  </label>
+                  <label>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>המתן (ms) אחרי טעינה</div>
+                    <input type="number" value={captureWaitMs} onChange={e => setCaptureWaitMs(Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#eaeaea', fontSize: 13 }} />
+                  </label>
+                  <label>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>DEV_TOOLS_TOKEN</div>
+                    <input type="text" value={devToolsToken} onChange={e => setDevToolsToken(e.target.value)} style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#eaeaea', fontSize: 13, fontFamily: 'monospace' }} />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={captureFullPage} onChange={e => setCaptureFullPage(e.target.checked)} />
+                    <span>צלם דף מלא (עם גלילה). ללא — רק viewport גלוי.</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={captureUseAuth} onChange={e => setCaptureUseAuth(e.target.checked)} />
+                    <span>הזרק את ה-JWT שלי (לדפים מאובטחים)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>שפה:</span>
+                    <select value={captureLocale} onChange={e => setCaptureLocale(e.target.value)} style={{ padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, color: '#eaeaea', fontSize: 12 }}>
+                      <option value="he-IL">🇮🇱 עברית</option>
+                      <option value="en-US">🇺🇸 English</option>
+                      <option value="de-DE">🇩🇪 Deutsch</option>
+                      <option value="fr-FR">🇫🇷 Français</option>
+                      <option value="es-ES">🇪🇸 Español</option>
+                      <option value="pt-PT">🇵🇹 Português</option>
+                      <option value="it-IT">🇮🇹 Italiano</option>
+                      <option value="ko-KR">🇰🇷 한국어</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+                  <button
+                    onClick={() => runCapture('screenshot')}
+                    disabled={captureBusy || !devToolsState?.running || !captureUrl}
+                    style={{ padding: '10px 22px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: (captureBusy || !devToolsState?.running) ? 'not-allowed' : 'pointer', opacity: (captureBusy || !devToolsState?.running) ? 0.5 : 1 }}
+                  >
+                    📸 צלם PNG
+                  </button>
+                  <button
+                    onClick={() => runCapture('flatten')}
+                    disabled={captureBusy || !devToolsState?.running || !captureUrl}
+                    style={{ padding: '10px 22px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: (captureBusy || !devToolsState?.running) ? 'not-allowed' : 'pointer', opacity: (captureBusy || !devToolsState?.running) ? 0.5 : 1 }}
+                  >
+                    📄 שטוח ל-HTML
+                  </button>
+                  {!devToolsState?.running && (
+                    <span style={{ fontSize: 12, color: '#fbbf24', alignSelf: 'center' }}>⚠️ הפעילי קודם את הקונטיינר (כפתור ▶ למעלה)</span>
+                  )}
+                </div>
+
+                {captureBusy && <div style={{ color: 'var(--muted)', fontSize: 13 }}>⏳ מצלם... (יכול לקחת 5-15 שניות)</div>}
+
+                {captureError && (
+                  <div style={{ padding: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 8, color: '#fca5a5', fontSize: 13 }}>
+                    ❌ {captureError}
+                  </div>
+                )}
+
+                {captureResult && (
+                  <div style={{ padding: 16, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#34d399', fontWeight: 700 }}>✅ הצילום מוכן</span>
+                      <a href={captureResult.url} download={captureResult.filename} style={{ padding: '6px 14px', background: '#10b981', color: 'white', borderRadius: 6, textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                        ⬇ הורד {captureResult.filename}
+                      </a>
+                      <a href={captureResult.url} target="_blank" rel="noreferrer" style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.1)', color: '#eaeaea', borderRadius: 6, textDecoration: 'none', fontSize: 13 }}>
+                        🔗 פתח בטאב חדש
+                      </a>
+                    </div>
+                    {captureResult.kind === 'png' ? (
+                      <img src={captureResult.url} alt="capture" style={{ maxWidth: '100%', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }} />
+                    ) : (
+                      <iframe src={captureResult.url} style={{ width: '100%', height: 600, border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, background: 'white' }} />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <details style={{ marginTop: 16 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 13, color: 'var(--muted)' }}>📖 שימוש מ-curl (מתקדם)</summary>
+              <pre style={{ marginTop: 8, padding: 12, background: 'rgba(0,0,0,0.3)', borderRadius: 6, overflowX: 'auto', fontSize: 12, color: '#e5e7eb' }}>
+{`curl -X POST http://localhost:8090/capture/screenshot \\
+  -H "X-Dev-Token: ${devToolsToken}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"${captureUrl}","full_page":${captureFullPage}}' \\
+  -o page.png
+
+# מדריך מלא: docs/DEV_TOOLS_GUIDE.md`}
+              </pre>
+            </details>
           </div>
         )}
 

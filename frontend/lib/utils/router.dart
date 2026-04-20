@@ -14,6 +14,7 @@ import 'package:medscribe_ai/screens/admin/users_screen.dart';
 import 'package:medscribe_ai/screens/admin/audit_screen.dart';
 import 'package:medscribe_ai/screens/admin/activity_screen.dart';
 import 'package:medscribe_ai/screens/admin/reports_screen.dart';
+import 'package:medscribe_ai/screens/admin/dev_tools_screen.dart';
 import 'package:medscribe_ai/screens/manual_note_screen.dart';
 import 'package:medscribe_ai/screens/question_templates_screen.dart';
 import 'package:medscribe_ai/screens/appointments_screen.dart';
@@ -41,23 +42,62 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
-          GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
-          GoRoute(path: '/patients', builder: (context, state) => const PatientsScreen()),
-          GoRoute(path: '/patients/new', builder: (context, state) => const PatientFormScreen()),
-          GoRoute(path: '/patients/:id', builder: (context, state) => PatientProfileScreen(patientId: state.pathParameters['id']!)),
-          GoRoute(path: '/patients/:id/edit', builder: (context, state) => PatientFormScreen(patientId: state.pathParameters['id'])),
-          GoRoute(path: '/recording', builder: (context, state) => const RecordingScreen()),
-          GoRoute(path: '/manual-note', builder: (context, state) => const ManualNoteScreen()),
-          GoRoute(path: '/question-templates', builder: (context, state) => const QuestionTemplatesScreen()),
-          GoRoute(path: '/appointments', builder: (context, state) => const AppointmentsScreen()),
-          GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
-          GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
-          GoRoute(path: '/help', builder: (context, state) => const HelpScreen()),
-          GoRoute(path: '/help/:category', builder: (context, state) => HelpDetailScreen(category: state.pathParameters['category']!)),
-          GoRoute(path: '/admin', builder: (context, state) => const AdminUsersScreen()),
-          GoRoute(path: '/admin/audit', builder: (context, state) => const AuditScreen()),
-          GoRoute(path: '/admin/activity', builder: (context, state) => const ActivityScreen()),
-          GoRoute(path: '/admin/reports', builder: (context, state) => const ReportsScreen()),
+          GoRoute(
+              path: '/dashboard',
+              builder: (context, state) => const DashboardScreen()),
+          GoRoute(
+              path: '/patients',
+              builder: (context, state) => const PatientsScreen()),
+          GoRoute(
+              path: '/patients/new',
+              builder: (context, state) => const PatientFormScreen()),
+          GoRoute(
+              path: '/patients/:id',
+              builder: (context, state) =>
+                  PatientProfileScreen(patientId: state.pathParameters['id']!)),
+          GoRoute(
+              path: '/patients/:id/edit',
+              builder: (context, state) =>
+                  PatientFormScreen(patientId: state.pathParameters['id'])),
+          GoRoute(
+              path: '/recording',
+              builder: (context, state) => const RecordingScreen()),
+          GoRoute(
+              path: '/manual-note',
+              builder: (context, state) => const ManualNoteScreen()),
+          GoRoute(
+              path: '/question-templates',
+              builder: (context, state) => const QuestionTemplatesScreen()),
+          GoRoute(
+              path: '/appointments',
+              builder: (context, state) => const AppointmentsScreen()),
+          GoRoute(
+              path: '/search',
+              builder: (context, state) => const SearchScreen()),
+          GoRoute(
+              path: '/settings',
+              builder: (context, state) => const SettingsScreen()),
+          GoRoute(
+              path: '/help', builder: (context, state) => const HelpScreen()),
+          GoRoute(
+              path: '/help/:category',
+              builder: (context, state) => HelpDetailScreen(
+                  category: state.pathParameters['category']!)),
+          GoRoute(
+              path: '/admin',
+              builder: (context, state) => const AdminUsersScreen()),
+          GoRoute(
+              path: '/admin/audit',
+              builder: (context, state) => const AuditScreen()),
+          GoRoute(
+              path: '/admin/activity',
+              builder: (context, state) => const ActivityScreen()),
+          GoRoute(
+              path: '/admin/reports',
+              builder: (context, state) => const ReportsScreen()),
+          GoRoute(
+              path: '/admin/dev-tools',
+              builder: (context, state) => const DevToolsScreen()),
         ],
       ),
     ],

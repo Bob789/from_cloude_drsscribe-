@@ -482,7 +482,20 @@
     "visits": "Besuche",
     "transcriptions": "Transkriptionen",
     "summaries": "Zusammenfassungen",
-    "doctor_stats": "Statistiken nach Arzt"
+    "doctor_stats": "Statistiken nach Arzt",
+    "dev_tools_title": "Dev Tools",
+    "dev_tools_running": "Läuft",
+    "dev_tools_stopped": "Gestoppt",
+    "dev_tools_status": "Status: {status}",
+    "dev_tools_port": "Port: {port}",
+    "dev_tools_container_id": "Container-ID: {id}",
+    "dev_tools_start": "Starten",
+    "dev_tools_create": "Erstellen & Starten",
+    "dev_tools_stop": "Stoppen",
+    "dev_tools_refresh": "Aktualisieren",
+    "dev_tools_action_ok": "Erledigt: {action}",
+    "dev_tools_info_title": "Was ist das?",
+    "dev_tools_info_body": "Internes Tool für Seiten-Screenshots und Flat-HTML-Capture zum Debuggen. Nur in Dev-Umgebung, läuft auf Port 8090."
   },
   "error": {
     "session_expired": "Sitzung abgelaufen",

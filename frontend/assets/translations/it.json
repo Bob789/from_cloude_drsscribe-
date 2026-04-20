@@ -482,7 +482,20 @@
     "visits": "Visite",
     "transcriptions": "Trascrizioni",
     "summaries": "Riepiloghi",
-    "doctor_stats": "Statistiche per Medico"
+    "doctor_stats": "Statistiche per Medico",
+    "dev_tools_title": "Strumenti di sviluppo",
+    "dev_tools_running": "In esecuzione",
+    "dev_tools_stopped": "Fermato",
+    "dev_tools_status": "Stato: {status}",
+    "dev_tools_port": "Porta: {port}",
+    "dev_tools_container_id": "ID contenitore: {id}",
+    "dev_tools_start": "Avvia",
+    "dev_tools_create": "Crea e avvia",
+    "dev_tools_stop": "Ferma",
+    "dev_tools_refresh": "Aggiorna",
+    "dev_tools_action_ok": "Fatto: {action}",
+    "dev_tools_info_title": "Cos'è questo?",
+    "dev_tools_info_body": "Strumento interno per screenshot e HTML piatto per il debug. Solo ambiente dev, porta 8090."
   },
   "languages": {
     "en": "English",

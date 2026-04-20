@@ -482,7 +482,20 @@
     "visits": "ביקורים",
     "transcriptions": "תמלולים",
     "summaries": "סיכומים",
-    "doctor_stats": "סטטיסטיקת רופאים"
+    "doctor_stats": "סטטיסטיקת רופאים",
+    "dev_tools_title": "כלי פיתוח (Dev Tools)",
+    "dev_tools_running": "פועל",
+    "dev_tools_stopped": "מושבת",
+    "dev_tools_status": "סטטוס: {status}",
+    "dev_tools_port": "פורט: {port}",
+    "dev_tools_container_id": "מזהה קונטיינר: {id}",
+    "dev_tools_start": "הפעל",
+    "dev_tools_create": "צור והפעל",
+    "dev_tools_stop": "כבה",
+    "dev_tools_refresh": "רענן",
+    "dev_tools_action_ok": "בוצע: {action}",
+    "dev_tools_info_title": "מה זה?",
+    "dev_tools_info_body": "כלי פנימי לצילום עמודים ויצירת HTML שטוח לדיבאג. זמין רק בסביבת dev, רץ על פורט 8090."
   },
   "error": {
     "session_expired": "תוקף ההפעלה פג",

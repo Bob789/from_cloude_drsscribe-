@@ -320,20 +320,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     final iconColor = isSelected
         ? ext.selectedNavIconColor
         : isHovered
-        ? AppColors.textSecondary
-        : AppColors.textMuted;
-    final textColor = isSelected
-        ? ext.selectedNavTextColor
-        : AppColors.textSecondary;
+            ? AppColors.textSecondary
+            : AppColors.textMuted;
+    final textColor =
+        isSelected ? ext.selectedNavTextColor : AppColors.textSecondary;
 
     Widget navContent = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 14, vertical: 12),
       decoration: isSelected ? ext.selectedNavDecoration : null,
       child: Row(
-        mainAxisAlignment: compact
-            ? MainAxisAlignment.center
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            compact ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           Icon(item.icon, size: 22, color: iconColor),
           if (!compact) ...[
@@ -417,9 +415,8 @@ class _AppShellState extends ConsumerState<AppShell> {
     Widget content = Padding(
       padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 14, vertical: 10),
       child: Row(
-        mainAxisAlignment: compact
-            ? MainAxisAlignment.center
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            compact ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: color),
           if (!compact && label.isNotEmpty) ...[
@@ -678,26 +675,29 @@ class _MessagesDialogState extends State<_MessagesDialog> {
   InputDecoration _inputDeco(
     String label, {
     bool alignTop = false,
-  }) => InputDecoration(
-    labelText: label,
-    alignLabelWithHint: alignTop,
-    labelStyle: GoogleFonts.heebo(color: Colors.white38, fontSize: 13),
-    filled: true,
-    fillColor: Colors.white.withValues(alpha: 0.04),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
-    ),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-  );
+  }) =>
+      InputDecoration(
+        labelText: label,
+        alignLabelWithHint: alignTop,
+        labelStyle: GoogleFonts.heebo(color: Colors.white38, fontSize: 13),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.04),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -823,141 +823,143 @@ class _MessagesDialogState extends State<_MessagesDialog> {
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())
                         : _threads.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.inbox_rounded,
-                                  size: 40,
-                                  color: AppColors.textMuted.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'אין שיחות',
-                                  style: GoogleFonts.heebo(
-                                    fontSize: 14,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: _threads.length,
-                            itemBuilder: (ctx, i) {
-                              final t = _threads[i] as Map<String, dynamic>;
-                              final selected =
-                                  _selectedThread?['thread_id'] ==
-                                  t['thread_id'];
-                              final unread = (t['unread_count'] ?? 0) as int;
-                              return InkWell(
-                                onTap: () => _openThread(t),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? AppColors.primary.withValues(
-                                            alpha: 0.08,
-                                          )
-                                        : Colors.transparent,
-                                    border: Border(
-                                      bottom: BorderSide(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.04,
-                                        ),
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.inbox_rounded,
+                                      size: 40,
+                                      color: AppColors.textMuted.withValues(
+                                        alpha: 0.3,
                                       ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          if (unread > 0) ...[
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                          ],
-                                          Expanded(
-                                            child: Text(
-                                              t['subject'] ?? '',
-                                              style: GoogleFonts.heebo(
-                                                fontSize: 13,
-                                                fontWeight: unread > 0
-                                                    ? FontWeight.w700
-                                                    : FontWeight.w400,
-                                                color: Colors.white,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'אין שיחות',
+                                      style: GoogleFonts.heebo(
+                                        fontSize: 14,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _threads.length,
+                                itemBuilder: (ctx, i) {
+                                  final t = _threads[i] as Map<String, dynamic>;
+                                  final selected =
+                                      _selectedThread?['thread_id'] ==
+                                          t['thread_id'];
+                                  final unread =
+                                      (t['unread_count'] ?? 0) as int;
+                                  return InkWell(
+                                    onTap: () => _openThread(t),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: selected
+                                            ? AppColors.primary.withValues(
+                                                alpha: 0.08,
+                                              )
+                                            : Colors.transparent,
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.04,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        t['last_message']?['body']
-                                                ?.toString()
-                                                .replaceAll('\n', ' ') ??
-                                            '',
-                                        style: GoogleFonts.heebo(
-                                          fontSize: 12,
-                                          color: AppColors.textMuted,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Row(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
+                                          Row(
+                                            children: [
+                                              if (unread > 0) ...[
+                                                Container(
+                                                  width: 8,
+                                                  height: 8,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                              ],
+                                              Expanded(
+                                                child: Text(
+                                                  t['subject'] ?? '',
+                                                  style: GoogleFonts.heebo(
+                                                    fontSize: 13,
+                                                    fontWeight: unread > 0
+                                                        ? FontWeight.w700
+                                                        : FontWeight.w400,
+                                                    color: Colors.white,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
                                           Text(
-                                            t['last_activity']
+                                            t['last_message']?['body']
                                                     ?.toString()
-                                                    .substring(0, 10) ??
+                                                    .replaceAll('\n', ' ') ??
                                                 '',
                                             style: GoogleFonts.heebo(
-                                              fontSize: 10,
+                                              fontSize: 12,
                                               color: AppColors.textMuted,
                                             ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          const Spacer(),
-                                          if ((t['message_count'] ?? 0) > 1)
-                                            Text(
-                                              '${t['message_count']}',
-                                              style: GoogleFonts.heebo(
-                                                fontSize: 10,
-                                                color: AppColors.textMuted,
+                                          const SizedBox(height: 2),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                t['last_activity']
+                                                        ?.toString()
+                                                        .substring(0, 10) ??
+                                                    '',
+                                                style: GoogleFonts.heebo(
+                                                  fontSize: 10,
+                                                  color: AppColors.textMuted,
+                                                ),
                                               ),
-                                            ),
+                                              const Spacer(),
+                                              if ((t['message_count'] ?? 0) > 1)
+                                                Text(
+                                                  '${t['message_count']}',
+                                                  style: GoogleFonts.heebo(
+                                                    fontSize: 10,
+                                                    color: AppColors.textMuted,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                                    ),
+                                  );
+                                },
+                              ),
                   ),
                   // Right panel — thread or compose
                   Expanded(
                     child: _showCompose
                         ? _buildComposePanel()
                         : _selectedThread != null
-                        ? _buildThreadPanel()
-                        : _buildEmptyState(),
+                            ? _buildThreadPanel()
+                            : _buildEmptyState(),
                   ),
                 ],
               ),
@@ -969,204 +971,206 @@ class _MessagesDialogState extends State<_MessagesDialog> {
   }
 
   Widget _buildEmptyState() => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.forum_rounded,
-          size: 48,
-          color: AppColors.textMuted.withValues(alpha: 0.3),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'בחר שיחה או צור הודעה חדשה',
-          style: GoogleFonts.heebo(fontSize: 14, color: AppColors.textMuted),
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildComposePanel() => Padding(
-    padding: const EdgeInsets.all(20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'הודעה חדשה לצוות התמיכה',
-          style: GoogleFonts.heebo(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          value: _category,
-          dropdownColor: const Color(0xFF1a2744),
-          style: GoogleFonts.heebo(color: Colors.white, fontSize: 14),
-          decoration: _inputDeco('קטגוריה'),
-          items: [
-            DropdownMenuItem(
-              value: 'general',
-              child: Text('כללי', style: GoogleFonts.heebo()),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.forum_rounded,
+              size: 48,
+              color: AppColors.textMuted.withValues(alpha: 0.3),
             ),
-            DropdownMenuItem(
-              value: 'bug',
-              child: Text('דיווח על תקלה', style: GoogleFonts.heebo()),
-            ),
-            DropdownMenuItem(
-              value: 'feature',
-              child: Text('בקשת תכונה', style: GoogleFonts.heebo()),
-            ),
-            DropdownMenuItem(
-              value: 'improvement',
-              child: Text('הצעה לשיפור', style: GoogleFonts.heebo()),
-            ),
-            DropdownMenuItem(
-              value: 'billing',
-              child: Text('חיוב ותשלום', style: GoogleFonts.heebo()),
+            const SizedBox(height: 12),
+            Text(
+              'בחר שיחה או צור הודעה חדשה',
+              style:
+                  GoogleFonts.heebo(fontSize: 14, color: AppColors.textMuted),
             ),
           ],
-          onChanged: (v) => setState(() => _category = v ?? 'general'),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _subjectCtrl,
-          style: GoogleFonts.heebo(color: Colors.white, fontSize: 14),
-          decoration: _inputDeco('נושא'),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: TextField(
-            controller: _bodyCtrl,
-            maxLines: null,
-            expands: true,
-            textAlignVertical: TextAlignVertical.top,
-            style: GoogleFonts.heebo(color: Colors.white, fontSize: 14),
-            decoration: _inputDeco('תוכן ההודעה', alignTop: true),
-          ),
-        ),
-        const SizedBox(height: 10),
-        // Attachments
-        if (_attachments.isNotEmpty)
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _attachments
-                .map(
-                  (a) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.attach_file_rounded,
-                          size: 14,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          a['name'] ?? '',
-                          style: GoogleFonts.heebo(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        InkWell(
-                          onTap: () => setState(() => _attachments.remove(a)),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 14,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-        if (_attachments.isNotEmpty) const SizedBox(height: 8),
-        // Buttons row
-        Row(
+      );
+
+  Widget _buildComposePanel() => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Attach button
-            IconButton(
-              onPressed: _uploading ? null : _pickFile,
-              tooltip: 'צרף קובץ',
-              icon: _uploading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(
-                      Icons.attach_file_rounded,
-                      size: 20,
-                      color: AppColors.textMuted,
-                    ),
+            Text(
+              'הודעה חדשה לצוות התמיכה',
+              style: GoogleFonts.heebo(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _category,
+              dropdownColor: const Color(0xFF1a2744),
+              style: GoogleFonts.heebo(color: Colors.white, fontSize: 14),
+              decoration: _inputDeco('קטגוריה'),
+              items: [
+                DropdownMenuItem(
+                  value: 'general',
+                  child: Text('כללי', style: GoogleFonts.heebo()),
+                ),
+                DropdownMenuItem(
+                  value: 'bug',
+                  child: Text('דיווח על תקלה', style: GoogleFonts.heebo()),
+                ),
+                DropdownMenuItem(
+                  value: 'feature',
+                  child: Text('בקשת תכונה', style: GoogleFonts.heebo()),
+                ),
+                DropdownMenuItem(
+                  value: 'improvement',
+                  child: Text('הצעה לשיפור', style: GoogleFonts.heebo()),
+                ),
+                DropdownMenuItem(
+                  value: 'billing',
+                  child: Text('חיוב ותשלום', style: GoogleFonts.heebo()),
+                ),
+              ],
+              onChanged: (v) => setState(() => _category = v ?? 'general'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _subjectCtrl,
+              style: GoogleFonts.heebo(color: Colors.white, fontSize: 14),
+              decoration: _inputDeco('נושא'),
+            ),
+            const SizedBox(height: 12),
             Expanded(
-              child: SizedBox(
-                height: 46,
-                child: ElevatedButton.icon(
-                  onPressed: _sending ? null : _sendNewMessage,
-                  icon: _sending
+              child: TextField(
+                controller: _bodyCtrl,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                style: GoogleFonts.heebo(color: Colors.white, fontSize: 14),
+                decoration: _inputDeco('תוכן ההודעה', alignTop: true),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Attachments
+            if (_attachments.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _attachments
+                    .map(
+                      (a) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.attach_file_rounded,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              a['name'] ?? '',
+                              style: GoogleFonts.heebo(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            InkWell(
+                              onTap: () =>
+                                  setState(() => _attachments.remove(a)),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 14,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            if (_attachments.isNotEmpty) const SizedBox(height: 8),
+            // Buttons row
+            Row(
+              children: [
+                // Attach button
+                IconButton(
+                  onPressed: _uploading ? null : _pickFile,
+                  tooltip: 'צרף קובץ',
+                  icon: _uploading
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.black,
-                          ),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.send_rounded, size: 18),
-                  label: Text(
-                    _sending ? 'שולח...' : 'שלח הודעה',
-                    style: GoogleFonts.heebo(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      : Icon(
+                          Icons.attach_file_rounded,
+                          size: 20,
+                          color: AppColors.textMuted,
+                        ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: ElevatedButton.icon(
+                      onPressed: _sending ? null : _sendNewMessage,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded, size: 18),
+                      label: Text(
+                        _sending ? 'שולח...' : 'שלח הודעה',
+                        style: GoogleFonts.heebo(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            TextButton(
-              onPressed: () => setState(() {
-                _showCompose = false;
-                _attachments = [];
-              }),
-              child: Text(
-                'ביטול',
-                style: GoogleFonts.heebo(color: AppColors.textMuted),
-              ),
+                const SizedBox(width: 10),
+                TextButton(
+                  onPressed: () => setState(() {
+                    _showCompose = false;
+                    _attachments = [];
+                  }),
+                  child: Text(
+                    'ביטול',
+                    style: GoogleFonts.heebo(color: AppColors.textMuted),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      ],
-    ),
-  );
+      );
 
   Widget _buildThreadPanel() {
     return Column(

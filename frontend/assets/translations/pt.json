@@ -482,7 +482,20 @@
     "visits": "Visitas",
     "transcriptions": "Transcrições",
     "summaries": "Resumos",
-    "doctor_stats": "Estatísticas por Médico"
+    "doctor_stats": "Estatísticas por Médico",
+    "dev_tools_title": "Ferramentas de desenvolvimento",
+    "dev_tools_running": "Em execução",
+    "dev_tools_stopped": "Parado",
+    "dev_tools_status": "Estado: {status}",
+    "dev_tools_port": "Porta: {port}",
+    "dev_tools_container_id": "ID do contêiner: {id}",
+    "dev_tools_start": "Iniciar",
+    "dev_tools_create": "Criar e iniciar",
+    "dev_tools_stop": "Parar",
+    "dev_tools_refresh": "Atualizar",
+    "dev_tools_action_ok": "Concluído: {action}",
+    "dev_tools_info_title": "O que é isto?",
+    "dev_tools_info_body": "Ferramenta interna para capturas de tela e HTML plano para depuração. Apenas ambiente dev, porta 8090."
   },
   "languages": {
     "en": "English",

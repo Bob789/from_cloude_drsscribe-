@@ -482,7 +482,20 @@
     "visits": "Visits",
     "transcriptions": "Transcriptions",
     "summaries": "Summaries",
-    "doctor_stats": "Doctor Statistics"
+    "doctor_stats": "Doctor Statistics",
+    "dev_tools_title": "Dev Tools",
+    "dev_tools_running": "Running",
+    "dev_tools_stopped": "Stopped",
+    "dev_tools_status": "Status: {status}",
+    "dev_tools_port": "Port: {port}",
+    "dev_tools_container_id": "Container ID: {id}",
+    "dev_tools_start": "Start",
+    "dev_tools_create": "Create & Start",
+    "dev_tools_stop": "Stop",
+    "dev_tools_refresh": "Refresh",
+    "dev_tools_action_ok": "Done: {action}",
+    "dev_tools_info_title": "What is this?",
+    "dev_tools_info_body": "Internal tool for page screenshots and flat HTML capture for debugging. Dev environment only, runs on port 8090."
   },
   "error": {
     "session_expired": "Session expired",

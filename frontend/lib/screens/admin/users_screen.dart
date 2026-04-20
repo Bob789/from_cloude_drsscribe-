@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
+import 'package:go_router/go_router.dart';
 import 'package:medscribe_ai/services/api_client.dart';
 
 class AdminUsersScreen extends ConsumerStatefulWidget {
@@ -34,19 +35,23 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
 
   Future<void> _changeRole(String userId, String role) async {
     try {
-      await api.put('/admin/users/$userId/role', queryParameters: {'role': role});
+      await api
+          .put('/admin/users/$userId/role', queryParameters: {'role': role});
       _load();
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.error_update_role'.tr())));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('admin.error_update_role'.tr())));
     }
   }
 
   Future<void> _toggleActive(String userId, bool active) async {
     try {
-      await api.put('/admin/users/$userId/active', queryParameters: {'active': active});
+      await api.put('/admin/users/$userId/active',
+          queryParameters: {'active': active});
       _load();
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.error_update_status'.tr())));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('admin.error_update_status'.tr())));
     }
   }
 
@@ -57,7 +62,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     return Scaffold(
       appBar: AppBar(title: Text('admin.users_title'.tr())),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
+        padding:
+            EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 12 : 24),
         child: DataTable(
           columns: [
             DataColumn(label: Text('admin.name'.tr())),
@@ -65,19 +71,25 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             DataColumn(label: Text('admin.role'.tr())),
             DataColumn(label: Text('admin.active'.tr())),
           ],
-          rows: _users.map((user) => DataRow(cells: [
-            DataCell(Text(user['name'] ?? '')),
-            DataCell(Text(user['email'] ?? '')),
-            DataCell(DropdownButton<String>(
-              value: user['role'],
-              items: ['doctor', 'admin', 'receptionist'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-              onChanged: (v) => v != null ? _changeRole(user['id'], v) : null,
-            )),
-            DataCell(Switch(
-              value: user['is_active'] ?? true,
-              onChanged: (v) => _toggleActive(user['id'], v),
-            )),
-          ])).toList(),
+          rows: _users
+              .map((user) => DataRow(cells: [
+                    DataCell(Text(user['name'] ?? '')),
+                    DataCell(Text(user['email'] ?? '')),
+                    DataCell(DropdownButton<String>(
+                      value: user['role'],
+                      items: ['doctor', 'admin', 'receptionist']
+                          .map(
+                              (r) => DropdownMenuItem(value: r, child: Text(r)))
+                          .toList(),
+                      onChanged: (v) =>
+                          v != null ? _changeRole(user['id'], v) : null,
+                    )),
+                    DataCell(Switch(
+                      value: user['is_active'] ?? true,
+                      onChanged: (v) => _toggleActive(user['id'], v),
+                    )),
+                  ]))
+              .toList(),
         ),
       ),
     );

@@ -482,7 +482,20 @@
     "visits": "방문",
     "transcriptions": "전사",
     "summaries": "요약",
-    "doctor_stats": "의사별 통계"
+    "doctor_stats": "의사별 통계",
+    "dev_tools_title": "개발 도구",
+    "dev_tools_running": "실행 중",
+    "dev_tools_stopped": "중지됨",
+    "dev_tools_status": "상태: {status}",
+    "dev_tools_port": "포트: {port}",
+    "dev_tools_container_id": "컨테이너 ID: {id}",
+    "dev_tools_start": "시작",
+    "dev_tools_create": "생성 및 시작",
+    "dev_tools_stop": "중지",
+    "dev_tools_refresh": "새로고침",
+    "dev_tools_action_ok": "완료: {action}",
+    "dev_tools_info_title": "이것은 무엇입니까?",
+    "dev_tools_info_body": "디버깅용 페이지 스크린샷 및 플랫 HTML 캡처 내부 도구. dev 환경 전용, 포트 8090."
   },
   "languages": {
     "en": "English",

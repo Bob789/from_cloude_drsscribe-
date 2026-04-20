@@ -482,7 +482,20 @@
     "visits": "Consultas",
     "transcriptions": "Transcripciones",
     "summaries": "Resúmenes",
-    "doctor_stats": "Estadísticas por médico"
+    "doctor_stats": "Estadísticas por médico",
+    "dev_tools_title": "Herramientas de desarrollo",
+    "dev_tools_running": "En ejecución",
+    "dev_tools_stopped": "Detenido",
+    "dev_tools_status": "Estado: {status}",
+    "dev_tools_port": "Puerto: {port}",
+    "dev_tools_container_id": "ID de contenedor: {id}",
+    "dev_tools_start": "Iniciar",
+    "dev_tools_create": "Crear e iniciar",
+    "dev_tools_stop": "Detener",
+    "dev_tools_refresh": "Actualizar",
+    "dev_tools_action_ok": "Hecho: {action}",
+    "dev_tools_info_title": "¿Qué es esto?",
+    "dev_tools_info_body": "Herramienta interna para capturas de pantalla y HTML plano para depuración. Solo entorno dev, en el puerto 8090."
   },
   "error": {
     "session_expired": "Sesión expirada",

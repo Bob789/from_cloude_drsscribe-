@@ -16,6 +16,8 @@ services:
     environment:
       - NEXT_PUBLIC_MEDSCRIBE_URL=https://app.drsscribe.com
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - DEV_TOOLS_URL=http://medscribe-dev-tools:8090
+      - DEV_TOOLS_TOKEN=${DEV_TOOLS_TOKEN:-dev-token-change-me}
     networks:
       - medscribe-network
     restart: unless-stopped
@@ -34,6 +36,11 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      # Allow backend to control dev-tools container from cpanel (dev only)
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Add appuser to root group so it can access the docker socket (dev only)
+    group_add:
+      - "0"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - PARENT_WEBSITE_URL=http://localhost:3001
@@ -130,6 +137,22 @@ services:
       - meili_data:/meili_data
     networks:
       - medscribe-network
+
+  # === Dev-Tools (internal) — page screenshots & DOM flattening for AI debugging ===
+  # Uses Playwright + Chromium. Heavy image; only start when needed:
+  #   docker-compose --profile dev-tools up -d dev-tools
+  dev-tools:
+    build: ./dev-tools
+    container_name: medscribe-dev-tools
+    ports:
+      - "8090:8090"
+    environment:
+      - DEV_TOOLS_TOKEN=${DEV_TOOLS_TOKEN:-dev-token-change-me}
+    profiles:
+      - dev-tools
+    networks:
+      - medscribe-network
+    restart: unless-stopped
 
   # === Nginx Reverse Proxy ===
   nginx:
