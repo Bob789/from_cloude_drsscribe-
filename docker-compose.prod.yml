@@ -215,8 +215,6 @@ services:
       - "8090:8090"
     environment:
       - DEV_TOOLS_TOKEN=${DEV_TOOLS_TOKEN:-dev-token-change-me}
-    profiles:
-      - dev-tools
     restart: unless-stopped
     networks:
       - drscribe-network

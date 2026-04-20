@@ -27,9 +27,7 @@ echo "4. Starting services..."
 docker-compose -f docker-compose.prod.yml up -d
 
 echo "4b. Starting dev-tools (cpanel)..."
-docker-compose -f docker-compose.prod.yml --profile dev-tools up -d dev-tools
-# Ensure dev-tools is on the main network so parent-website can reach it
-docker network connect drscribe_drscribe-network medscribe-dev-tools 2>/dev/null || true
+docker-compose -f docker-compose.prod.yml up -d dev-tools
 
 echo "5. Waiting for services to start..."
 sleep 10
@@ -42,6 +40,13 @@ else
     echo "   Backend: FAILED (HTTP $HEALTH)"
     echo "   Check logs: docker-compose -f docker-compose.prod.yml logs backend"
     exit 1
+fi
+
+DEV_TOOLS_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8090/health)
+if [ "$DEV_TOOLS_HEALTH" = "200" ]; then
+    echo "   Dev-Tools: OK"
+else
+    echo "   Dev-Tools: WARN (HTTP $DEV_TOOLS_HEALTH) — cpanel may not work"
 fi
 
 echo "7. Checking all services..."
