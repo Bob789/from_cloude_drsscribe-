@@ -26,6 +26,11 @@ docker-compose -f docker-compose.prod.yml run --rm backend alembic upgrade head
 echo "4. Starting services..."
 docker-compose -f docker-compose.prod.yml up -d
 
+echo "4b. Starting dev-tools (cpanel)..."
+docker-compose -f docker-compose.prod.yml --profile dev-tools up -d dev-tools
+# Ensure dev-tools is on the main network so parent-website can reach it
+docker network connect drscribe_drscribe-network medscribe-dev-tools 2>/dev/null || true
+
 echo "5. Waiting for services to start..."
 sleep 10
 

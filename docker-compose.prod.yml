@@ -206,6 +206,23 @@ services:
       - ds-platform
   # ─────────────────────────────────────────────────────────────────────────────
 
+  # === Dev-Tools — page screenshots & DOM flattening for cpanel AI debugging ===
+  # Playwright + Chromium. Must be on the same network as parent-website.
+  dev-tools:
+    build: ./dev-tools
+    container_name: medscribe-dev-tools
+    ports:
+      - "8090:8090"
+    environment:
+      - DEV_TOOLS_TOKEN=${DEV_TOOLS_TOKEN:-dev-token-change-me}
+    profiles:
+      - dev-tools
+    restart: unless-stopped
+    networks:
+      - drscribe-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+
   nginx:
     image: nginx:alpine
     container_name: drscribe-nginx
