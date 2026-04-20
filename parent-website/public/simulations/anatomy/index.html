@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>גוף האדם · סימולציית איברים · MedicalHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="anatomy.css">
+</head>
+<body data-screen-label="Anatomy Simulation">
+
+<div class="app">
+  <header class="topbar">
+    <a href="/" target="_top" class="brand">
+      <span class="brand-mark">MH</span> MedicalHub
+    </a>
+    <div class="page-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><path d="M12 8v0"/></svg>
+      גוף האדם — סימולציית איברים
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="/simulation/circulatory" target="_top" class="back-link">→ מחזור הדם</a>
+      <a href="/articles" target="_top" class="back-link">→ מאמרים</a>
+    </div>
+  </header>
+
+  <!-- LEFT -->
+  <aside class="panel">
+    <div class="panel-h">מצב תצוגה</div>
+    <div class="mode-btns" id="modes">
+      <button class="mode-btn active" data-mode="normal">
+        <span class="mode-ico">🫀</span>
+        <div>במקום <div class="mode-desc">איברים במקומם האנטומי</div></div>
+      </button>
+      <button class="mode-btn" data-mode="free">
+        <span class="mode-ico">✋</span>
+        <div>סידור חופשי <div class="mode-desc">גרור לכל מקום</div></div>
+      </button>
+      <button class="mode-btn" data-mode="exploded">
+        <span class="mode-ico">💥</span>
+        <div>תצוגה מפורקת <div class="mode-desc">כל איבר מופרד</div></div>
+      </button>
+    </div>
+
+    <div class="panel-h" style="margin-top:22px">איברים (10)</div>
+    <div class="organ-list" id="organList"></div>
+
+    <button class="reset-btn" id="resetBtn">↺ איפוס מיקומים</button>
+  </aside>
+
+  <!-- STAGE -->
+  <main class="stage">
+    <div class="stage-title">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)"></span>
+      תצוגה אנטומית · 3D
+    </div>
+    <div class="stage-hint">✋ גרור את האיברים · 🖱️ לחץ למידע</div>
+
+    <div class="body-wrap" id="bodyWrap">
+      <!-- Body silhouette -->
+      <div class="body-shape">
+        <svg viewBox="0 0 420 660">
+          <defs>
+            <linearGradient id="skin" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#f0d4b4"/>
+              <stop offset="100%" stop-color="#c49870"/>
+            </linearGradient>
+            <radialGradient id="bodyShade" cx="50%" cy="40%">
+              <stop offset="0%" stop-color="rgba(255,220,190,0.5)"/>
+              <stop offset="100%" stop-color="rgba(110,70,40,0.15)"/>
+            </radialGradient>
+          </defs>
+          <!-- Head -->
+          <ellipse cx="210" cy="70" rx="52" ry="58" fill="url(#skin)" stroke="#8a6240" stroke-width="1.2" opacity="0.6"/>
+          <ellipse cx="210" cy="60" rx="42" ry="48" fill="url(#bodyShade)" opacity="0.35"/>
+          <!-- Neck -->
+          <rect x="188" y="120" width="44" height="30" rx="10" fill="url(#skin)" stroke="#8a6240" stroke-width="1" opacity="0.55"/>
+          <!-- Torso -->
+          <path d="M 120 155 Q 120 140, 160 140 L 260 140 Q 300 140, 300 155 L 310 280 Q 320 380, 300 470 L 280 520 Q 275 540, 255 540 L 165 540 Q 145 540, 140 520 L 120 470 Q 100 380, 110 280 Z"
+                fill="url(#skin)"
+                stroke="#8a6240"
+                stroke-width="1.2"
+                opacity="0.55"/>
+          <!-- Subtle shading -->
+          <path d="M 120 155 L 310 155 L 320 380 L 100 380 Z" fill="url(#bodyShade)" opacity="0.2"/>
+          <!-- Shoulders/arms (stubs) -->
+          <path d="M 120 155 Q 85 165, 78 220 L 70 300" fill="none" stroke="url(#skin)" stroke-width="36" stroke-linecap="round" opacity="0.5"/>
+          <path d="M 300 155 Q 335 165, 342 220 L 350 300" fill="none" stroke="url(#skin)" stroke-width="36" stroke-linecap="round" opacity="0.5"/>
+          <!-- Hips/legs (stubs) -->
+          <path d="M 175 540 L 160 640" fill="none" stroke="url(#skin)" stroke-width="52" stroke-linecap="round" opacity="0.5"/>
+          <path d="M 245 540 L 260 640" fill="none" stroke="url(#skin)" stroke-width="52" stroke-linecap="round" opacity="0.5"/>
+        </svg>
+      </div>
+
+      <!-- Drop zones & Organs will be injected via JS -->
+      <div id="organLayer" style="position:absolute;inset:0;"></div>
+    </div>
+  </main>
+
+  <!-- RIGHT -->
+  <aside class="info-card" id="infoCard">
+    <div class="info-header">
+      <div class="info-num" id="infoNum">1</div>
+      <div>
+        <div class="info-title" id="infoTitle">המוח</div>
+        <div class="info-sub" id="infoSub">BRAIN · מערכת העצבים המרכזית</div>
+      </div>
+    </div>
+    <div class="role-tag" id="infoRole">מרכז הבקרה הראשי</div>
+    <p id="infoDesc">המוח הוא מרכז הבקרה של הגוף. הוא שולט בכל פעולה מרצון ושאינה מרצון: חשיבה, זיכרון, תנועה, נשימה, קצב לב, רגש ותחושה.</p>
+    <ul class="fact-list" id="infoFacts">
+      <li>86 מיליארד תאי עצב (נוירונים)</li>
+      <li>צורך 20% מחמצן הגוף</li>
+      <li>משקל כ-1.4 ק״ג</li>
+      <li>מחולק ל-4 אונות עיקריות</li>
+    </ul>
+    <div class="stat-grid" id="infoStats">
+      <div class="stat-box"><div class="v">86B</div><div class="l">נוירונים</div></div>
+      <div class="stat-box"><div class="v">1.4kg</div><div class="l">משקל</div></div>
+      <div class="stat-box"><div class="v">20%</div><div class="l">חמצן</div></div>
+      <div class="stat-box"><div class="v">4</div><div class="l">אונות</div></div>
+    </div>
+    <button class="simulate-btn" id="simBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      הפעל סימולציה
+    </button>
+  </aside>
+</div>
+
+<script src="anatomy-organs.js"></script>
+<script src="anatomy.js"></script>
+</body>
+</html>

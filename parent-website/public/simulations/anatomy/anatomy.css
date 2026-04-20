@@ -1,0 +1,474 @@
+/* ============================================
+   Human Anatomy — Draggable Organs (3D feel)
+   ============================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep: #0a1425;
+  --bg-mid: #142338;
+  --panel: rgba(15, 28, 48, 0.82);
+  --panel-border: rgba(140, 180, 230, 0.14);
+  --ink: #ecf2fb;
+  --ink-dim: #96abc9;
+  --ink-faint: #5a7195;
+
+  --body-skin: #e8c5a4;
+  --body-skin-dark: #a6845e;
+  --body-stroke: #5a3a22;
+
+  --c-brain: #e6a487;
+  --c-heart: #e53947;
+  --c-lungs: #f4a8b8;
+  --c-liver: #a8412a;
+  --c-stomach: #e07c62;
+  --c-kidney: #9268a8;
+  --c-intestine: #d4886a;
+  --c-spleen: #8e3b3b;
+  --c-pancreas: #f2c572;
+  --c-bladder: #f4d06a;
+
+  --gold: #f5c518;
+  --success: #1f9d55;
+
+  --font: 'Heebo', system-ui, sans-serif;
+  --font-display: 'Assistant', system-ui, sans-serif;
+
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+}
+
+html, body {
+  font-family: var(--font);
+  background:
+    radial-gradient(ellipse 1200px 800px at 50% 0%, #1a2d4d 0%, transparent 60%),
+    linear-gradient(180deg, #0a1425 0%, #050a15 100%);
+  color: var(--ink);
+  min-height: 100vh;
+  direction: rtl;
+  overflow-x: hidden;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr 360px;
+  gap: 18px;
+  padding: 18px;
+  min-height: 100vh;
+}
+
+.topbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+}
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 17px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--gold), #fde086);
+  color: #061d47; display: grid; place-items: center;
+  font-weight: 800; font-size: 12px;
+  box-shadow: 0 0 20px rgba(245,197,24,0.3);
+}
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.back-link {
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  transition: all 0.18s;
+}
+.back-link:hover { color: var(--ink); border-color: rgba(140,180,230,0.3); }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  backdrop-filter: blur(14px);
+}
+.panel-h {
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 14px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-h::before {
+  content: ''; width: 4px; height: 16px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--gold), #e0a50a);
+}
+
+.mode-btns { display: grid; gap: 8px; }
+.mode-btn {
+  background: rgba(140, 180, 230, 0.05);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--ink);
+  text-align: right;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  transition: all 0.2s;
+}
+.mode-btn:hover { border-color: rgba(140,180,230,0.3); background: rgba(140,180,230,0.08); }
+.mode-btn.active { background: rgba(245,197,24,0.12); border-color: var(--gold); color: var(--gold); }
+.mode-ico {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  display: grid; place-items: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.mode-desc { font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+
+.organ-list { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; padding-left: 4px; }
+.organ-list::-webkit-scrollbar { width: 6px; }
+.organ-list::-webkit-scrollbar-thumb { background: rgba(140,180,230,0.2); border-radius: 3px; }
+.organ-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.organ-item:hover { background: rgba(140,180,230,0.08); border-color: rgba(140,180,230,0.25); }
+.organ-item.active { background: rgba(245,197,24,0.1); border-color: var(--gold); }
+.organ-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--gold); color: #061d47;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 11px;
+  flex-shrink: 0;
+}
+.organ-name { font-size: 13px; flex: 1; font-weight: 500; }
+.organ-name-en { font-size: 10.5px; color: var(--ink-faint); }
+
+/* ============ STAGE ============ */
+.stage {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(ellipse at center, rgba(20, 50, 100, 0.2) 0%, transparent 70%),
+    rgba(5, 10, 21, 0.3);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  min-height: 700px;
+  perspective: 1400px;
+}
+.stage::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(140,180,230,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,180,230,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, black 50%, transparent 85%);
+  pointer-events: none;
+}
+.stage-title {
+  position: absolute; top: 18px; right: 22px;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 14px;
+  padding: 6px 14px;
+  background: rgba(5, 10, 21, 0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  z-index: 5;
+  display: flex; align-items: center; gap: 8px;
+}
+.stage-hint {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  font-size: 12px; color: var(--ink-dim);
+  padding: 6px 14px;
+  background: rgba(5, 10, 21, 0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  z-index: 5;
+}
+
+.body-wrap {
+  position: relative;
+  width: 420px;
+  height: 660px;
+  transform-style: preserve-3d;
+  transform: rotateX(4deg);
+  transition: transform 0.6s ease;
+}
+.body-wrap.exploded { transform: rotateX(0deg) scale(0.95); }
+
+/* Body silhouette (back layer) */
+.body-shape {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.body-shape svg { width: 100%; height: 100%; overflow: visible; }
+
+/* Drop zones (ghost outlines when dragging) */
+.drop-zone {
+  position: absolute;
+  border: 2px dashed rgba(245,197,24,0);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: all 0.2s;
+  z-index: 2;
+}
+.dragging-active .drop-zone { border-color: rgba(245,197,24,0.4); }
+.drop-zone.hover { border-color: var(--gold); background: rgba(245,197,24,0.1); }
+
+/* Organs — draggable */
+.organ {
+  position: absolute;
+  cursor: grab;
+  z-index: 3;
+  transition: filter 0.3s, box-shadow 0.3s;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,0.4));
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.organ:active { cursor: grabbing; }
+.organ.dragging {
+  z-index: 20;
+  filter: drop-shadow(0 20px 30px rgba(0,0,0,0.6)) brightness(1.1);
+  cursor: grabbing;
+}
+.organ.in-place {
+  animation: place-bounce 0.4s ease;
+}
+@keyframes place-bounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.1); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+.organ.highlighted {
+  animation: highlight-pulse 1.4s ease-in-out infinite;
+}
+@keyframes highlight-pulse {
+  0%, 100% { filter: drop-shadow(0 6px 18px rgba(0,0,0,0.4)); }
+  50% { filter: drop-shadow(0 6px 24px rgba(245,197,24,0.8)) brightness(1.15); }
+}
+
+.organ svg { display: block; overflow: visible; }
+
+.organ-badge {
+  position: absolute;
+  top: -8px; right: -8px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #061d47;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 12px;
+  font-family: var(--font-display);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* Animations per organ */
+.organ.simulating[data-key="heart"] svg { animation: sim-beat 0.8s ease-in-out infinite; }
+@keyframes sim-beat {
+  0%, 100% { transform: scale(1); }
+  20% { transform: scale(1.15); }
+  40% { transform: scale(1); }
+  55% { transform: scale(1.08); }
+  70% { transform: scale(1); }
+}
+.organ.simulating[data-key="lungs-l"] svg,
+.organ.simulating[data-key="lungs-r"] svg { animation: sim-breathe 3.5s ease-in-out infinite; }
+@keyframes sim-breathe {
+  0%, 100% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(1.14) scaleX(1.05); }
+}
+.organ.simulating[data-key="stomach"] svg { animation: sim-digest 2s ease-in-out infinite; }
+@keyframes sim-digest {
+  0%, 100% { transform: scaleX(1); }
+  30% { transform: scaleX(1.06) translateX(2px); }
+  60% { transform: scaleX(0.96) translateX(-2px); }
+}
+.organ.simulating[data-key="brain"] svg { animation: sim-think 1.8s ease-in-out infinite; }
+@keyframes sim-think {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2) drop-shadow(0 0 12px rgba(230,164,135,0.6)); }
+}
+.organ.simulating[data-key="intestine"] svg { animation: sim-wave 2.5s ease-in-out infinite; }
+@keyframes sim-wave {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px) scale(1.02); }
+}
+.organ.simulating[data-key="kidney-l"] svg,
+.organ.simulating[data-key="kidney-r"] svg { animation: sim-filter 2s ease-in-out infinite; }
+@keyframes sim-filter {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15) hue-rotate(10deg); }
+}
+.organ.simulating[data-key="liver"] svg { animation: sim-pulse 2.2s ease-in-out infinite; }
+@keyframes sim-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.12); }
+}
+
+.reset-btn {
+  width: 100%;
+  padding: 10px;
+  background: var(--gold);
+  color: #061d47;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-family: var(--font);
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: all 0.18s;
+}
+.reset-btn:hover { background: #fde086; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(245,197,24,0.3); }
+
+/* ============ INFO CARD ============ */
+.info-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  backdrop-filter: blur(14px);
+  position: relative;
+  overflow: hidden;
+}
+.info-card::before {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  width: 160px; height: 160px;
+  background: radial-gradient(circle, rgba(245,197,24,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.info-header {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.info-num {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--gold), #e0a50a);
+  color: #061d47;
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 22px;
+  box-shadow: 0 6px 20px rgba(245,197,24,0.35);
+}
+.info-title {
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 20px;
+}
+.info-sub {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  margin-top: 2px;
+  letter-spacing: 0.05em;
+}
+.info-card p {
+  font-size: 14px; line-height: 1.75;
+  color: var(--ink-dim);
+  margin-bottom: 14px;
+  text-wrap: pretty;
+}
+.info-card p strong { color: var(--ink); font-weight: 600; }
+.role-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: rgba(31, 157, 85, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(31, 157, 85, 0.3);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.fact-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.fact-list li {
+  font-size: 13px;
+  display: flex; gap: 10px;
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  line-height: 1.5;
+}
+.fact-list li::before {
+  content: '◆';
+  color: var(--gold);
+  font-size: 10px;
+  flex-shrink: 0; margin-top: 4px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-box {
+  padding: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+}
+.stat-box .v {
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 20px;
+  color: var(--gold);
+  line-height: 1;
+}
+.stat-box .l {
+  font-size: 11px; color: var(--ink-dim);
+  margin-top: 4px;
+}
+
+.simulate-btn {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  background: linear-gradient(135deg, #e53947, #9b1a24);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-family: var(--font);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.simulate-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(229,57,71,0.4); }
+
+@media (max-width: 1260px) {
+  .app { grid-template-columns: 1fr; }
+  .body-wrap { transform: scale(0.85); }
+}

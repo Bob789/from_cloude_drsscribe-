@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>סימולציית מחזור הדם · MedicalHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="circulatory.css">
+</head>
+<body data-screen-label="Circulatory Simulation">
+
+<div class="app">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <a href="/" target="_top" class="brand">
+      <span class="brand-mark">MH</span> MedicalHub
+    </a>
+    <div class="page-title">
+      <span class="pulse-dot"></span>
+      סימולציית מחזור הדם
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="/simulation/anatomy" target="_top" class="back-link">→ גוף האדם</a>
+      <a href="/articles" target="_top" class="back-link">→ מאמרים</a>
+    </div>
+  </header>
+
+  <!-- LEFT PANEL -->
+  <aside class="panel">
+    <div class="panel-h">תרחישים</div>
+    <div class="sim-btns" id="scenarios">
+      <button class="sim-btn active" data-sc="rest">
+        <span class="sim-icon">🧘</span>
+        <div>מנוחה <div class="sim-desc">72 פעימות · לחץ 120/80</div></div>
+      </button>
+      <button class="sim-btn" data-sc="exercise">
+        <span class="sim-icon">🏃</span>
+        <div>פעילות גופנית <div class="sim-desc">140 פעימות · דם מואץ</div></div>
+      </button>
+      <button class="sim-btn" data-sc="hyper">
+        <span class="sim-icon">🔺</span>
+        <div>לחץ דם גבוה <div class="sim-desc">160/100 · עורקים מוצרים</div></div>
+      </button>
+      <button class="sim-btn" data-sc="hypo">
+        <span class="sim-icon">🔻</span>
+        <div>לחץ דם נמוך <div class="sim-desc">90/60 · זרימה איטית</div></div>
+      </button>
+      <button class="sim-btn" data-sc="attack">
+        <span class="sim-icon">⚠️</span>
+        <div>התקף לב <div class="sim-desc">חסימת עורק כלילי</div></div>
+      </button>
+      <button class="sim-btn" data-sc="sleep">
+        <span class="sim-icon">😴</span>
+        <div>שינה <div class="sim-desc">55 פעימות · קצב איטי</div></div>
+      </button>
+    </div>
+
+    <div class="panel-h" style="margin-top:22px">סימנים חיוניים</div>
+    <div class="vitals">
+      <div class="vital">
+        <span class="vital-label">קצב לב</span>
+        <span class="vital-num" id="v-hr">72<span class="unit">BPM</span></span>
+        <div class="vital-chart">
+          <div class="ecg-line">
+            <svg viewBox="0 0 400 40" preserveAspectRatio="none">
+              <path id="ecgPath" d="M0,20 L60,20 L70,20 L80,8 L90,32 L100,20 L160,20 L170,20 L180,8 L190,32 L200,20 L260,20 L270,20 L280,8 L290,32 L300,20 L360,20 L370,20 L380,8 L390,32 L400,20" fill="none" stroke="var(--danger)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="vital">
+        <span class="vital-label">לחץ דם</span>
+        <span class="vital-num" id="v-bp">120/80<span class="unit">mmHg</span></span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">ריווי חמצן</span>
+        <span class="vital-num" id="v-o2">98<span class="unit">%</span></span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">זרימת דם</span>
+        <span class="vital-num" id="v-flow">5.0<span class="unit">ל׳/ד׳</span></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- STAGE -->
+  <main class="stage">
+    <div class="stage-grid"></div>
+    <div class="stage-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+      תצוגה אנטומית · מחזור הדם
+    </div>
+
+    <div class="circulation-wrap" id="circWrap">
+      <div class="heart-glow"></div>
+
+      <!-- Vessels SVG -->
+      <svg class="vessels" viewBox="0 0 560 560">
+        <defs>
+          <linearGradient id="gArt" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff6b78"/>
+            <stop offset="100%" stop-color="#9b1a24"/>
+          </linearGradient>
+          <linearGradient id="gVein" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#5b8fee"/>
+            <stop offset="100%" stop-color="#1b3d7a"/>
+          </linearGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <!-- Heart → Brain (artery, up) -->
+        <path id="pathBrain" d="M 280 240 C 280 180, 280 120, 280 75" stroke="url(#gArt)" stroke-width="6" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <path id="pathBrainReturn" d="M 295 75 C 295 120, 295 180, 295 240" stroke="url(#gVein)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <!-- Heart → Lung Left (pulmonary vein, oxygenated) -->
+        <path id="pathLungL" d="M 250 260 C 210 250, 170 240, 130 235" stroke="url(#gArt)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <!-- Lung → Heart (pulmonary artery, deoxygenated - goes to lungs) -->
+        <path id="pathLungLOut" d="M 130 260 C 170 265, 210 270, 250 278" stroke="url(#gVein)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <!-- Heart → Lung Right -->
+        <path id="pathLungR" d="M 310 260 C 350 250, 390 240, 430 235" stroke="url(#gArt)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <path id="pathLungROut" d="M 430 260 C 390 265, 350 270, 310 278" stroke="url(#gVein)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <!-- Heart → Liver (aorta then splits) -->
+        <path id="pathLiver" d="M 290 320 C 330 360, 390 400, 440 420" stroke="url(#gArt)" stroke-width="6" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <path id="pathLiverReturn" d="M 440 440 C 390 420, 330 380, 285 340" stroke="url(#gVein)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <!-- Heart → Kidney Left -->
+        <path id="pathKidneyL" d="M 265 330 C 220 390, 170 440, 130 470" stroke="url(#gArt)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <path id="pathKidneyLReturn" d="M 150 470 C 190 430, 230 390, 270 345" stroke="url(#gVein)" stroke-width="4" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <!-- Heart → Kidney Right -->
+        <path id="pathKidneyR" d="M 300 330 C 320 390, 340 440, 350 465" stroke="url(#gArt)" stroke-width="5" fill="none" opacity="0.35" filter="url(#glow)"/>
+        <path id="pathKidneyRReturn" d="M 370 465 C 360 430, 340 390, 310 345" stroke="url(#gVein)" stroke-width="4" fill="none" opacity="0.35" filter="url(#glow)"/>
+      </svg>
+
+      <!-- Organs -->
+      <div class="organ organ-brain" data-organ="brain" title="מוח">
+        <span class="organ-label">1 · מוח</span>
+      </div>
+      <div class="organ organ-lung-l" data-organ="lungs" title="ריאה שמאל">
+        <span class="organ-label">2 · ריאה</span>
+      </div>
+      <div class="organ organ-lung-r" data-organ="lungs" title="ריאה ימין">
+        <span class="organ-label">2 · ריאה</span>
+      </div>
+      <div class="organ organ-liver" data-organ="liver" title="כבד">
+        <span class="organ-label">4 · כבד</span>
+      </div>
+      <div class="organ organ-kidney-l" data-organ="kidneys" title="כליה שמאל">
+        <span class="organ-label">5 · כליה</span>
+      </div>
+      <div class="organ organ-kidney-r" data-organ="kidneys" title="כליה ימין">
+        <span class="organ-label">5 · כליה</span>
+      </div>
+
+      <!-- Heart -->
+      <div class="heart-core" data-organ="heart" title="לב">
+        <svg viewBox="0 0 120 120">
+          <defs>
+            <radialGradient id="heartGrad" cx="35%" cy="30%">
+              <stop offset="0%" stop-color="#ff7a85"/>
+              <stop offset="45%" stop-color="#d6243a"/>
+              <stop offset="100%" stop-color="#7a1118"/>
+            </radialGradient>
+            <filter id="heartShade">
+              <feGaussianBlur stdDeviation="1.5"/>
+            </filter>
+          </defs>
+          <!-- heart shape -->
+          <path d="M60,100 C20,72 8,45 24,28 C38,14 55,18 60,32 C65,18 82,14 96,28 C112,45 100,72 60,100 Z"
+                fill="url(#heartGrad)"
+                stroke="#5a0f14"
+                stroke-width="1.5"/>
+          <!-- highlight -->
+          <ellipse cx="40" cy="36" rx="14" ry="9" fill="rgba(255,255,255,0.35)"/>
+          <!-- dark vessels -->
+          <path d="M60,38 Q55,55 50,75" fill="none" stroke="#5a0f14" stroke-width="1.5" opacity="0.6"/>
+          <path d="M60,38 Q65,55 70,75" fill="none" stroke="#5a0f14" stroke-width="1.5" opacity="0.6"/>
+          <!-- aorta stub -->
+          <path d="M60,14 Q62,22 60,32" fill="none" stroke="#9b1a24" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot legend-artery"></span>עורקים (דם מחומצן)</div>
+      <div class="legend-item"><span class="legend-dot legend-vein"></span>ורידים (דם דל-חמצן)</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="ctrl-btn primary" id="playBtn" title="נגן/עצור">
+        <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+      </button>
+      <span class="speed-label">איטי</span>
+      <input class="speed-slider" type="range" id="speed" min="0.3" max="2.5" step="0.1" value="1">
+      <span class="speed-label">מהיר</span>
+      <button class="ctrl-btn" id="resetBtn" title="איפוס">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="info-card" id="infoCard">
+    <div class="info-header">
+      <div class="info-icon" id="infoIcon">❤</div>
+      <div>
+        <h3 id="infoTitle">הלב — המשאבה המרכזית</h3>
+        <div class="subtitle" id="infoSub">איבר מס׳ 3 · שריר</div>
+      </div>
+    </div>
+    <p id="infoDesc">הלב הוא שריר חלול בגודל אגרוף, השואב כ-<strong>5 ליטר דם</strong> בכל דקה דרך כל הגוף. הוא מורכב מארבעה חדרים — שני פרוזדורים ושני חדרים — הפועלים בסנכרון מושלם.</p>
+    <ul class="fact-list" id="infoFacts">
+      <li>פועם כ-100,000 פעמים ביום</li>
+      <li>שואב 7,000 ליטר דם בכל יממה</li>
+      <li>מופעל על ידי פולסים חשמליים מה-SA node</li>
+      <li>מקבל חמצן מעורקים כליליים</li>
+    </ul>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="v">~300</div><div class="l">גרם משקל</div></div>
+      <div class="stat-box"><div class="v">4</div><div class="l">חדרי לב</div></div>
+      <div class="stat-box"><div class="v">5L</div><div class="l">דם לדקה</div></div>
+      <div class="stat-box"><div class="v">~70</div><div class="l">פעימות/דקה</div></div>
+    </div>
+  </aside>
+</div>
+
+<script src="circulatory.js"></script>
+</body>
+</html>
