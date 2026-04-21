@@ -690,13 +690,13 @@ def _build_cpanel_html() -> str:
   select{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:.4rem}
 </style></head><body>
 <header>
-  <h1>\ud83e\udd1d DrScribe CPanel \u2014 Agent Chat</h1>
+  <h1>\U0001F91D DrScribe CPanel \u2014 Agent Chat</h1>
   <span id="bridgePill" class="pill">\u05d8\u05d5\u05e2\u05df...</span>
   <span id="connPill" class="pill off">WS \u05de\u05e0\u05d5\u05ea\u05e7</span>
   <span id="rosterPill" class="pill">\u05d0\u05d9\u05df \u05de\u05e9\u05ea\u05ea\u05e4\u05d9\u05dd</span>
   <button id="toggleBtn" class="toggle">\u2699\ufe0f \u05d4\u05d3\u05dc\u05e7\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea</button>
   <select id="role"><option value="viewer">Viewer</option><option value="local">Local</option><option value="cloud">Cloud</option></select>
-  <button id="connectBtn" class="toggle">\ud83d\udd0c \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea</button>
+  <button id="connectBtn" class="toggle">\U0001F50C \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea</button>
   <span id="status"></span>
 </header>
 <div id="log"></div>

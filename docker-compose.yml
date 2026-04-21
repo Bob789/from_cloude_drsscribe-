@@ -183,7 +183,6 @@ services:
       - dev-tools
     networks:
       - medscribe-network
-      - drscribe-network
     restart: unless-stopped
 
   # === Nginx Reverse Proxy ===
