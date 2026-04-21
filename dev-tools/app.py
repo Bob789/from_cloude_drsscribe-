@@ -13,6 +13,7 @@ Auth: all capture endpoints require header `X-Dev-Token` matching DEV_TOOLS_TOKE
 """
 from __future__ import annotations
 
+import asyncio
 import html as html_lib
 import json
 import os
@@ -23,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -589,3 +590,274 @@ def _build_flat_html(snapshot: dict[str, Any]) -> str:
         f"<p>Source: <a href=\"{src_url}\">{src_url}</a></p>"
         "</body></html>"
     )
+
+
+# ── CPanel: real-time agent chat over WebSocket (TCP-over-TLS) ───────────────
+class ChatHub:
+    """In-memory broadcast hub for connected agents/viewers."""
+
+    def __init__(self) -> None:
+        self.connections: list[tuple[str, WebSocket]] = []
+        self.lock = asyncio.Lock()
+
+    async def add(self, role: str, ws: WebSocket) -> None:
+        async with self.lock:
+            self.connections.append((role, ws))
+
+    async def remove(self, ws: WebSocket) -> None:
+        async with self.lock:
+            self.connections = [(r, w) for (r, w) in self.connections if w is not ws]
+
+    async def broadcast(self, payload: dict[str, Any]) -> None:
+        dead: list[WebSocket] = []
+        async with self.lock:
+            conns = list(self.connections)
+        for _role, ws in conns:
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                dead.append(ws)
+        if dead:
+            async with self.lock:
+                self.connections = [(r, w) for (r, w) in self.connections if w not in dead]
+
+    async def roster(self) -> dict[str, int]:
+        async with self.lock:
+            counts: dict[str, int] = {}
+            for role, _ws in self.connections:
+                counts[role] = counts.get(role, 0) + 1
+            return counts
+
+
+hub = ChatHub()
+
+
+def _bridge_enabled() -> bool:
+    with _db_lock:
+        conn = sqlite3.connect(str(DB_PATH))
+        try:
+            row = conn.execute("SELECT enabled FROM bridge_state WHERE id=1").fetchone()
+            return bool(row[0]) if row else False
+        finally:
+            conn.close()
+
+
+def _save_chat_message(role: str, target: str, content: str, ts: str) -> int:
+    with _db_lock:
+        conn = sqlite3.connect(str(DB_PATH))
+        try:
+            cur = conn.execute(
+                "INSERT INTO messages(role, target, content, ts, acked_by) VALUES(?,?,?,?,?)",
+                (role, target, content, ts, ""),
+            )
+            conn.commit()
+            return int(cur.lastrowid or 0)
+        finally:
+            conn.close()
+
+
+def _now_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+def _build_cpanel_html() -> str:
+    return """<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DrScribe CPanel \u2014 Agent Chat</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;background:#0b1020;color:#e2e8f0;font-family:system-ui,'Segoe UI',Arial;display:flex;flex-direction:column;height:100vh}
+  header{background:#111827;padding:.75rem 1rem;border-bottom:1px solid #1f2937;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  header h1{font-size:1rem;margin:0;color:#93c5fd}
+  .pill{padding:.2rem .55rem;border-radius:999px;font-size:.75rem;background:#1e293b;color:#cbd5e1}
+  .pill.on{background:#064e3b;color:#6ee7b7}
+  .pill.off{background:#7f1d1d;color:#fca5a5}
+  button{cursor:pointer;border:0;padding:.45rem .9rem;border-radius:6px;font-weight:600;font-size:.85rem}
+  button.toggle{background:#2563eb;color:white}
+  button.toggle.off{background:#dc2626}
+  button.send{background:#16a34a;color:white}
+  #log{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.5rem}
+  .msg{padding:.55rem .8rem;border-radius:8px;max-width:75%;line-height:1.4;word-wrap:break-word;white-space:pre-wrap}
+  .msg.local{background:#1e3a8a;align-self:flex-end}
+  .msg.cloud{background:#065f46;align-self:flex-start}
+  .msg.system{background:#374151;align-self:center;font-size:.8rem;opacity:.8}
+  .meta{font-size:.7rem;opacity:.7;margin-top:.2rem}
+  footer{background:#111827;padding:.75rem;border-top:1px solid #1f2937;display:flex;gap:.5rem}
+  #input{flex:1;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:.55rem;font-family:inherit;font-size:.9rem;resize:none;min-height:2.5rem;max-height:8rem}
+  #status{font-size:.75rem;color:#94a3b8}
+  select{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:.4rem}
+</style></head><body>
+<header>
+  <h1>\ud83e\udd1d DrScribe CPanel \u2014 Agent Chat</h1>
+  <span id="bridgePill" class="pill">\u05d8\u05d5\u05e2\u05df...</span>
+  <span id="connPill" class="pill off">WS \u05de\u05e0\u05d5\u05ea\u05e7</span>
+  <span id="rosterPill" class="pill">\u05d0\u05d9\u05df \u05de\u05e9\u05ea\u05ea\u05e4\u05d9\u05dd</span>
+  <button id="toggleBtn" class="toggle">\u2699\ufe0f \u05d4\u05d3\u05dc\u05e7\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea</button>
+  <select id="role"><option value="viewer">Viewer</option><option value="local">Local</option><option value="cloud">Cloud</option></select>
+  <button id="connectBtn" class="toggle">\ud83d\udd0c \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea</button>
+  <span id="status"></span>
+</header>
+<div id="log"></div>
+<footer>
+  <textarea id="input" placeholder="\u05db\u05ea\u05d5\u05d1 \u05d4\u05d5\u05d3\u05e2\u05d4 (Enter \u05dc\u05e9\u05dc\u05d9\u05d7\u05d4, Shift+Enter \u05dc\u05e9\u05d5\u05e8\u05d4 \u05d7\u05d3\u05e9\u05d4)"></textarea>
+  <button class="send" id="sendBtn">\u05e9\u05dc\u05d7</button>
+</footer>
+<script>
+const params = new URLSearchParams(location.search);
+const TOKEN = params.get('token') || '';
+if (!TOKEN) { document.body.innerHTML = '<h1 style=\"padding:2rem;color:#ef4444\">401 \u2014 \u05d4\u05d5\u05e1\u05e3 ?token=YOUR_TOKEN \u05dc-URL</h1>'; throw new Error('no token'); }
+
+const log = document.getElementById('log');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const toggleBtn = document.getElementById('toggleBtn');
+const connectBtn = document.getElementById('connectBtn');
+const roleSel = document.getElementById('role');
+const bridgePill = document.getElementById('bridgePill');
+const connPill = document.getElementById('connPill');
+const rosterPill = document.getElementById('rosterPill');
+const statusEl = document.getElementById('status');
+
+let ws = null;
+let bridgeOn = false;
+
+function append(m){
+  const d = document.createElement('div');
+  const cls = m.role || (m.type === 'system' ? 'system' : 'local');
+  d.className = 'msg ' + cls;
+  const target = m.target && m.target !== 'all' ? ' \u2192 ' + m.target : '';
+  d.innerHTML = '<div>'+escapeHtml(m.content||'')+'</div><div class=\"meta\">'+(m.role||m.type||'')+target+' \u00b7 '+(m.ts||'')+'</div>';
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+function escapeHtml(s){return s.replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]))}
+
+async function loadStatus(){
+  const r = await fetch('/dev-tools/agent/status', {headers:{'X-Dev-Token':TOKEN}});
+  const j = await r.json();
+  bridgeOn = !!j.enabled;
+  bridgePill.textContent = bridgeOn ? '\u05d2\u05e9\u05e8 \u05e4\u05e2\u05d9\u05dc' : '\u05d2\u05e9\u05e8 \u05db\u05d1\u05d5\u05d9';
+  bridgePill.className = 'pill ' + (bridgeOn ? 'on' : 'off');
+  toggleBtn.textContent = bridgeOn ? '\u23fb \u05db\u05d9\u05d1\u05d5\u05d9 \u05e9\u05d9\u05e8\u05d5\u05ea' : '\u2699\ufe0f \u05d4\u05d3\u05dc\u05e7\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea';
+  toggleBtn.className = 'toggle' + (bridgeOn ? ' off' : '');
+}
+async function toggleBridge(){
+  const r = await fetch('/dev-tools/agent/status', {method:'POST',headers:{'X-Dev-Token':TOKEN,'Content-Type':'application/json'},body:JSON.stringify({enabled:!bridgeOn})});
+  await r.json();
+  await loadStatus();
+}
+async function loadHistory(){
+  const r = await fetch('/dev-tools/agent/messages?limit=50', {headers:{'X-Dev-Token':TOKEN}});
+  const j = await r.json();
+  log.innerHTML = '';
+  (j.messages||[]).forEach(append);
+}
+
+function connect(){
+  if (ws) { try{ws.close()}catch(e){} ws=null; }
+  const role = roleSel.value;
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = proto + '//' + location.host + location.pathname.replace(/\\/$/,'') + '/ws?role=' + encodeURIComponent(role) + '&token=' + encodeURIComponent(TOKEN);
+  ws = new WebSocket(url);
+  ws.onopen = () => { connPill.textContent='WS \u05de\u05d7\u05d5\u05d1\u05e8 ('+role+')'; connPill.className='pill on'; };
+  ws.onclose = (e) => { connPill.textContent='WS \u05de\u05e0\u05d5\u05ea\u05e7 ('+e.code+')'; connPill.className='pill off'; };
+  ws.onerror = () => { connPill.textContent='WS \u05e9\u05d2\u05d9\u05d0\u05d4'; connPill.className='pill off'; };
+  ws.onmessage = (e) => {
+    try{
+      const m = JSON.parse(e.data);
+      if (m.type === 'roster') { rosterPill.textContent = 'local:'+(m.counts.local||0)+' cloud:'+(m.counts.cloud||0)+' viewer:'+(m.counts.viewer||0); return; }
+      append(m);
+    }catch(err){console.warn(err)}
+  };
+}
+
+function send(){
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({content:text,target:'all'}));
+  input.value = '';
+}
+
+input.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){e.preventDefault();send();}});
+sendBtn.onclick = send;
+toggleBtn.onclick = toggleBridge;
+connectBtn.onclick = connect;
+
+(async()=>{ await loadStatus(); await loadHistory(); })();
+setInterval(loadStatus, 15000);
+</script>
+</body></html>"""
+
+
+@app.get("/agent-chat", include_in_schema=False)
+@app.get("/agent-chat/", include_in_schema=False)
+async def cpanel_ui(token: Optional[str] = None) -> Response:
+    if not token or token != DEV_TOOLS_TOKEN:
+        return Response(
+            content='<!doctype html><html><body style="background:#0f172a;color:#ef4444;font-family:system-ui;padding:2rem"><h1>401 Unauthorized</h1><p>Add ?token=YOUR_TOKEN to the URL</p></body></html>',
+            media_type="text/html; charset=utf-8",
+            status_code=401,
+        )
+    return Response(content=_build_cpanel_html(), media_type="text/html; charset=utf-8")
+
+
+@app.websocket("/agent-chat/ws")
+async def cpanel_ws(
+    websocket: WebSocket,
+    role: str = Query("viewer"),
+    token: str = Query(""),
+) -> None:
+    if token != DEV_TOOLS_TOKEN:
+        await websocket.close(code=4401)
+        return
+    if role not in ("local", "cloud", "viewer"):
+        await websocket.close(code=4400)
+        return
+    if not _bridge_enabled():
+        await websocket.accept()
+        await websocket.send_json({
+            "type": "system",
+            "content": "Bridge is OFF. Toggle it ON in /agent-chat before chatting.",
+            "ts": _now_utc(),
+        })
+        await websocket.close(code=4403)
+        return
+
+    await websocket.accept()
+    await hub.add(role, websocket)
+    join_msg = {"type": "system", "content": f"{role} connected", "ts": _now_utc()}
+    await hub.broadcast(join_msg)
+    await hub.broadcast({"type": "roster", "counts": await hub.roster()})
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            content = str(data.get("content", "")).strip()
+            if not content:
+                continue
+            target = str(data.get("target", "all"))
+            if target not in ("local", "cloud", "all"):
+                target = "all"
+            ts = _now_utc()
+            msg_id = _save_chat_message(role, target, content, ts)
+            await hub.broadcast({
+                "type": "msg",
+                "id": msg_id,
+                "role": role,
+                "target": target,
+                "content": content,
+                "ts": ts,
+            })
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        try:
+            await websocket.send_json({"type": "system", "content": f"error: {exc}", "ts": _now_utc()})
+        except Exception:
+            pass
+    finally:
+        await hub.remove(websocket)
+        await hub.broadcast({"type": "system", "content": f"{role} disconnected", "ts": _now_utc()})
+        await hub.broadcast({"type": "roster", "counts": await hub.roster()})
