@@ -697,6 +697,7 @@ def _build_cpanel_html() -> str:
   <button id="toggleBtn" class="toggle">\u2699\ufe0f \u05d4\u05d3\u05dc\u05e7\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea</button>
   <select id="role"><option value="viewer">Viewer</option><option value="local">Local</option><option value="cloud">Cloud</option></select>
   <button id="connectBtn" class="toggle">\U0001F50C \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea</button>
+  <span id="bridgeSrcPill" class="pill" title="\u05de\u05e7\u05d5\u05e8 \u05d4-Bridge"></span>
   <span id="status"></span>
 </header>
 <div id="log"></div>
@@ -722,7 +723,19 @@ const statusEl = document.getElementById('status');
 
 let ws = null;
 let bridgeOn = false;
-const API_BASE = (location.port === '8090' || location.hostname === 'localhost' && location.port === '8090') ? '' : '/dev-tools';
+// Bridge target: ?bridge=prod -> https://drsscribe.com/dev-tools, ?bridge=local -> '', ?bridge=URL -> custom.
+// Default: if served from localhost:8090 use prod (so local UI mirrors cloud conversation).
+function resolveBridge(){
+  const b = (params.get('bridge')||'').trim();
+  if (b === 'prod') return 'https://drsscribe.com/dev-tools';
+  if (b === 'local') return '';
+  if (b.startsWith('http://') || b.startsWith('https://')) return b.replace(/\/$/,'');
+  if (location.port === '8090') return 'https://drsscribe.com/dev-tools';
+  return '/dev-tools';
+}
+const API_BASE = resolveBridge();
+const bridgeSrcPill = document.getElementById('bridgeSrcPill');
+bridgeSrcPill.textContent = 'src: ' + (API_BASE || 'same-origin');
 
 function append(m){
   const d = document.createElement('div');
