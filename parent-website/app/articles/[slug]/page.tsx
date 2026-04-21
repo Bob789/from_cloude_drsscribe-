@@ -16,37 +16,43 @@ function injectGlossaryTooltips(html: string, terms: GlossaryEntry[]): string {
   const parser = new DOMParser()
   const doc = parser.parseFromString(html, 'text/html')
   const sorted = [...terms].sort((a, b) => b.term.length - a.term.length)
+  const skip = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'A', 'BUTTON'])
 
-  function walkNode(node: Node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent || ''
-      for (const { term, definition } of sorted) {
-        const idx = text.indexOf(term)
-        if (idx >= 0) {
-          const span = doc.createElement('span')
-          span.className = 'glossary-term'
-          span.setAttribute('data-def', definition)
-          span.textContent = term
-          const before = doc.createTextNode(text.slice(0, idx))
-          const after = doc.createTextNode(text.slice(idx + term.length))
-          const parent = node.parentNode!
-          parent.insertBefore(before, node)
-          parent.insertBefore(span, node)
-          parent.insertBefore(after, node)
-          parent.removeChild(node)
-          walkNode(after)
-          return
-        }
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => {
+      let p = n.parentNode as Element | null
+      while (p) {
+        if (skip.has(p.nodeName)) return NodeFilter.FILTER_REJECT
+        if (p.classList?.contains('gloss-term')) return NodeFilter.FILTER_REJECT
+        p = p.parentElement
       }
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const el = node as Element
-      if (['SCRIPT', 'STYLE', 'CODE', 'PRE', 'A'].includes(el.tagName)) return
-      if (el.classList.contains('glossary-term')) return
-      Array.from(node.childNodes).forEach(walkNode)
+      return NodeFilter.FILTER_ACCEPT
+    },
+  })
+
+  const nodes: Text[] = []
+  let n: Node | null
+  while ((n = walker.nextNode())) nodes.push(n as Text)
+
+  for (const node of nodes) {
+    const text = node.nodeValue || ''
+    for (const { term } of sorted) {
+      const idx = text.indexOf(term)
+      if (idx < 0) continue
+      const frag = doc.createDocumentFragment()
+      if (idx > 0) frag.appendChild(doc.createTextNode(text.slice(0, idx)))
+      const span = doc.createElement('span')
+      span.className = 'gloss-term'
+      span.setAttribute('data-term', term)
+      span.setAttribute('tabindex', '0')
+      span.textContent = term
+      frag.appendChild(span)
+      if (idx + term.length < text.length) frag.appendChild(doc.createTextNode(text.slice(idx + term.length)))
+      node.parentNode!.replaceChild(frag, node)
+      break
     }
   }
 
-  walkNode(doc.body)
   return doc.body.innerHTML
 }
 
@@ -93,6 +99,8 @@ export default function ArticlePage() {
   const [feedbackVote, setFeedbackVote] = useState<'yes' | 'no' | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
 
+  const [prevArticle, setPrevArticle] = useState<any>(null)
+  const [nextArticle, setNextArticle] = useState<any>(null)
   const [comments, setComments] = useState<any[]>([])
   const [commentBody, setCommentBody] = useState('')
   const [commentLoading, setCommentLoading] = useState(false)
@@ -134,9 +142,13 @@ export default function ArticlePage() {
         setComments(commentsData)
 
         if (data.category) {
-          const relRes = await fetch(`${API}/articles?category=${data.category}&per_page=4`)
+          const relRes = await fetch(`${API}/articles?category=${data.category}&per_page=50`)
           const relData = await relRes.json()
-          setRelated((relData.items || []).filter((a: any) => a.slug !== slug).slice(0, 3))
+          const allInCat: any[] = relData.items || []
+          setRelated(allInCat.filter((a: any) => a.slug !== slug).slice(0, 3))
+          const idx = allInCat.findIndex((a: any) => a.slug === slug)
+          if (idx > 0) setPrevArticle(allInCat[idx - 1])
+          if (idx >= 0 && idx < allInCat.length - 1) setNextArticle(allInCat[idx + 1])
         }
       } catch { setError(true) }
       finally { setLoading(false) }
@@ -183,6 +195,69 @@ export default function ArticlePage() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [toc])
+
+  // Glossary tooltip singleton
+  useEffect(() => {
+    if (!processedHtml || glossary.length === 0) return
+    const glossMap: Record<string, string> = {}
+    glossary.forEach(g => { glossMap[g.term] = g.definition })
+
+    const tip = document.createElement('div')
+    tip.className = 'gloss-tooltip'
+    tip.innerHTML = '<div class="gt-head"><span class="gt-ico">ℹ</span><span class="gt-term"></span></div><div class="gt-body"></div><div class="gt-arrow"></div>'
+    document.body.appendChild(tip)
+
+    const tipTerm = tip.querySelector('.gt-term') as HTMLElement
+    const tipBody = tip.querySelector('.gt-body') as HTMLElement
+
+    function showTip(el: Element) {
+      const t = el.getAttribute('data-term') || ''
+      const def = glossMap[t]
+      if (!def) return
+      tipTerm.textContent = t
+      tipBody.textContent = def
+      tip.classList.add('show')
+      const r = el.getBoundingClientRect()
+      const tw = 320
+      let left = r.left + r.width / 2 - tw / 2 + window.scrollX
+      left = Math.max(12, Math.min(left, window.innerWidth - tw - 12))
+      tip.style.left = left + 'px'
+      tip.style.top = (r.top + window.scrollY - tip.offsetHeight - 12) + 'px'
+      const arrow = tip.querySelector('.gt-arrow') as HTMLElement
+      if (arrow) arrow.style.left = (r.left + r.width / 2 - left) + 'px'
+    }
+    function hideTip() { tip.classList.remove('show') }
+
+    const onOver = (e: Event) => {
+      const t = (e.target as Element).closest?.('.gloss-term')
+      if (t) showTip(t)
+    }
+    const onOut = (e: Event) => {
+      const t = (e.target as Element).closest?.('.gloss-term')
+      if (t) hideTip()
+    }
+    const onFocusIn = (e: Event) => {
+      const t = e.target as Element
+      if (t.classList?.contains('gloss-term')) showTip(t)
+    }
+    const onFocusOut = (e: Event) => {
+      const t = e.target as Element
+      if (t.classList?.contains('gloss-term')) hideTip()
+    }
+
+    document.addEventListener('mouseover', onOver)
+    document.addEventListener('mouseout', onOut)
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('focusout', onFocusOut)
+
+    return () => {
+      document.removeEventListener('mouseover', onOver)
+      document.removeEventListener('mouseout', onOut)
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('focusout', onFocusOut)
+      tip.remove()
+    }
+  }, [processedHtml, glossary])
 
   const scrollToSection = useCallback((id: string) => {
     const el = document.getElementById(id)
@@ -276,22 +351,38 @@ export default function ArticlePage() {
 
       <div className="art-detail">
 
-        {/* Breadcrumbs */}
-        <nav className="art-d-crumbs" aria-label="breadcrumb">
-          <Link href="/">ראשי</Link>
-          <span className="sep">›</span>
-          <Link href="/articles">מאמרים</Link>
-          <span className="sep">›</span>
-          <Link href={`/articles?category=${article.category}`}>{categoryLabel}</Link>
-          <span className="sep">›</span>
-          <span style={{ color: 'rgba(255,255,255,0.85)' }}>
-            {article.title.length > 50 ? article.title.slice(0, 50) + '…' : article.title}
-          </span>
-          <Link href="/articles" className="back-lnk" style={{ marginRight: 'auto' }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            חזרה למאמרים
-          </Link>
-        </nav>
+        {/* Crumb bar with prev/next */}
+        <div className="crumb-bar">
+          <div className="crumb-inner">
+            <div className="crumbs">
+              <Link href="/">דף הבית</Link>
+              <span className="sep">›</span>
+              <Link href="/articles">מאמרים</Link>
+              <span className="sep">›</span>
+              <Link href={`/articles?category=${article.category}`}>{categoryLabel}</Link>
+              <span className="sep">›</span>
+              <span className="current">{article.title.length > 40 ? article.title.slice(0, 40) + '…' : article.title}</span>
+            </div>
+            <div className="crumb-right">
+              <Link href="/articles">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                חזרה לרשימה
+              </Link>
+              {prevArticle && (
+                <Link href={`/articles/${prevArticle.slug}`}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                  מאמר קודם
+                </Link>
+              )}
+              {nextArticle && (
+                <Link href={`/articles/${nextArticle.slug}`}>
+                  מאמר הבא
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Layout */}
         <div className="art-d-layout">
@@ -462,6 +553,17 @@ export default function ArticlePage() {
               {/* Body */}
               <div className="art-d-body" ref={bodyRef}>
                 <div dangerouslySetInnerHTML={{ __html: processedHtml || article.content_html || '' }} />
+              </div>
+
+              {/* Author footer */}
+              <div className="author-footer">
+                <div className="af-ava">{authorInitials}</div>
+                <div className="af-info">
+                  <h5>{article.author_name}</h5>
+                  {article.author_title && <div className="af-t">{article.author_title}</div>}
+                  <p>מאמרים רפואיים מבוססי ראיות, מותאמים לקהל הרחב.</p>
+                </div>
+                <a href="#" className="af-cta">עקוב אחרי</a>
               </div>
 
               {/* Tags */}
