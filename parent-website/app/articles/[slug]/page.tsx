@@ -13,47 +13,49 @@ interface TocItem { id: string; text: string; level: number; num: string }
 
 function injectGlossaryTooltips(html: string, terms: GlossaryEntry[]): string {
   if (typeof window === 'undefined' || terms.length === 0) return html
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
-  const sorted = [...terms].sort((a, b) => b.term.length - a.term.length)
-  const skip = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'A', 'BUTTON'])
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const sorted = [...terms].sort((a, b) => b.term.length - a.term.length)
+    const skipTags = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'A', 'BUTTON'])
 
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
-    acceptNode: (n) => {
-      let p = n.parentNode as Element | null
-      while (p) {
-        if (skip.has(p.nodeName)) return NodeFilter.FILTER_REJECT
-        if (p.classList?.contains('gloss-term')) return NodeFilter.FILTER_REJECT
-        p = p.parentElement
+    function walkText(node: Node) {
+      if (node.nodeType === 3) {
+        const text = node.textContent || ''
+        for (const { term } of sorted) {
+          const idx = text.indexOf(term)
+          if (idx < 0) continue
+          const parent = node.parentNode
+          if (!parent) break
+          let p: Element | null = parent as Element
+          while (p) {
+            if (skipTags.has(p.nodeName) || p.classList?.contains('gloss-term')) return
+            p = p.parentElement
+          }
+          const frag = doc.createDocumentFragment()
+          if (idx > 0) frag.appendChild(doc.createTextNode(text.slice(0, idx)))
+          const span = doc.createElement('span')
+          span.className = 'gloss-term'
+          span.setAttribute('data-term', term)
+          span.setAttribute('tabindex', '0')
+          span.textContent = term
+          frag.appendChild(span)
+          if (idx + term.length < text.length) frag.appendChild(doc.createTextNode(text.slice(idx + term.length)))
+          parent.replaceChild(frag, node)
+          return
+        }
+      } else if (node.nodeType === 1) {
+        const el = node as Element
+        if (skipTags.has(el.tagName) || el.classList?.contains('gloss-term')) return
+        Array.from(node.childNodes).forEach(walkText)
       }
-      return NodeFilter.FILTER_ACCEPT
-    },
-  })
-
-  const nodes: Text[] = []
-  let n: Node | null
-  while ((n = walker.nextNode())) nodes.push(n as Text)
-
-  for (const node of nodes) {
-    const text = node.nodeValue || ''
-    for (const { term } of sorted) {
-      const idx = text.indexOf(term)
-      if (idx < 0) continue
-      const frag = doc.createDocumentFragment()
-      if (idx > 0) frag.appendChild(doc.createTextNode(text.slice(0, idx)))
-      const span = doc.createElement('span')
-      span.className = 'gloss-term'
-      span.setAttribute('data-term', term)
-      span.setAttribute('tabindex', '0')
-      span.textContent = term
-      frag.appendChild(span)
-      if (idx + term.length < text.length) frag.appendChild(doc.createTextNode(text.slice(idx + term.length)))
-      node.parentNode!.replaceChild(frag, node)
-      break
     }
-  }
 
-  return doc.body.innerHTML
+    walkText(doc.body)
+    return doc.body.innerHTML
+  } catch {
+    return html
+  }
 }
 
 function extractToc(html: string): TocItem[] {
