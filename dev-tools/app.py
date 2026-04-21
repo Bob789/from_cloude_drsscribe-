@@ -772,8 +772,15 @@ async function loadHistory(){
 function connect(){
   if (ws) { try{ws.close()}catch(e){} ws=null; }
   const role = roleSel.value;
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = proto + '//' + location.host + location.pathname.replace(/\\/$/,'') + '/ws?role=' + encodeURIComponent(role) + '&token=' + encodeURIComponent(TOKEN);
+  let url;
+  if (API_BASE.startsWith('http')) {
+    // Cross-origin bridge: derive WS URL from API_BASE
+    const wsBase = API_BASE.replace(/^http/, 'ws');
+    url = wsBase + '/agent-chat/ws?role=' + encodeURIComponent(role) + '&token=' + encodeURIComponent(TOKEN);
+  } else {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    url = proto + '//' + location.host + location.pathname.replace(/\\/$/,'') + '/ws?role=' + encodeURIComponent(role) + '&token=' + encodeURIComponent(TOKEN);
+  }
   ws = new WebSocket(url);
   ws.onopen = () => { connPill.textContent='WS \u05de\u05d7\u05d5\u05d1\u05e8 ('+role+')'; connPill.className='pill on'; };
   ws.onclose = (e) => { connPill.textContent='WS \u05de\u05e0\u05d5\u05ea\u05e7 ('+e.code+')'; connPill.className='pill off'; };
