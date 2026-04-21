@@ -722,6 +722,7 @@ const statusEl = document.getElementById('status');
 
 let ws = null;
 let bridgeOn = false;
+const API_BASE = location.pathname.includes('/dev-tools/') ? '/dev-tools' : '';
 
 function append(m){
   const d = document.createElement('div');
@@ -735,7 +736,7 @@ function append(m){
 function escapeHtml(s){return s.replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]))}
 
 async function loadStatus(){
-  const r = await fetch('/dev-tools/agent/status', {headers:{'X-Dev-Token':TOKEN}});
+  const r = await fetch(API_BASE+'/agent/status', {headers:{'X-Dev-Token':TOKEN}});
   const j = await r.json();
   bridgeOn = !!j.enabled;
   bridgePill.textContent = bridgeOn ? '\u05d2\u05e9\u05e8 \u05e4\u05e2\u05d9\u05dc' : '\u05d2\u05e9\u05e8 \u05db\u05d1\u05d5\u05d9';
@@ -744,12 +745,12 @@ async function loadStatus(){
   toggleBtn.className = 'toggle' + (bridgeOn ? ' off' : '');
 }
 async function toggleBridge(){
-  const r = await fetch('/dev-tools/agent/status', {method:'POST',headers:{'X-Dev-Token':TOKEN,'Content-Type':'application/json'},body:JSON.stringify({enabled:!bridgeOn})});
+  const r = await fetch(API_BASE+'/agent/status', {method:'POST',headers:{'X-Dev-Token':TOKEN,'Content-Type':'application/json'},body:JSON.stringify({enabled:!bridgeOn})});
   await r.json();
   await loadStatus();
 }
 async function loadHistory(){
-  const r = await fetch('/dev-tools/agent/messages?limit=50', {headers:{'X-Dev-Token':TOKEN}});
+  const r = await fetch(API_BASE+'/agent/messages?limit=50', {headers:{'X-Dev-Token':TOKEN}});
   const j = await r.json();
   log.innerHTML = '';
   (j.messages||[]).forEach(append);
