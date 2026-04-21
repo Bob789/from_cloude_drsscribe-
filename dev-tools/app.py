@@ -722,7 +722,7 @@ const statusEl = document.getElementById('status');
 
 let ws = null;
 let bridgeOn = false;
-const API_BASE = location.pathname.includes('/dev-tools/') ? '/dev-tools' : '';
+const API_BASE = (location.port === '8090' || location.hostname === 'localhost' && location.port === '8090') ? '' : '/dev-tools';
 
 function append(m){
   const d = document.createElement('div');
