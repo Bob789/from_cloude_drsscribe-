@@ -133,7 +133,7 @@ export default function CpanelPage() {
   const chatConnect = useCallback(() => {
     if (chatWs) { try { chatWs.close() } catch (_) {} }
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const url = `${proto}://${window.location.host}/dev-tools/chat/ws?role=viewer&token=${encodeURIComponent(devToolsToken)}`
+    const url = `${proto}://${window.location.host}/dev-tools/chat/ws?role=local&token=${encodeURIComponent(devToolsToken)}`
     const ws = new WebSocket(url)
     ws.onopen = () => setChatConnected(true)
     ws.onclose = () => { setChatConnected(false); setChatWs(null) }
@@ -1756,45 +1756,59 @@ export default function CpanelPage() {
             </details>
 
             {/* ── Agent Chat ──────────────────────────────────────────────── */}
-            <div style={{ marginTop: 32, padding: 20, background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>💬 Agent Chat — TCP Real-Time</h3>
-                <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: chatBridgeOn ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: chatBridgeOn ? '#34d399' : '#f87171' }}>
+            <div style={{ marginTop: 32, padding: 20, background: 'rgba(124,58,237,0.09)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 10, color: '#e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#e2e8f0' }}>💬 Agent Chat — Real-Time</h3>
+                <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: chatBridgeOn ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)', color: chatBridgeOn ? '#6ee7b7' : '#fca5a5' }}>
                   {chatBridgeOn ? '● Bridge פעיל' : '○ Bridge כבוי'}
                 </span>
-                <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 12, background: chatConnected ? 'rgba(59,130,246,0.2)' : 'rgba(100,116,139,0.15)', color: chatConnected ? '#93c5fd' : '#94a3b8' }}>
-                  {chatConnected ? `WS מחובר · local:${chatRoster.local||0} cloud:${chatRoster.cloud||0}` : 'WS מנותק'}
+                <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: chatConnected ? 'rgba(59,130,246,0.25)' : 'rgba(100,116,139,0.2)', color: chatConnected ? '#93c5fd' : '#94a3b8' }}>
+                  {chatConnected ? `● WS מחובר · local:${chatRoster.local||0} cloud:${chatRoster.cloud||0}` : '○ WS מנותק'}
                 </span>
-                <button onClick={chatToggleBridge} style={{ marginLeft: 'auto', padding: '6px 14px', background: chatBridgeOn ? '#dc2626' : '#10b981', color: 'white', border: 'none', borderRadius: 7, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-                  {chatBridgeOn ? '⏹ כבה Bridge' : '⚡ הדלק Bridge'}
+                <button onClick={chatToggleBridge} style={{ marginLeft: 'auto', padding: '6px 14px', background: chatBridgeOn ? '#dc2626' : '#059669', color: '#fff', border: 'none', borderRadius: 7, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                  {chatBridgeOn ? '⏹ כבה' : '⚡ הדלק Bridge'}
                 </button>
-                <button onClick={chatConnect} style={{ padding: '6px 14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 7, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-                  🔌 התחבר WS
+                <button onClick={chatConnect} style={{ padding: '6px 14px', background: chatConnected ? '#374151' : '#2563eb', color: '#fff', border: 'none', borderRadius: 7, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                  {chatConnected ? '🔄 חבר מחדש' : '🔌 התחבר'}
                 </button>
               </div>
-              <div style={{ height: 280, overflowY: 'auto', background: 'rgba(0,0,0,0.35)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+
+              {/* Messages */}
+              <div style={{ height: 300, overflowY: 'auto', background: '#0d1117', borderRadius: 8, padding: '10px 12px', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid rgba(255,255,255,0.08)' }}>
                 {chatMsgs.length === 0 ? (
-                  <div style={{ color: '#475569', textAlign: 'center', paddingTop: 80, fontSize: 13 }}>אין הודעות — הדלק Bridge והתחבר</div>
-                ) : chatMsgs.map((m, i) => (
-                  <div key={i} style={{ padding: '6px 10px', borderRadius: 7, background: m.role === 'cloud' ? 'rgba(20,83,45,0.7)' : m.type === 'system' ? 'rgba(30,41,59,0.7)' : 'rgba(30,58,138,0.7)', alignSelf: m.type === 'system' ? 'center' : m.role === 'cloud' ? 'flex-start' : 'flex-end', maxWidth: '80%', fontSize: 13, lineHeight: 1.45, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                    {m.type !== 'system' && <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, marginBottom: 2, textTransform: 'uppercase' }}>{m.role}</div>}
-                    <div>{m.content}</div>
-                    <div style={{ fontSize: 10, opacity: 0.4, marginTop: 2 }}>{m.ts}{m.id ? ` #${m.id}` : ''}</div>
-                  </div>
-                ))}
+                  <div style={{ color: '#6b7280', textAlign: 'center', paddingTop: 90, fontSize: 13 }}>אין הודעות — הדלק Bridge לחץ התחבר</div>
+                ) : chatMsgs.map((m, i) => {
+                  const isCloud = m.role === 'cloud'
+                  const isSys = m.type === 'system' || m.role === 'system'
+                  const bg = isSys ? 'rgba(55,65,81,0.6)' : isCloud ? '#14532d' : '#1e3a8a'
+                  return (
+                    <div key={i} style={{ padding: '7px 11px', borderRadius: 8, background: bg, alignSelf: isSys ? 'center' : isCloud ? 'flex-start' : 'flex-end', maxWidth: isSys ? '100%' : '82%', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                      {!isSys && <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 3, color: isCloud ? '#86efac' : '#93c5fd' }}>{m.role}</div>}
+                      <div style={{ fontSize: 13, lineHeight: 1.5, color: '#f1f5f9' }}>{m.content}</div>
+                      <div style={{ fontSize: 10, color: '#6b7280', marginTop: 3 }}>{m.ts}{m.id ? ` #${m.id}` : ''}</div>
+                    </div>
+                  )
+                })}
               </div>
+
+              {/* Input */}
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && chatSend()}
-                  placeholder="כתוב הודעה ולחץ Enter..."
-                  style={{ flex: 1, padding: '9px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(124,58,237,0.4)', borderRadius: 7, color: '#e2e8f0', fontSize: 14 }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend() } }}
+                  placeholder={chatConnected ? 'כתוב הודעה ולחץ Enter...' : 'לחץ התחבר ואז כתוב...'}
+                  style={{ flex: 1, padding: '10px 13px', background: '#161b27', border: '1px solid rgba(124,58,237,0.5)', borderRadius: 7, color: '#f1f5f9', fontSize: 14, outline: 'none' }}
                 />
-                <button onClick={chatSend} disabled={!chatConnected} style={{ padding: '9px 18px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: 7, fontWeight: 700, cursor: chatConnected ? 'pointer' : 'not-allowed', opacity: chatConnected ? 1 : 0.5 }}>שלח</button>
+                <button
+                  onClick={() => { if (!chatConnected) { chatConnect(); return; } chatSend() }}
+                  style={{ padding: '10px 20px', background: chatConnected ? '#7c3aed' : '#2563eb', color: '#fff', border: 'none', borderRadius: 7, fontWeight: 700, cursor: 'pointer', fontSize: 14, whiteSpace: 'nowrap' }}
+                >
+                  {chatConnected ? 'שלח ↵' : '🔌 התחבר'}
+                </button>
               </div>
-              <div style={{ marginTop: 8, fontSize: 11, color: '#475569' }}>
-                סוכן TCP: <code style={{ fontFamily: 'monospace' }}>DEV_TOOLS_TOKEN={devToolsToken} BRIDGE_ROLE=local python scripts/copilot-bridge.py</code>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#6b7280' }}>
+                סוכן TCP: <code style={{ fontFamily: 'monospace', color: '#94a3b8' }}>BRIDGE_ROLE=local python scripts/copilot-bridge.py</code>
               </div>
             </div>
           </div>
