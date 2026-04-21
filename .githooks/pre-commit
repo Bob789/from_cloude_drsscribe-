@@ -1,0 +1,16 @@
+#!/bin/bash
+# Pre-commit hook — validates CSS before every commit.
+# Install once: git config core.hooksPath .githooks
+
+set -e
+
+CSS_CHANGED=$(git diff --cached --name-only | grep '\.css$' || true)
+
+if [ -z "$CSS_CHANGED" ]; then
+  exit 0   # no CSS files staged, skip
+fi
+
+echo "CSS files changed — running validation..."
+cd parent-website
+node scripts/validate-css.js
+echo "CSS validation passed."
