@@ -131,9 +131,16 @@ export default function CpanelPage() {
   const [chatRoster, setChatRoster] = useState<Record<string, number>>({})
 
   const chatConnect = useCallback(() => {
-    if (chatWs) { try { chatWs.close() } catch (_) {} }
+    if (chatWs) {
+      chatWs.onclose = null   // prevent old close-handler from clobbering new connection
+      chatWs.onerror = null
+      try { chatWs.close() } catch (_) {}
+    }
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const url = `${proto}://${window.location.host}/dev-tools/chat/ws?role=local&token=${encodeURIComponent(devToolsToken)}`
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const wsHost = isLocal ? `${window.location.hostname}:8090` : window.location.host
+    const wsPath = isLocal ? '/chat/ws' : '/dev-tools/chat/ws'
+    const url = `${proto}://${wsHost}${wsPath}?role=viewer&token=${encodeURIComponent(devToolsToken)}`
     const ws = new WebSocket(url)
     ws.onopen = () => setChatConnected(true)
     ws.onclose = () => { setChatConnected(false); setChatWs(null) }
@@ -157,19 +164,23 @@ export default function CpanelPage() {
 
   const chatToggleBridge = useCallback(async () => {
     try {
+      const next = !chatBridgeOn
       await fetch('/dev-tools/agent/status', {
         method: 'POST',
         headers: { 'X-Dev-Token': devToolsToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !chatBridgeOn }),
+        body: JSON.stringify({ enabled: next }),
       })
-      setChatBridgeOn(b => !b)
+      setChatBridgeOn(next)
+      if (next) chatConnect()   // auto-reconnect viewer when bridge turns on
     } catch (_) {}
-  }, [chatBridgeOn, devToolsToken])
+  }, [chatBridgeOn, devToolsToken, chatConnect])
 
   useEffect(() => {
     if (tab !== 'devtools') return
     fetch('/dev-tools/agent/status', { headers: { 'X-Dev-Token': devToolsToken } })
       .then(r => r.json()).then(j => setChatBridgeOn(!!j.enabled)).catch(() => {})
+    chatConnect()   // auto-connect viewer whenever devtools tab is opened
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, devToolsToken])
 
   const ensureGoogleOAuth = async (): Promise<any | null> => {

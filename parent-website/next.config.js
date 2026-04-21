@@ -1,5 +1,15 @@
 /** @type {import('next').NextConfig} */
+const devToolsUrl = process.env.DEV_TOOLS_URL || 'http://localhost:8090'
+
 const nextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: '/dev-tools/:path*',
+        destination: `${devToolsUrl}/:path*`,
+      },
+    ]
+  },
   async headers() {
     return [
       {

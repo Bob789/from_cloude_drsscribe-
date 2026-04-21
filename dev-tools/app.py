@@ -657,11 +657,12 @@ async def cpanel_ws(
     if role not in ("local", "cloud", "viewer"):
         role = "viewer"
 
-    if not _bridge_enabled():
+    bridge_on = _bridge_enabled()
+    if not bridge_on and role != "viewer":
         await websocket.accept()
         await websocket.send_json({
             "type": "system",
-            "content": "Bridge is OFF — click the toggle to enable it.",
+            "content": "Bridge is OFF — enable it in cpanel first.",
             "ts": _now_utc(),
         })
         await websocket.close(code=4403)
@@ -669,8 +670,15 @@ async def cpanel_ws(
 
     await websocket.accept()
     await hub.add_ws(role, websocket)
-    await hub.broadcast({"type": "system", "content": f"{role} connected (WS)", "ts": _now_utc()})
-    await hub.broadcast({"type": "roster", "counts": await hub.roster()})
+    if not bridge_on:
+        await websocket.send_json({
+            "type": "system",
+            "content": "🔴 Bridge כבוי — הדלק אותו כדי לאפשר חיבורי סוכנים.",
+            "ts": _now_utc(),
+        })
+    else:
+        await hub.broadcast({"type": "system", "content": f"{role} connected (WS)", "ts": _now_utc()})
+        await hub.broadcast({"type": "roster", "counts": await hub.roster()})
 
     try:
         while True:
