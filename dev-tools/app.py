@@ -40,6 +40,13 @@ DB_PATH = Path(os.getenv("BRIDGE_DB_PATH", "/tmp/agent_bridge.db"))
 _db_lock = threading.Lock()
 
 
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, col_def: str) -> None:
+    cols = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    existing = {c[1] for c in cols}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+
+
 def _init_db() -> None:
     with _db_lock:
         conn = sqlite3.connect(str(DB_PATH))
@@ -52,12 +59,17 @@ def _init_db() -> None:
                     ts      TEXT NOT NULL
                 )
             """)
+            _ensure_column(conn, "messages", "target", "TEXT NOT NULL DEFAULT 'all'")
+            _ensure_column(conn, "messages", "acked_by", "TEXT NOT NULL DEFAULT ''")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS bridge_state (
                     id      INTEGER PRIMARY KEY CHECK (id = 1),
                     enabled INTEGER NOT NULL DEFAULT 0
                 )
             """)
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_messages_id ON messages(id)"
+            )
             conn.execute("INSERT OR IGNORE INTO bridge_state(id, enabled) VALUES(1, 0)")
             conn.commit()
         finally:
@@ -95,7 +107,7 @@ def _build_ui_html() -> str:
 textarea{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:9px;font-size:.86rem;resize:vertical;min-height:75px}
 textarea:focus{outline:none;border-color:#7c3aed}
 select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 12px;font-size:.86rem}
-.fr{display:flex;gap:9px;margin-top:9px;align-items:center}.tsb{font-size:.76rem;color:#475569;margin-left:auto}
+.fr{display:flex;gap:9px;margin-top:9px;align-items:center;flex-wrap:wrap}.tsb{font-size:.76rem;color:#475569;margin-left:auto}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}.pls{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite;display:inline-block;margin-right:5px}
 </style></head><body>
 <div class="hdr">
@@ -118,6 +130,7 @@ select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8
     </p>
     <div class="ct" style="margin-top:14px;margin-bottom:6px">Cloud Endpoint (POST with X-Dev-Token header):</div>
     <div class="ep" id="ep">...</div>
+    <div class="ep" id="inbox_ep" style="margin-top:8px">...</div>
   </div>
   <div class="card">
     <div class="ct" style="display:flex;align-items:center">
@@ -130,17 +143,20 @@ select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8
     <div class="ct">&#x05E9;&#x05DC;&#x05D7; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D4; &#x05D7;&#x05D3;&#x05E9;&#x05D4;</div>
     <textarea id="inp" placeholder="&#x05DB;&#x05EA;&#x05D5;&#x05D1; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D4;..."></textarea>
     <div class="fr">
-      <select id="role"><option value="local">local (Copilot)</option><option value="system">system</option></select>
+            <select id="role"><option value="local">local (Copilot)</option><option value="system">system</option></select>
+            <select id="target"><option value="cloud">to: cloud</option><option value="all">to: all</option><option value="local">to: local</option></select>
       <button class="btn btn-send" onclick="send()">&#x05E9;&#x05DC;&#x05D7;</button>
     </div>
   </div>
 </div>
 <script>
 const BASE=window.location.origin+window.location.pathname.replace(/\/+$/,'');
+const SELF='local';
 let TOK=sessionStorage.getItem('dt_token');
 (()=>{const p=new URLSearchParams(window.location.search);if(p.get('token')){TOK=p.get('token');sessionStorage.setItem('dt_token',TOK);history.replaceState({},'',window.location.pathname);}})();
 const H=()=>({'X-Dev-Token':TOK,'Content-Type':'application/json'});
 document.getElementById('ep').textContent=BASE+'/agent/messages';
+document.getElementById('inbox_ep').textContent='Inbox: '+BASE+'/agent/messages?inbox_for='+SELF+'&only_unacked_for='+SELF;
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 async function loadStatus(){
   try{
@@ -162,17 +178,17 @@ async function toggleBridge(){
 }
 async function loadMsgs(){
   try{
-    const d=await(await fetch(BASE+'/agent/messages',{headers:H()})).json();
+        const d=await(await fetch(BASE+'/agent/messages?inbox_for='+SELF,{headers:H()})).json();
     const el=document.getElementById('msgs');
     if(!d.messages||!d.messages.length){el.innerHTML='<div class="empty">\u05D0\u05D9\u05DF \u05D4\u05D5\u05D3\u05E2\u05D5\u05EA</div>';return;}
-    el.innerHTML=d.messages.map(m=>`<div class="msg msg-${m.role}"><span class="rb rb-${m.role}">${m.role}</span>${esc(m.content)}<div class="meta">${m.ts}</div></div>`).join('');
+        el.innerHTML=d.messages.map(m=>`<div class="msg msg-${m.role}"><span class="rb rb-${m.role}">${m.role}</span>${esc(m.content)}<div class="meta">#${m.id} | to:${m.target||'all'} | ${m.ts}${m.acked_by?(' | ack:'+m.acked_by):''}</div></div>`).join('');
   }catch(e){}
 }
 async function send(){
   const c=document.getElementById('inp').value.trim();
   if(!c)return;
   try{
-    await fetch(BASE+'/agent/messages',{method:'POST',headers:H(),body:JSON.stringify({role:document.getElementById('role').value,content:c})});
+        await fetch(BASE+'/agent/messages',{method:'POST',headers:H(),body:JSON.stringify({role:document.getElementById('role').value,target:document.getElementById('target').value,content:c})});
     document.getElementById('inp').value='';
     await loadMsgs();
   }catch(e){alert('\u05E9\u05D2\u05D9\u05D0\u05D4: '+e);}
@@ -209,7 +225,12 @@ def _check_token(token: Optional[str]) -> None:
 
 class MessageIn(BaseModel):
     role: str = Field("local", description="'local', 'cloud', or 'system'")
+    target: str = Field("all", description="'local', 'cloud', or 'all'")
     content: str = Field(..., min_length=1, max_length=10000)
+
+
+class AckIn(BaseModel):
+    by: str = Field(..., description="'local' or 'cloud'")
 
 
 class BridgeStatusIn(BaseModel):
@@ -380,16 +401,38 @@ async def set_bridge_status(
 @app.get("/agent/messages")
 async def get_messages(
     limit: int = 50,
+    since_id: int = 0,
+    inbox_for: Optional[str] = None,
+    only_unacked_for: Optional[str] = None,
     x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
 ) -> dict[str, Any]:
     _check_token(x_dev_token)
+    if inbox_for not in (None, "local", "cloud"):
+        raise HTTPException(status_code=400, detail="inbox_for must be: local or cloud")
+    if only_unacked_for not in (None, "local", "cloud"):
+        raise HTTPException(status_code=400, detail="only_unacked_for must be: local or cloud")
+
+    filters = ["id > ?"]
+    params: list[Any] = [max(0, since_id)]
+    if inbox_for:
+        filters.append("target IN (?, 'all')")
+        params.append(inbox_for)
+        # Inbox should show messages from the other side (not self-authored)
+        filters.append("role != ?")
+        params.append(inbox_for)
+    if only_unacked_for:
+        filters.append("acked_by NOT LIKE ?")
+        params.append(f"%,{only_unacked_for},%")
+
+    where_sql = " AND ".join(filters)
     with _db_lock:
         conn = sqlite3.connect(str(DB_PATH))
         conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
-                "SELECT id, role, content, ts FROM messages ORDER BY id DESC LIMIT ?",
-                (min(limit, 200),),
+                f"SELECT id, role, target, content, ts, acked_by "
+                f"FROM messages WHERE {where_sql} ORDER BY id DESC LIMIT ?",
+                (*params, min(limit, 200)),
             ).fetchall()
             return {"messages": [dict(r) for r in rows]}
         finally:
@@ -404,19 +447,59 @@ async def post_message(
     _check_token(x_dev_token)
     if msg.role not in ("local", "cloud", "system"):
         raise HTTPException(status_code=400, detail="role must be: local, cloud, or system")
+    if msg.target not in ("local", "cloud", "all"):
+        raise HTTPException(status_code=400, detail="target must be: local, cloud, or all")
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     with _db_lock:
         conn = sqlite3.connect(str(DB_PATH))
         try:
             cur = conn.execute(
-                "INSERT INTO messages(role, content, ts) VALUES(?,?,?)",
-                (msg.role, msg.content, ts),
+                "INSERT INTO messages(role, target, content, ts, acked_by) VALUES(?,?,?,?,?)",
+                (msg.role, msg.target, msg.content, ts, ""),
             )
             msg_id = cur.lastrowid
             conn.commit()
         finally:
             conn.close()
-    return {"id": msg_id, "ts": ts}
+    return {"id": msg_id, "ts": ts, "target": msg.target}
+
+
+@app.post("/agent/messages/{message_id}/ack")
+async def ack_message(
+    message_id: int,
+    body: AckIn,
+    x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
+) -> dict[str, Any]:
+    _check_token(x_dev_token)
+    if body.by not in ("local", "cloud"):
+        raise HTTPException(status_code=400, detail="by must be: local or cloud")
+
+    with _db_lock:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                "SELECT id, acked_by FROM messages WHERE id=?",
+                (message_id,),
+            ).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="message not found")
+
+            current = row["acked_by"] or ""
+            marker = f",{body.by},"
+            normalized = current if current.startswith(",") else f",{current.strip(',')},"
+            if normalized == ",,":
+                normalized = ","
+            if marker not in normalized:
+                normalized = f"{normalized}{body.by},"
+            conn.execute(
+                "UPDATE messages SET acked_by=? WHERE id=?",
+                (normalized, message_id),
+            )
+            conn.commit()
+            return {"id": message_id, "acked_by": normalized}
+        finally:
+            conn.close()
 
 
 @app.delete("/agent/messages")
