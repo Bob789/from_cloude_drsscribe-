@@ -213,8 +213,10 @@ services:
     container_name: medscribe-dev-tools
     ports:
       - "8090:8090"
+      - "9090:9090"
     environment:
       - DEV_TOOLS_TOKEN=${DEV_TOOLS_TOKEN:-dev-token-change-me}
+      - CHAT_TCP_PORT=9090
     restart: unless-stopped
     networks:
       - drscribe-network
@@ -227,6 +229,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "9090:9090"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro

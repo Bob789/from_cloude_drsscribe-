@@ -1,15 +1,16 @@
 """
 DoctorScribe Dev-Tools service.
 
-Internal-only utility to capture visual snapshots of pages (mainly Flutter Web)
-and produce a single self-contained HTML file representing what the user sees.
-
 Endpoints:
   POST /capture/screenshot  -> PNG of the full page
   POST /capture/flatten     -> Single self-contained HTML snapshot
   GET  /health              -> Liveness check
+  GET  /cpanel              -> Real-time agent chat UI (WebSocket browser viewer)
+  WS   /cpanel/ws           -> WebSocket for browser (viewer/local/cloud)
+  TCP  :9090                -> Raw TCP socket for Copilot agents (local/cloud)
 
-Auth: all capture endpoints require header `X-Dev-Token` matching DEV_TOOLS_TOKEN.
+Auth: X-Dev-Token header or ?token= query param.
+TCP:  First line JSON: {"token":"xxx","role":"local"}
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ import os
 import sqlite3
 import threading
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -30,21 +32,21 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 DEV_TOOLS_TOKEN = os.getenv("DEV_TOOLS_TOKEN", "dev-token-change-me")
+TCP_PORT = int(os.getenv("CHAT_TCP_PORT", "9090"))
 DEFAULT_VIEWPORT_W = 1440
 DEFAULT_VIEWPORT_H = 900
 NAV_TIMEOUT_MS = 45_000
 
 FLATTEN_JS = (Path(__file__).parent / "flatten.js").read_text(encoding="utf-8")
 
-# ── Agent Bridge (SQLite message queue) ──────────────────────────────────────
+# ── Persistent message store (SQLite) ────────────────────────────────────────
 DB_PATH = Path(os.getenv("BRIDGE_DB_PATH", "/tmp/agent_bridge.db"))
 _db_lock = threading.Lock()
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, column: str, col_def: str) -> None:
     cols = conn.execute(f"PRAGMA table_info({table})").fetchall()
-    existing = {c[1] for c in cols}
-    if column not in existing:
+    if column not in {c[1] for c in cols}:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
 
 
@@ -68,9 +70,7 @@ def _init_db() -> None:
                     enabled INTEGER NOT NULL DEFAULT 0
                 )
             """)
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_messages_id ON messages(id)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_id ON messages(id)")
             conn.execute("INSERT OR IGNORE INTO bridge_state(id, enabled) VALUES(1, 0)")
             conn.commit()
         finally:
@@ -78,143 +78,352 @@ def _init_db() -> None:
 
 
 _init_db()
-# ─────────────────────────────────────────────────────────────────────────────
 
 
-def _build_ui_html() -> str:
-    return """<!DOCTYPE html>
-<html dir="ltr" lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dev Tools — DoctorScribe</title>
+# ── Real-time Hub: WebSocket + TCP ───────────────────────────────────────────
+
+class TcpConn:
+    """One connected TCP agent."""
+    __slots__ = ("role", "writer")
+
+    def __init__(self, role: str, writer: asyncio.StreamWriter) -> None:
+        self.role = role
+        self.writer = writer
+
+    async def send_json(self, payload: dict[str, Any]) -> bool:
+        try:
+            self.writer.write((json.dumps(payload) + "\n").encode())
+            await self.writer.drain()
+            return True
+        except Exception:
+            return False
+
+
+class ChatHub:
+    """Broadcast hub for both WebSocket (browser) and TCP (Copilot) clients."""
+
+    def __init__(self) -> None:
+        self._ws: list[tuple[str, WebSocket]] = []
+        self._tcp: list[TcpConn] = []
+        self._lock = asyncio.Lock()
+
+    # ── registration ─────────────────────────────────────────────────────────
+    async def add_ws(self, role: str, ws: WebSocket) -> None:
+        async with self._lock:
+            self._ws.append((role, ws))
+
+    async def remove_ws(self, ws: WebSocket) -> None:
+        async with self._lock:
+            self._ws = [(r, w) for r, w in self._ws if w is not ws]
+
+    async def add_tcp(self, tc: TcpConn) -> None:
+        async with self._lock:
+            self._tcp.append(tc)
+
+    async def remove_tcp(self, tc: TcpConn) -> None:
+        async with self._lock:
+            self._tcp = [c for c in self._tcp if c is not tc]
+
+    # ── broadcast ─────────────────────────────────────────────────────────────
+    async def broadcast(self, payload: dict[str, Any]) -> None:
+        dead_ws: list[WebSocket] = []
+        dead_tcp: list[TcpConn] = []
+
+        async with self._lock:
+            ws_snap = list(self._ws)
+            tcp_snap = list(self._tcp)
+
+        for _, ws in ws_snap:
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                dead_ws.append(ws)
+
+        for tc in tcp_snap:
+            if not await tc.send_json(payload):
+                dead_tcp.append(tc)
+
+        if dead_ws or dead_tcp:
+            async with self._lock:
+                if dead_ws:
+                    self._ws = [(r, w) for r, w in self._ws if w not in dead_ws]
+                if dead_tcp:
+                    self._tcp = [c for c in self._tcp if c not in dead_tcp]
+
+    async def roster(self) -> dict[str, int]:
+        async with self._lock:
+            counts: dict[str, int] = {}
+            for role, _ in self._ws:
+                counts[role] = counts.get(role, 0) + 1
+            for tc in self._tcp:
+                counts[tc.role] = counts.get(tc.role, 0) + 1
+            return counts
+
+
+hub = ChatHub()
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _bridge_enabled() -> bool:
+    with _db_lock:
+        conn = sqlite3.connect(str(DB_PATH))
+        try:
+            row = conn.execute("SELECT enabled FROM bridge_state WHERE id=1").fetchone()
+            return bool(row[0]) if row else False
+        finally:
+            conn.close()
+
+
+def _save_message(role: str, target: str, content: str, ts: str) -> int:
+    with _db_lock:
+        conn = sqlite3.connect(str(DB_PATH))
+        try:
+            cur = conn.execute(
+                "INSERT INTO messages(role,target,content,ts,acked_by) VALUES(?,?,?,?,'')",
+                (role, target, content, ts),
+            )
+            conn.commit()
+            return int(cur.lastrowid or 0)
+        finally:
+            conn.close()
+
+
+def _now_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+# ── TCP server ────────────────────────────────────────────────────────────────
+
+async def _tcp_handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    tc: Optional[TcpConn] = None
+    try:
+        raw = await asyncio.wait_for(reader.readline(), timeout=15.0)
+        if not raw:
+            return
+        try:
+            auth = json.loads(raw.decode().strip())
+        except Exception:
+            writer.write(b'{"type":"error","content":"Expected JSON auth line"}\n')
+            await writer.drain()
+            return
+
+        if auth.get("token") != DEV_TOOLS_TOKEN:
+            writer.write(b'{"type":"error","content":"Unauthorized"}\n')
+            await writer.drain()
+            return
+
+        role = str(auth.get("role", "local"))
+        if role not in ("local", "cloud", "viewer"):
+            role = "local"
+
+        if not _bridge_enabled():
+            writer.write(b'{"type":"error","content":"Bridge is OFF - enable it in /cpanel"}\n')
+            await writer.drain()
+            return
+
+        tc = TcpConn(role, writer)
+        await hub.add_tcp(tc)
+        await tc.send_json({"type": "welcome", "role": role, "ts": _now_utc(),
+                            "hint": "Send JSON lines: {\"content\":\"hello\",\"target\":\"all\"}"})
+        await hub.broadcast({"type": "system", "content": f"{role} connected (TCP:{TCP_PORT})", "ts": _now_utc()})
+        await hub.broadcast({"type": "roster", "counts": await hub.roster()})
+
+        async for raw_line in reader:
+            line = raw_line.decode().strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                content = str(data.get("content", "")).strip()
+                target = str(data.get("target", "all"))
+            except (json.JSONDecodeError, ValueError):
+                content = line[:5000]
+                target = "all"
+
+            if not content:
+                continue
+            if target not in ("local", "cloud", "all"):
+                target = "all"
+
+            ts = _now_utc()
+            msg_id = _save_message(role, target, content, ts)
+            await hub.broadcast({"type": "msg", "id": msg_id, "role": role,
+                                 "target": target, "content": content, "ts": ts})
+
+    except (asyncio.TimeoutError, asyncio.IncompleteReadError, ConnectionResetError, BrokenPipeError):
+        pass
+    except Exception:
+        pass
+    finally:
+        if tc:
+            await hub.remove_tcp(tc)
+            await hub.broadcast({"type": "system", "content": f"{tc.role} disconnected", "ts": _now_utc()})
+            await hub.broadcast({"type": "roster", "counts": await hub.roster()})
+        try:
+            writer.close()
+            await writer.wait_closed()
+        except Exception:
+            pass
+
+
+async def _run_tcp_server() -> None:
+    server = await asyncio.start_server(_tcp_handler, "0.0.0.0", TCP_PORT)
+    addrs = [s.getsockname() for s in server.sockets]
+    print(f"[chat] TCP server ready on {addrs}", flush=True)
+    async with server:
+        await server.serve_forever()
+
+
+# ── CPanel HTML ───────────────────────────────────────────────────────────────
+
+def _build_cpanel_html() -> str:
+    return r"""<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DrScribe CPanel — Agent Chat</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}body{background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;min-height:100vh}
-.hdr{background:#1e293b;padding:14px 24px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:12px}
-.hdr h1{font-size:1.1rem;font-weight:700}.badge{font-size:.68rem;background:#7c3aed;color:#fff;padding:2px 8px;border-radius:999px;letter-spacing:.05em}
-.wrap{max-width:860px;margin:0 auto;padding:20px 16px;display:grid;gap:18px}
-.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:18px}
-.ct{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:#94a3b8;margin-bottom:14px}
-.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.dot{width:11px;height:11px;border-radius:50%}.dot-on{background:#22c55e;box-shadow:0 0 7px #22c55e99}.dot-off{background:#ef4444}
-.lbl{font-weight:600;font-size:.95rem}
-.btn{border:none;border-radius:8px;padding:8px 20px;font-size:.88rem;font-weight:600;cursor:pointer;transition:opacity .15s}.btn:hover{opacity:.82}
-.btn-on{background:#22c55e;color:#fff}.btn-off{background:#ef4444;color:#fff}.btn-send{background:#7c3aed;color:#fff}
-.btn-clr{background:transparent;color:#ef4444;border:1px solid #ef444455;padding:6px 14px;font-size:.8rem;border-radius:8px;cursor:pointer;margin-left:auto}
-.ep{background:#0f172a;border:1px solid #334155;border-radius:7px;padding:9px 13px;font-family:monospace;font-size:.78rem;color:#7dd3fc;word-break:break-all;margin-top:10px}
-.msgs{display:flex;flex-direction:column;gap:7px;max-height:400px;overflow-y:auto}
-.msg{padding:9px 13px;border-radius:8px;font-size:.86rem;line-height:1.55;border-left:3px solid}
-.msg-local{background:#172554;border-color:#3b82f6}.msg-cloud{background:#14532d;border-color:#22c55e}.msg-system{background:#2d1f09;border-color:#f59e0b}
-.rb{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-right:6px}
-.rb-local{color:#60a5fa}.rb-cloud{color:#4ade80}.rb-system{color:#fbbf24}
-.meta{font-size:.7rem;color:#475569;margin-top:3px}.empty{color:#475569;text-align:center;padding:28px;font-size:.86rem}
-textarea{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:9px;font-size:.86rem;resize:vertical;min-height:75px}
+:root{color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#070d1a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:#111827;padding:10px 18px;border-bottom:1px solid #1e293b;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+h1{font-size:.95rem;font-weight:700;color:#93c5fd;margin-left:4px}
+.pill{padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.on{background:#064e3b;color:#6ee7b7}.off{background:#4c0519;color:#fda4af}.ok{background:#1e3a8a;color:#93c5fd}
+.btn{cursor:pointer;border:0;border-radius:6px;padding:6px 14px;font-size:.82rem;font-weight:600;white-space:nowrap}
+.bg{background:#16a34a;color:#fff}.br{background:#dc2626;color:#fff}.bb{background:#2563eb;color:#fff}.bv{background:#7c3aed;color:#fff}
+select{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:5px 9px;font-size:.82rem}
+#log{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:5px}
+.msg{padding:7px 11px;border-radius:8px;max-width:78%;font-size:.86rem;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+.msg.local{background:#1e3a8a;align-self:flex-end;border-bottom-right-radius:2px}
+.msg.cloud{background:#14532d;align-self:flex-start;border-bottom-left-radius:2px}
+.msg.system{background:#1e293b;align-self:center;font-size:.74rem;opacity:.7;max-width:100%;text-align:center;border-radius:4px}
+.msg.viewer{background:#292524;align-self:center}
+.lbl{font-size:.67rem;font-weight:700;text-transform:uppercase;opacity:.65;display:block;margin-bottom:2px}
+.ts{font-size:.65rem;opacity:.45;display:block;margin-top:3px}
+footer{background:#111827;padding:9px 14px;border-top:1px solid #1e293b;display:flex;gap:7px;align-items:flex-end;flex-shrink:0}
+textarea{flex:1;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:7px;padding:8px 10px;font-size:.86rem;resize:none;min-height:38px;max-height:110px;font-family:inherit;line-height:1.4}
 textarea:focus{outline:none;border-color:#7c3aed}
-select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:7px 12px;font-size:.86rem}
-.fr{display:flex;gap:9px;margin-top:9px;align-items:center;flex-wrap:wrap}.tsb{font-size:.76rem;color:#475569;margin-left:auto}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}.pls{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite;display:inline-block;margin-right:5px}
-</style></head><body>
-<div class="hdr">
-  <span>&#x1F527;</span>
-  <h1>DoctorScribe Dev Tools</h1>
-  <span class="badge">INTERNAL</span>
-  <span class="tsb"><span class="pls"></span><span id="ts">&#x05D8;&#x05D5;&#x05E2;&#x05DF;...</span></span>
-</div>
-<div class="wrap">
-  <div class="card">
-    <div class="ct">Agent Bridge</div>
-    <div class="row">
-      <div id="dot" class="dot dot-off"></div>
-      <span id="lbl" class="lbl">&#x05DB;&#x05D1;&#x05D5;&#x05D9;</span>
-      <button id="tbtn" class="btn btn-on" onclick="toggleBridge()">&#x05D4;&#x05D3;&#x05DC;&#x05E7; &#x05D2;&#x05E9;&#x05E8;</button>
-    </div>
-    <p style="margin-top:10px;font-size:.8rem;color:#64748b">
-      &#x05DB;&#x05D0;&#x05E9;&#x05E8; &#x05D4;&#x05D2;&#x05E9;&#x05E8; &#x05E4;&#x05E2;&#x05D9;&#x05DC;, &#x05D4;&#x05E1;&#x05D5;&#x05DB;&#x05DF; &#x05D1;&#x05E2;&#x05E0;&#x05DF; &#x05E9;&#x05D5;&#x05DC;&#x05D7; &#x05E9;&#x05D2;&#x05D9;&#x05D0;&#x05D5;&#x05EA; &#x05D5;&#x05D0;&#x05D9;&#x05E8;&#x05D5;&#x05E2;&#x05D9;&#x05DD; &#x05DC;&#x05DB;&#x05D0;&#x05DF;.<br>
-      Copilot &#x05E7;&#x05D5;&#x05E8;&#x05D0; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D5;&#x05EA; &#x05D0;&#x05DC;&#x05D5; &#x05D1;&#x05EA;&#x05D7;&#x05D9;&#x05DC;&#x05EA; &#x05DB;&#x05DC; &#x05E9;&#x05D9;&#x05D7;&#x05D4;.
-    </p>
-    <div class="ct" style="margin-top:14px;margin-bottom:6px">Cloud Endpoint (POST with X-Dev-Token header):</div>
-    <div class="ep" id="ep">...</div>
-    <div class="ep" id="inbox_ep" style="margin-top:8px">...</div>
-  </div>
-  <div class="card">
-    <div class="ct" style="display:flex;align-items:center">
-      &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D5;&#x05EA;
-      <button class="btn-clr" onclick="clearMsgs()">&#x05E0;&#x05E7;&#x05D4; &#x05D4;&#x05DB;&#x05DC;</button>
-    </div>
-    <div id="msgs" class="msgs"><div class="empty">&#x05D0;&#x05D9;&#x05DF; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D5;&#x05EA;</div></div>
-  </div>
-  <div class="card">
-    <div class="ct">&#x05E9;&#x05DC;&#x05D7; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D4; &#x05D7;&#x05D3;&#x05E9;&#x05D4;</div>
-    <textarea id="inp" placeholder="&#x05DB;&#x05EA;&#x05D5;&#x05D1; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D4;..."></textarea>
-    <div class="fr">
-            <select id="role"><option value="local">local (Copilot)</option><option value="system">system</option></select>
-            <select id="target"><option value="cloud">to: cloud</option><option value="all">to: all</option><option value="local">to: local</option></select>
-      <button class="btn btn-send" onclick="send()">&#x05E9;&#x05DC;&#x05D7;</button>
-    </div>
-  </div>
-</div>
+.empty{text-align:center;color:#334155;padding:48px 0;font-size:.85rem;flex:1;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>&#x1F91D; DrScribe &mdash; Agent Chat</h1>
+  <span id="bPill" class="pill off">Bridge &#x05DB;&#x05D1;&#x05D5;&#x05D9;</span>
+  <span id="wPill" class="pill off">WS &#x05DE;&#x05E0;&#x05D5;&#x05EA;&#x05E7;</span>
+  <span id="rPill" class="pill" style="background:#1e293b;color:#64748b">&#x05D0;&#x05D9;&#x05DF; &#x05E1;&#x05D5;&#x05DB;&#x05E0;&#x05D9;&#x05DD;</span>
+  <button id="tBtn" class="btn bg" onclick="toggleBridge()">&#x26A1; &#x05D4;&#x05D3;&#x05DC;&#x05E7; Bridge</button>
+  <select id="roleSel"><option value="viewer">Viewer</option><option value="local">Local</option><option value="cloud">Cloud</option></select>
+  <button class="btn bb" onclick="connect()">&#x1F50C; &#x05D4;&#x05EA;&#x05D7;&#x05D1;&#x05E8;</button>
+  <button class="btn" style="background:#334155;color:#94a3b8;font-size:.75rem" onclick="clearLog()">&#x05E0;&#x05E7;&#x05D4;</button>
+</header>
+<div id="log"><div class="empty">&#x05D0;&#x05D9;&#x05DF; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D5;&#x05EA; &mdash; &#x05D4;&#x05D3;&#x05DC;&#x05E7; Bridge &#x05D5;&#x05DC;&#x05D7;&#x05E5; &#x05D4;&#x05EA;&#x05D7;&#x05D1;&#x05E8;</div></div>
+<footer>
+  <textarea id="inp" placeholder="&#x05DB;&#x05EA;&#x05D5;&#x05D1; &#x05D4;&#x05D5;&#x05D3;&#x05E2;&#x05D4; (Enter &#x05DC;&#x05E9;&#x05DC;&#x05D9;&#x05D7;&#x05D4;, Shift+Enter &#x05DC;&#x05E9;&#x05D5;&#x05E8;&#x05D4; &#x05D7;&#x05D3;&#x05E9;&#x05D4;)" onkeydown="onKey(event)"></textarea>
+  <button class="btn bv" onclick="send()">&#x05E9;&#x05DC;&#x05D7;</button>
+</footer>
 <script>
-const BASE=window.location.origin+window.location.pathname.replace(/\/+$/,'');
-const SELF='local';
-let TOK=sessionStorage.getItem('dt_token');
-(()=>{const p=new URLSearchParams(window.location.search);if(p.get('token')){TOK=p.get('token');sessionStorage.setItem('dt_token',TOK);history.replaceState({},'',window.location.pathname);}})();
-const H=()=>({'X-Dev-Token':TOK,'Content-Type':'application/json'});
-document.getElementById('ep').textContent=BASE+'/agent/messages';
-document.getElementById('inbox_ep').textContent='Inbox: '+BASE+'/agent/messages?inbox_for='+SELF+'&only_unacked_for='+SELF;
-function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const P=new URLSearchParams(location.search);
+const TOK=P.get('token')||'';
+if(!TOK){document.body.innerHTML='<h1 style="padding:2rem;color:#ef4444">401 \u2014 \u05d4\u05d5\u05e1\u05e3 ?token=TOKEN</h1>';throw 0;}
+const BASE=location.origin;
+const WS_BASE=(location.protocol==='https:'?'wss':'ws')+'://'+location.host;
+let ws=null,bridgeOn=false;
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function append(m){
+  const log=document.getElementById('log');
+  const emp=log.querySelector('.empty');if(emp)emp.remove();
+  const d=document.createElement('div');
+  const cls=(m.role&&['local','cloud','system','viewer'].includes(m.role))?m.role:(m.type==='system'?'system':'local');
+  d.className='msg '+cls;
+  const tgt=m.target&&m.target!=='all'?' \u2192 '+m.target:'';
+  if(cls!=='system')d.innerHTML='<span class="lbl">'+esc(cls)+tgt+'</span>';
+  d.innerHTML+='<span>'+esc(m.content||'')+'</span><span class="ts">'+(m.ts||'')+(m.id?' #'+m.id:'')+'</span>';
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
+}
+
 async function loadStatus(){
   try{
-    const d=await(await fetch(BASE+'/agent/status',{headers:H()})).json();
-    const on=d.enabled;
-    document.getElementById('dot').className='dot '+(on?'dot-on':'dot-off');
-    document.getElementById('lbl').textContent=on?'\u05E4\u05E2\u05D9\u05DC':'\u05DB\u05D1\u05D5\u05D9';
-    const b=document.getElementById('tbtn');
-    b.textContent=on?'\u05DB\u05D1\u05D4 \u05D2\u05E9\u05E8':'\u05D4\u05D3\u05DC\u05E7 \u05D2\u05E9\u05E8';
-    b.className='btn '+(on?'btn-off':'btn-on');
+    const j=await(await fetch(BASE+'/dev-tools/agent/status',{headers:{'X-Dev-Token':TOK}})).json();
+    bridgeOn=!!j.enabled;
+    const bp=document.getElementById('bPill');
+    bp.textContent=bridgeOn?'Bridge \u05e4\u05e2\u05d9\u05dc':'Bridge \u05db\u05d1\u05d5\u05d9';
+    bp.className='pill '+(bridgeOn?'on':'off');
+    const tb=document.getElementById('tBtn');
+    tb.textContent=bridgeOn?'\u23f9 \u05db\u05d1\u05d4 Bridge':'\u26a1 \u05d4\u05d3\u05dc\u05e7 Bridge';
+    tb.className='btn '+(bridgeOn?'br':'bg');
   }catch(e){}
 }
+
 async function toggleBridge(){
   try{
-    const d=await(await fetch(BASE+'/agent/status',{headers:H()})).json();
-    await fetch(BASE+'/agent/status',{method:'POST',headers:H(),body:JSON.stringify({enabled:!d.enabled})});
+    await fetch(BASE+'/dev-tools/agent/status',{method:'POST',headers:{'X-Dev-Token':TOK,'Content-Type':'application/json'},body:JSON.stringify({enabled:!bridgeOn})});
     await loadStatus();
-  }catch(e){alert('\u05E9\u05D2\u05D9\u05D0\u05D4: '+e);}
+  }catch(e){alert('\u05e9\u05d2\u05d9\u05d0\u05d4: '+e);}
 }
-async function loadMsgs(){
-  try{
-        const d=await(await fetch(BASE+'/agent/messages?inbox_for='+SELF,{headers:H()})).json();
-    const el=document.getElementById('msgs');
-    if(!d.messages||!d.messages.length){el.innerHTML='<div class="empty">\u05D0\u05D9\u05DF \u05D4\u05D5\u05D3\u05E2\u05D5\u05EA</div>';return;}
-        el.innerHTML=d.messages.map(m=>`<div class="msg msg-${m.role}"><span class="rb rb-${m.role}">${m.role}</span>${esc(m.content)}<div class="meta">#${m.id} | to:${m.target||'all'} | ${m.ts}${m.acked_by?(' | ack:'+m.acked_by):''}</div></div>`).join('');
-  }catch(e){}
+
+function connect(){
+  if(ws){try{ws.close()}catch(e){}ws=null;}
+  const role=document.getElementById('roleSel').value;
+  const url=WS_BASE+'/cpanel/ws?role='+encodeURIComponent(role)+'&token='+encodeURIComponent(TOK);
+  const wp=document.getElementById('wPill');
+  wp.textContent='WS \u05de\u05ea\u05d7\u05d1\u05e8...';wp.className='pill';
+  ws=new WebSocket(url);
+  ws.onopen=()=>{wp.textContent='WS \u05de\u05d7\u05d5\u05d1\u05e8 ('+role+')';wp.className='pill ok';};
+  ws.onclose=e=>{wp.textContent='WS \u05de\u05e0\u05d5\u05ea\u05e7 ('+e.code+')';wp.className='pill off';};
+  ws.onerror=()=>{wp.textContent='WS \u05e9\u05d2\u05d9\u05d0\u05d4';wp.className='pill off';};
+  ws.onmessage=e=>{
+    try{
+      const m=JSON.parse(e.data);
+      if(m.type==='roster'){
+        const c=m.counts||{};
+        document.getElementById('rPill').textContent='local:'+(c.local||0)+' cloud:'+(c.cloud||0)+' viewer:'+(c.viewer||0);
+        return;
+      }
+      append(m);
+    }catch(err){}
+  };
 }
-async function send(){
-  const c=document.getElementById('inp').value.trim();
-  if(!c)return;
-  try{
-        await fetch(BASE+'/agent/messages',{method:'POST',headers:H(),body:JSON.stringify({role:document.getElementById('role').value,target:document.getElementById('target').value,content:c})});
-    document.getElementById('inp').value='';
-    await loadMsgs();
-  }catch(e){alert('\u05E9\u05D2\u05D9\u05D0\u05D4: '+e);}
+
+function send(){
+  const inp=document.getElementById('inp');
+  const text=inp.value.trim();
+  if(!text||!ws||ws.readyState!==1)return;
+  ws.send(JSON.stringify({content:text,target:'all'}));
+  inp.value='';
 }
-async function clearMsgs(){
-  if(!confirm('\u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA \u05DB\u05DC \u05D4\u05D4\u05D5\u05D3\u05E2\u05D5\u05EA?'))return;
-  try{await fetch(BASE+'/agent/messages',{method:'DELETE',headers:H()});await loadMsgs();}catch(e){}
-}
-async function refresh(){
-  await Promise.all([loadStatus(),loadMsgs()]);
-  document.getElementById('ts').textContent='\u05E2\u05D5\u05D3\u05DB\u05DF: '+new Date().toLocaleTimeString('he-IL');
-}
-refresh();
-setInterval(refresh,30000);
-<\/script>
-</body></html>"""
+function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function clearLog(){document.getElementById('log').innerHTML='<div class="empty">\u05e0\u05e7\u05d4</div>';}
+
+loadStatus();
+setInterval(loadStatus,15000);
+// Auto-connect as viewer on load
+setTimeout(()=>connect(),300);
+</script>
+</body>
+</html>"""
 
 
-app = FastAPI(title="DoctorScribe Dev-Tools", version="1.0.0")
+# ── FastAPI app ───────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app_: FastAPI):
+    asyncio.create_task(_run_tcp_server())
+    yield
+
+
+app = FastAPI(title="DoctorScribe Dev-Tools", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -224,15 +433,7 @@ def _check_token(token: Optional[str]) -> None:
         raise HTTPException(status_code=401, detail="Invalid dev-tools token")
 
 
-class MessageIn(BaseModel):
-    role: str = Field("local", description="'local', 'cloud', or 'system'")
-    target: str = Field("all", description="'local', 'cloud', or 'all'")
-    content: str = Field(..., min_length=1, max_length=10000)
-
-
-class AckIn(BaseModel):
-    by: str = Field(..., description="'local' or 'cloud'")
-
+# ── Pydantic models ───────────────────────────────────────────────────────────
 
 class BridgeStatusIn(BaseModel):
     enabled: bool
@@ -242,22 +443,17 @@ class CaptureRequest(BaseModel):
     url: str = Field(..., description="Absolute URL to capture")
     viewport_width: int = Field(DEFAULT_VIEWPORT_W, ge=320, le=4000)
     viewport_height: int = Field(DEFAULT_VIEWPORT_H, ge=240, le=4000)
-    wait_ms: int = Field(2500, ge=0, le=30_000, description="Extra wait after load")
-    auth_token: Optional[str] = Field(
-        None,
-        description=(
-            "Optional JWT to inject into localStorage as 'access_token' before navigation, "
-            "so authenticated pages render correctly."
-        ),
-    )
+    wait_ms: int = Field(2500, ge=0, le=30_000)
+    auth_token: Optional[str] = Field(None)
     full_page: bool = Field(True)
     cookies: Optional[list[dict[str, Any]]] = Field(default=None)
-    locale: str = Field("he-IL", description="Browser locale, e.g. 'he-IL', 'en-US'")
+    locale: str = Field("he-IL")
 
+
+# ── Capture helpers ───────────────────────────────────────────────────────────
 
 async def _render_page(req: CaptureRequest):
-    """Open Chromium, set up auth, navigate, and return (page, browser, context)."""
-    from playwright.async_api import async_playwright  # imported lazily
+    from playwright.async_api import async_playwright
 
     pw = await async_playwright().start()
     browser = await pw.chromium.launch(args=["--no-sandbox"])
@@ -275,16 +471,10 @@ async def _render_page(req: CaptureRequest):
             pass
 
     page = await context.new_page()
-
-    # Collect console errors for diagnostics
     console_errors: list[str] = []
     page.on("pageerror", lambda exc: console_errors.append(f"PAGEERROR: {exc}"))
     page.on("console", lambda msg: console_errors.append(f"{msg.type.upper()}: {msg.text}") if msg.type in ("error", "warning") else None)
 
-    # Rewrite client-side requests to docker-internal hostnames.
-    # Pages built with NEXT_PUBLIC_API_URL=http://localhost:8000/api will try to
-    # hit localhost from inside this container — re-route them to the backend
-    # service on the docker network.
     HOST_REWRITES = [
         ("http://localhost:8000", "http://backend:8000"),
         ("http://127.0.0.1:8000", "http://backend:8000"),
@@ -303,22 +493,13 @@ async def _render_page(req: CaptureRequest):
             if new_url == url:
                 await route.continue_()
                 return
-            # Fetch from the rewritten URL ourselves and return the response
-            # body to chromium as-if it came from the original URL. This avoids
-            # CORS / cross-origin redirect issues.
             try:
                 api_resp = await route.request.frame.page.context.request.fetch(
-                    new_url,
-                    method=route.request.method,
-                    headers=route.request.headers,
-                    data=route.request.post_data,
+                    new_url, method=route.request.method,
+                    headers=route.request.headers, data=route.request.post_data,
                 )
                 body = await api_resp.body()
-                await route.fulfill(
-                    status=api_resp.status,
-                    headers=dict(api_resp.headers),
-                    body=body,
-                )
+                await route.fulfill(status=api_resp.status, headers=dict(api_resp.headers), body=body)
             except Exception as e:
                 console_errors.append(f"FETCH_ERROR: {e} for {new_url}")
                 await route.abort()
@@ -332,14 +513,10 @@ async def _render_page(req: CaptureRequest):
     await context.route("**/*", _rewrite_route)
 
     if req.auth_token:
-        # Inject token into localStorage *before* the SPA boots.
-        origin = _origin_of(req.url)
         await context.add_init_script(
             f"window.localStorage.setItem('access_token', {json.dumps(req.auth_token)});"
         )
-        # Also attempt to set it as Authorization for the first request
         await page.set_extra_http_headers({"Authorization": f"Bearer {req.auth_token}"})
-        _ = origin  # placeholder for future per-origin logic
 
     await page.goto(req.url, wait_until="networkidle", timeout=NAV_TIMEOUT_MS)
     if req.wait_ms > 0:
@@ -351,23 +528,39 @@ async def _render_page(req: CaptureRequest):
 def _origin_of(url: str) -> str:
     try:
         from urllib.parse import urlparse
-
         u = urlparse(url)
         return f"{u.scheme}://{u.netloc}"
     except Exception:
         return ""
 
 
-@app.get("/", include_in_schema=False)
-async def ui(token: Optional[str] = None) -> Response:
-    if not token or token != DEV_TOOLS_TOKEN:
-        return Response(
-            content='<!doctype html><html><body style="background:#0f172a;color:#ef4444;font-family:system-ui;padding:2rem"><h1>401 Unauthorized</h1><p>Add ?token=YOUR_TOKEN to the URL</p></body></html>',
-            media_type="text/html; charset=utf-8",
-            status_code=401,
-        )
-    return Response(content=_build_ui_html(), media_type="text/html; charset=utf-8")
+def _esc(s: str) -> str:
+    return html_lib.escape(s or "", quote=True)
 
+
+def _build_flat_html(snapshot: dict[str, Any]) -> str:
+    html_doc = snapshot.get("html") if isinstance(snapshot, dict) else None
+    if isinstance(html_doc, str) and html_doc.strip():
+        return html_doc
+    title = _esc(str(snapshot.get("title", "Flattened Page")))
+    src_url = _esc(str(snapshot.get("url", "")))
+    return (
+        "<!doctype html><html><head><meta charset=\"utf-8\">"
+        f"<title>{title}</title></head><body>"
+        "<h1>Flatten failed</h1>"
+        f"<p>Source: <a href=\"{src_url}\">{src_url}</a></p>"
+        "</body></html>"
+    )
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+
+@app.get("/health")
+async def health() -> dict[str, Any]:
+    return {"status": "ok", "service": "dev-tools", "tcp_port": TCP_PORT, "ts": int(time.time())}
+
+
+# ── Bridge state ──────────────────────────────────────────────────────────────
 
 @app.get("/agent/status")
 async def get_bridge_status(
@@ -399,106 +592,24 @@ async def set_bridge_status(
     return {"enabled": body.enabled}
 
 
+# ── Chat history (read-only, for UI reload) ───────────────────────────────────
+
 @app.get("/agent/messages")
 async def get_messages(
-    limit: int = 50,
+    limit: int = 100,
     since_id: int = 0,
-    inbox_for: Optional[str] = None,
-    only_unacked_for: Optional[str] = None,
     x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
 ) -> dict[str, Any]:
     _check_token(x_dev_token)
-    if inbox_for not in (None, "local", "cloud"):
-        raise HTTPException(status_code=400, detail="inbox_for must be: local or cloud")
-    if only_unacked_for not in (None, "local", "cloud"):
-        raise HTTPException(status_code=400, detail="only_unacked_for must be: local or cloud")
-
-    filters = ["id > ?"]
-    params: list[Any] = [max(0, since_id)]
-    if inbox_for:
-        filters.append("target IN (?, 'all')")
-        params.append(inbox_for)
-        # Inbox should show messages from the other side (not self-authored)
-        filters.append("role != ?")
-        params.append(inbox_for)
-    if only_unacked_for:
-        filters.append("acked_by NOT LIKE ?")
-        params.append(f"%,{only_unacked_for},%")
-
-    where_sql = " AND ".join(filters)
     with _db_lock:
         conn = sqlite3.connect(str(DB_PATH))
         conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
-                f"SELECT id, role, target, content, ts, acked_by "
-                f"FROM messages WHERE {where_sql} ORDER BY id DESC LIMIT ?",
-                (*params, min(limit, 200)),
+                "SELECT id,role,target,content,ts FROM messages WHERE id>? ORDER BY id DESC LIMIT ?",
+                (max(0, since_id), min(limit, 500)),
             ).fetchall()
             return {"messages": [dict(r) for r in rows]}
-        finally:
-            conn.close()
-
-
-@app.post("/agent/messages")
-async def post_message(
-    msg: MessageIn,
-    x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
-) -> dict[str, Any]:
-    _check_token(x_dev_token)
-    if msg.role not in ("local", "cloud", "system"):
-        raise HTTPException(status_code=400, detail="role must be: local, cloud, or system")
-    if msg.target not in ("local", "cloud", "all"):
-        raise HTTPException(status_code=400, detail="target must be: local, cloud, or all")
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    with _db_lock:
-        conn = sqlite3.connect(str(DB_PATH))
-        try:
-            cur = conn.execute(
-                "INSERT INTO messages(role, target, content, ts, acked_by) VALUES(?,?,?,?,?)",
-                (msg.role, msg.target, msg.content, ts, ""),
-            )
-            msg_id = cur.lastrowid
-            conn.commit()
-        finally:
-            conn.close()
-    return {"id": msg_id, "ts": ts, "target": msg.target}
-
-
-@app.post("/agent/messages/{message_id}/ack")
-async def ack_message(
-    message_id: int,
-    body: AckIn,
-    x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
-) -> dict[str, Any]:
-    _check_token(x_dev_token)
-    if body.by not in ("local", "cloud"):
-        raise HTTPException(status_code=400, detail="by must be: local or cloud")
-
-    with _db_lock:
-        conn = sqlite3.connect(str(DB_PATH))
-        conn.row_factory = sqlite3.Row
-        try:
-            row = conn.execute(
-                "SELECT id, acked_by FROM messages WHERE id=?",
-                (message_id,),
-            ).fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="message not found")
-
-            current = row["acked_by"] or ""
-            marker = f",{body.by},"
-            normalized = current if current.startswith(",") else f",{current.strip(',')},"
-            if normalized == ",,":
-                normalized = ","
-            if marker not in normalized:
-                normalized = f"{normalized}{body.by},"
-            conn.execute(
-                "UPDATE messages SET acked_by=? WHERE id=?",
-                (normalized, message_id),
-            )
-            conn.commit()
-            return {"id": message_id, "acked_by": normalized}
         finally:
             conn.close()
 
@@ -518,313 +629,23 @@ async def clear_messages(
     return {"cleared": True}
 
 
-@app.get("/health")
-async def health() -> dict[str, Any]:
-    return {"status": "ok", "service": "dev-tools", "ts": int(time.time())}
+# ── CPanel UI ─────────────────────────────────────────────────────────────────
 
-
-@app.post("/capture/screenshot")
-async def capture_screenshot(
-    req: CaptureRequest,
-    x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
-) -> Response:
-    _check_token(x_dev_token)
-
-    pw, browser, context, page, console_errors = await _render_page(req)
-    try:
-        png_bytes = await page.screenshot(full_page=req.full_page, type="png")
-    finally:
-        await context.close()
-        await browser.close()
-        await pw.stop()
-
-    headers = {"Content-Disposition": 'inline; filename="capture.png"'}
-    if console_errors:
-        # Expose first few errors in a header for debugging (truncated)
-        headers["X-Console-Errors"] = " | ".join(console_errors[:5])[:1000]
-    return Response(content=png_bytes, media_type="image/png", headers=headers)
-
-
-@app.post("/capture/flatten")
-async def capture_flatten(
-    req: CaptureRequest,
-    x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
-) -> Response:
-    _check_token(x_dev_token)
-
-    pw, browser, context, page, console_errors = await _render_page(req)
-    try:
-        snapshot = await page.evaluate(FLATTEN_JS)
-    finally:
-        await context.close()
-        await browser.close()
-        await pw.stop()
-
-    html_doc = _build_flat_html(snapshot)
-    headers = {"Content-Disposition": 'inline; filename="flatten.html"'}
-    if console_errors:
-        headers["X-Console-Errors"] = " | ".join(console_errors[:5])[:1000]
-    return Response(
-        content=html_doc,
-        media_type="text/html; charset=utf-8",
-        headers=headers,
-    )
-
-
-def _esc(s: str) -> str:
-    return html_lib.escape(s or "", quote=True)
-
-
-def _build_flat_html(snapshot: dict[str, Any]) -> str:
-    """Return static flattened HTML from page-evaluated snapshot payload."""
-    html_doc = snapshot.get("html") if isinstance(snapshot, dict) else None
-    if isinstance(html_doc, str) and html_doc.strip():
-        return html_doc
-
-    title = _esc(str(snapshot.get("title", "Flattened Page")))
-    src_url = _esc(str(snapshot.get("url", "")))
-    return (
-        "<!doctype html><html><head><meta charset=\"utf-8\">"
-        f"<title>{title}</title></head><body>"
-        "<h1>Flatten failed</h1>"
-        f"<p>Source: <a href=\"{src_url}\">{src_url}</a></p>"
-        "</body></html>"
-    )
-
-
-# ── CPanel: real-time agent chat over WebSocket (TCP-over-TLS) ───────────────
-class ChatHub:
-    """In-memory broadcast hub for connected agents/viewers."""
-
-    def __init__(self) -> None:
-        self.connections: list[tuple[str, WebSocket]] = []
-        self.lock = asyncio.Lock()
-
-    async def add(self, role: str, ws: WebSocket) -> None:
-        async with self.lock:
-            self.connections.append((role, ws))
-
-    async def remove(self, ws: WebSocket) -> None:
-        async with self.lock:
-            self.connections = [(r, w) for (r, w) in self.connections if w is not ws]
-
-    async def broadcast(self, payload: dict[str, Any]) -> None:
-        dead: list[WebSocket] = []
-        async with self.lock:
-            conns = list(self.connections)
-        for _role, ws in conns:
-            try:
-                await ws.send_json(payload)
-            except Exception:
-                dead.append(ws)
-        if dead:
-            async with self.lock:
-                self.connections = [(r, w) for (r, w) in self.connections if w not in dead]
-
-    async def roster(self) -> dict[str, int]:
-        async with self.lock:
-            counts: dict[str, int] = {}
-            for role, _ws in self.connections:
-                counts[role] = counts.get(role, 0) + 1
-            return counts
-
-
-hub = ChatHub()
-
-
-def _bridge_enabled() -> bool:
-    with _db_lock:
-        conn = sqlite3.connect(str(DB_PATH))
-        try:
-            row = conn.execute("SELECT enabled FROM bridge_state WHERE id=1").fetchone()
-            return bool(row[0]) if row else False
-        finally:
-            conn.close()
-
-
-def _save_chat_message(role: str, target: str, content: str, ts: str) -> int:
-    with _db_lock:
-        conn = sqlite3.connect(str(DB_PATH))
-        try:
-            cur = conn.execute(
-                "INSERT INTO messages(role, target, content, ts, acked_by) VALUES(?,?,?,?,?)",
-                (role, target, content, ts, ""),
-            )
-            conn.commit()
-            return int(cur.lastrowid or 0)
-        finally:
-            conn.close()
-
-
-def _now_utc() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-
-def _build_cpanel_html() -> str:
-    return """<!DOCTYPE html>
-<html lang="he" dir="rtl"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DrScribe CPanel \u2014 Agent Chat</title>
-<style>
-  :root{color-scheme:dark}
-  *{box-sizing:border-box}
-  body{margin:0;background:#0b1020;color:#e2e8f0;font-family:system-ui,'Segoe UI',Arial;display:flex;flex-direction:column;height:100vh}
-  header{background:#111827;padding:.75rem 1rem;border-bottom:1px solid #1f2937;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
-  header h1{font-size:1rem;margin:0;color:#93c5fd}
-  .pill{padding:.2rem .55rem;border-radius:999px;font-size:.75rem;background:#1e293b;color:#cbd5e1}
-  .pill.on{background:#064e3b;color:#6ee7b7}
-  .pill.off{background:#7f1d1d;color:#fca5a5}
-  button{cursor:pointer;border:0;padding:.45rem .9rem;border-radius:6px;font-weight:600;font-size:.85rem}
-  button.toggle{background:#2563eb;color:white}
-  button.toggle.off{background:#dc2626}
-  button.send{background:#16a34a;color:white}
-  #log{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.5rem}
-  .msg{padding:.55rem .8rem;border-radius:8px;max-width:75%;line-height:1.4;word-wrap:break-word;white-space:pre-wrap}
-  .msg.local{background:#1e3a8a;align-self:flex-end}
-  .msg.cloud{background:#065f46;align-self:flex-start}
-  .msg.system{background:#374151;align-self:center;font-size:.8rem;opacity:.8}
-  .meta{font-size:.7rem;opacity:.7;margin-top:.2rem}
-  footer{background:#111827;padding:.75rem;border-top:1px solid #1f2937;display:flex;gap:.5rem}
-  #input{flex:1;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:.55rem;font-family:inherit;font-size:.9rem;resize:none;min-height:2.5rem;max-height:8rem}
-  #status{font-size:.75rem;color:#94a3b8}
-  select{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:.4rem}
-</style></head><body>
-<header>
-  <h1>\U0001F91D DrScribe CPanel \u2014 Agent Chat</h1>
-  <span id="bridgePill" class="pill">\u05d8\u05d5\u05e2\u05df...</span>
-  <span id="connPill" class="pill off">WS \u05de\u05e0\u05d5\u05ea\u05e7</span>
-  <span id="rosterPill" class="pill">\u05d0\u05d9\u05df \u05de\u05e9\u05ea\u05ea\u05e4\u05d9\u05dd</span>
-  <button id="toggleBtn" class="toggle">\u2699\ufe0f \u05d4\u05d3\u05dc\u05e7\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea</button>
-  <select id="role"><option value="viewer">Viewer</option><option value="local">Local</option><option value="cloud">Cloud</option></select>
-  <button id="connectBtn" class="toggle">\U0001F50C \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea</button>
-  <span id="bridgeSrcPill" class="pill" title="\u05de\u05e7\u05d5\u05e8 \u05d4-Bridge"></span>
-  <span id="status"></span>
-</header>
-<div id="log"></div>
-<footer>
-  <textarea id="input" placeholder="\u05db\u05ea\u05d5\u05d1 \u05d4\u05d5\u05d3\u05e2\u05d4 (Enter \u05dc\u05e9\u05dc\u05d9\u05d7\u05d4, Shift+Enter \u05dc\u05e9\u05d5\u05e8\u05d4 \u05d7\u05d3\u05e9\u05d4)"></textarea>
-  <button class="send" id="sendBtn">\u05e9\u05dc\u05d7</button>
-</footer>
-<script>
-const params = new URLSearchParams(location.search);
-const TOKEN = params.get('token') || '';
-if (!TOKEN) { document.body.innerHTML = '<h1 style=\"padding:2rem;color:#ef4444\">401 \u2014 \u05d4\u05d5\u05e1\u05e3 ?token=YOUR_TOKEN \u05dc-URL</h1>'; throw new Error('no token'); }
-
-const log = document.getElementById('log');
-const input = document.getElementById('input');
-const sendBtn = document.getElementById('sendBtn');
-const toggleBtn = document.getElementById('toggleBtn');
-const connectBtn = document.getElementById('connectBtn');
-const roleSel = document.getElementById('role');
-const bridgePill = document.getElementById('bridgePill');
-const connPill = document.getElementById('connPill');
-const rosterPill = document.getElementById('rosterPill');
-const statusEl = document.getElementById('status');
-
-let ws = null;
-let bridgeOn = false;
-// Bridge target: ?bridge=prod -> https://drsscribe.com/dev-tools, ?bridge=local -> '', ?bridge=URL -> custom.
-// Default: if served from localhost:8090 use prod (so local UI mirrors cloud conversation).
-function resolveBridge(){
-  const b = (params.get('bridge')||'').trim();
-  if (b === 'prod') return 'https://drsscribe.com/dev-tools';
-  if (b === 'local') return '';
-  if (b.startsWith('http://') || b.startsWith('https://')) return b.replace(/\/$/,'');
-  if (location.port === '8090') return 'https://drsscribe.com/dev-tools';
-  return '/dev-tools';
-}
-const API_BASE = resolveBridge();
-const bridgeSrcPill = document.getElementById('bridgeSrcPill');
-bridgeSrcPill.textContent = 'src: ' + (API_BASE || 'same-origin');
-
-function append(m){
-  const d = document.createElement('div');
-  const cls = m.role || (m.type === 'system' ? 'system' : 'local');
-  d.className = 'msg ' + cls;
-  const target = m.target && m.target !== 'all' ? ' \u2192 ' + m.target : '';
-  d.innerHTML = '<div>'+escapeHtml(m.content||'')+'</div><div class=\"meta\">'+(m.role||m.type||'')+target+' \u00b7 '+(m.ts||'')+'</div>';
-  log.appendChild(d);
-  log.scrollTop = log.scrollHeight;
-}
-function escapeHtml(s){return s.replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]))}
-
-async function loadStatus(){
-  const r = await fetch(API_BASE+'/agent/status', {headers:{'X-Dev-Token':TOKEN}});
-  const j = await r.json();
-  bridgeOn = !!j.enabled;
-  bridgePill.textContent = bridgeOn ? '\u05d2\u05e9\u05e8 \u05e4\u05e2\u05d9\u05dc' : '\u05d2\u05e9\u05e8 \u05db\u05d1\u05d5\u05d9';
-  bridgePill.className = 'pill ' + (bridgeOn ? 'on' : 'off');
-  toggleBtn.textContent = bridgeOn ? '\u23fb \u05db\u05d9\u05d1\u05d5\u05d9 \u05e9\u05d9\u05e8\u05d5\u05ea' : '\u2699\ufe0f \u05d4\u05d3\u05dc\u05e7\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea';
-  toggleBtn.className = 'toggle' + (bridgeOn ? ' off' : '');
-}
-async function toggleBridge(){
-  const r = await fetch(API_BASE+'/agent/status', {method:'POST',headers:{'X-Dev-Token':TOKEN,'Content-Type':'application/json'},body:JSON.stringify({enabled:!bridgeOn})});
-  await r.json();
-  await loadStatus();
-}
-async function loadHistory(){
-  const r = await fetch(API_BASE+'/agent/messages?limit=50', {headers:{'X-Dev-Token':TOKEN}});
-  const j = await r.json();
-  log.innerHTML = '';
-  (j.messages||[]).forEach(append);
-}
-
-function connect(){
-  if (ws) { try{ws.close()}catch(e){} ws=null; }
-  const role = roleSel.value;
-  let url;
-  if (API_BASE.startsWith('http')) {
-    // Cross-origin bridge: derive WS URL from API_BASE
-    const wsBase = API_BASE.replace(/^http/, 'ws');
-    url = wsBase + '/agent-chat/ws?role=' + encodeURIComponent(role) + '&token=' + encodeURIComponent(TOKEN);
-  } else {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    url = proto + '//' + location.host + location.pathname.replace(/\\/$/,'') + '/ws?role=' + encodeURIComponent(role) + '&token=' + encodeURIComponent(TOKEN);
-  }
-  ws = new WebSocket(url);
-  ws.onopen = () => { connPill.textContent='WS \u05de\u05d7\u05d5\u05d1\u05e8 ('+role+')'; connPill.className='pill on'; };
-  ws.onclose = (e) => { connPill.textContent='WS \u05de\u05e0\u05d5\u05ea\u05e7 ('+e.code+')'; connPill.className='pill off'; };
-  ws.onerror = () => { connPill.textContent='WS \u05e9\u05d2\u05d9\u05d0\u05d4'; connPill.className='pill off'; };
-  ws.onmessage = (e) => {
-    try{
-      const m = JSON.parse(e.data);
-      if (m.type === 'roster') { rosterPill.textContent = 'local:'+(m.counts.local||0)+' cloud:'+(m.counts.cloud||0)+' viewer:'+(m.counts.viewer||0); return; }
-      append(m);
-    }catch(err){console.warn(err)}
-  };
-}
-
-function send(){
-  const text = input.value.trim();
-  if (!text || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({content:text,target:'all'}));
-  input.value = '';
-}
-
-input.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){e.preventDefault();send();}});
-sendBtn.onclick = send;
-toggleBtn.onclick = toggleBridge;
-connectBtn.onclick = connect;
-
-(async()=>{ await loadStatus(); await loadHistory(); })();
-setInterval(loadStatus, 15000);
-</script>
-</body></html>"""
-
-
-@app.get("/agent-chat", include_in_schema=False)
-@app.get("/agent-chat/", include_in_schema=False)
+@app.get("/cpanel", include_in_schema=False)
+@app.get("/cpanel/", include_in_schema=False)
 async def cpanel_ui(token: Optional[str] = None) -> Response:
     if not token or token != DEV_TOOLS_TOKEN:
         return Response(
-            content='<!doctype html><html><body style="background:#0f172a;color:#ef4444;font-family:system-ui;padding:2rem"><h1>401 Unauthorized</h1><p>Add ?token=YOUR_TOKEN to the URL</p></body></html>',
+            content='<!doctype html><html><body style="background:#070d1a;color:#ef4444;font-family:system-ui;padding:2rem"><h1>401</h1><p>Add ?token=YOUR_TOKEN</p></body></html>',
             media_type="text/html; charset=utf-8",
             status_code=401,
         )
     return Response(content=_build_cpanel_html(), media_type="text/html; charset=utf-8")
 
 
-@app.websocket("/agent-chat/ws")
+# ── CPanel WebSocket (browser viewer) ────────────────────────────────────────
+
+@app.websocket("/cpanel/ws")
 async def cpanel_ws(
     websocket: WebSocket,
     role: str = Query("viewer"),
@@ -834,22 +655,21 @@ async def cpanel_ws(
         await websocket.close(code=4401)
         return
     if role not in ("local", "cloud", "viewer"):
-        await websocket.close(code=4400)
-        return
+        role = "viewer"
+
     if not _bridge_enabled():
         await websocket.accept()
         await websocket.send_json({
             "type": "system",
-            "content": "Bridge is OFF. Toggle it ON in /agent-chat before chatting.",
+            "content": "Bridge is OFF — click the toggle to enable it.",
             "ts": _now_utc(),
         })
         await websocket.close(code=4403)
         return
 
     await websocket.accept()
-    await hub.add(role, websocket)
-    join_msg = {"type": "system", "content": f"{role} connected", "ts": _now_utc()}
-    await hub.broadcast(join_msg)
+    await hub.add_ws(role, websocket)
+    await hub.broadcast({"type": "system", "content": f"{role} connected (WS)", "ts": _now_utc()})
     await hub.broadcast({"type": "roster", "counts": await hub.roster()})
 
     try:
@@ -862,23 +682,57 @@ async def cpanel_ws(
             if target not in ("local", "cloud", "all"):
                 target = "all"
             ts = _now_utc()
-            msg_id = _save_chat_message(role, target, content, ts)
+            msg_id = _save_message(role, target, content, ts)
             await hub.broadcast({
-                "type": "msg",
-                "id": msg_id,
-                "role": role,
-                "target": target,
-                "content": content,
-                "ts": ts,
+                "type": "msg", "id": msg_id, "role": role,
+                "target": target, "content": content, "ts": ts,
             })
     except WebSocketDisconnect:
         pass
-    except Exception as exc:
-        try:
-            await websocket.send_json({"type": "system", "content": f"error: {exc}", "ts": _now_utc()})
-        except Exception:
-            pass
+    except Exception:
+        pass
     finally:
-        await hub.remove(websocket)
+        await hub.remove_ws(websocket)
         await hub.broadcast({"type": "system", "content": f"{role} disconnected", "ts": _now_utc()})
         await hub.broadcast({"type": "roster", "counts": await hub.roster()})
+
+
+# ── Capture endpoints ─────────────────────────────────────────────────────────
+
+@app.post("/capture/screenshot")
+async def capture_screenshot(
+    req: CaptureRequest,
+    x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
+) -> Response:
+    _check_token(x_dev_token)
+    pw, browser, context, page, console_errors = await _render_page(req)
+    try:
+        png_bytes = await page.screenshot(full_page=req.full_page, type="png")
+    finally:
+        await context.close()
+        await browser.close()
+        await pw.stop()
+    headers: dict[str, str] = {"Content-Disposition": 'inline; filename="capture.png"'}
+    if console_errors:
+        headers["X-Console-Errors"] = " | ".join(console_errors[:5])[:1000]
+    return Response(content=png_bytes, media_type="image/png", headers=headers)
+
+
+@app.post("/capture/flatten")
+async def capture_flatten(
+    req: CaptureRequest,
+    x_dev_token: Optional[str] = Header(default=None, alias="X-Dev-Token"),
+) -> Response:
+    _check_token(x_dev_token)
+    pw, browser, context, page, console_errors = await _render_page(req)
+    try:
+        snapshot = await page.evaluate(FLATTEN_JS)
+    finally:
+        await context.close()
+        await browser.close()
+        await pw.stop()
+    html_doc = _build_flat_html(snapshot)
+    headers: dict[str, str] = {"Content-Disposition": 'inline; filename="flatten.html"'}
+    if console_errors:
+        headers["X-Console-Errors"] = " | ".join(console_errors[:5])[:1000]
+    return Response(content=html_doc, media_type="text/html; charset=utf-8", headers=headers)
