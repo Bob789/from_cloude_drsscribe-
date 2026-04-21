@@ -370,7 +370,7 @@ async function toggleBridge(){
 function connect(){
   if(ws){try{ws.close()}catch(e){}ws=null;}
   const role=document.getElementById('roleSel').value;
-  const url=WS_BASE+'/cpanel/ws?role='+encodeURIComponent(role)+'&token='+encodeURIComponent(TOK);
+  const url=WS_BASE+'/dev-tools/chat/ws?role='+encodeURIComponent(role)+'&token='+encodeURIComponent(TOK);
   const wp=document.getElementById('wPill');
   wp.textContent='WS \u05de\u05ea\u05d7\u05d1\u05e8...';wp.className='pill';
   ws=new WebSocket(url);
@@ -631,9 +631,9 @@ async def clear_messages(
 
 # ── CPanel UI ─────────────────────────────────────────────────────────────────
 
-@app.get("/cpanel", include_in_schema=False)
-@app.get("/cpanel/", include_in_schema=False)
-async def cpanel_ui(token: Optional[str] = None) -> Response:
+@app.get("/chat", include_in_schema=False)
+@app.get("/chat/", include_in_schema=False)
+async def chat_ui(token: Optional[str] = None) -> Response:
     if not token or token != DEV_TOOLS_TOKEN:
         return Response(
             content='<!doctype html><html><body style="background:#070d1a;color:#ef4444;font-family:system-ui;padding:2rem"><h1>401</h1><p>Add ?token=YOUR_TOKEN</p></body></html>',
@@ -643,9 +643,9 @@ async def cpanel_ui(token: Optional[str] = None) -> Response:
     return Response(content=_build_cpanel_html(), media_type="text/html; charset=utf-8")
 
 
-# ── CPanel WebSocket (browser viewer) ────────────────────────────────────────
+# ── Chat WebSocket (browser viewer) ──────────────────────────────────────────
 
-@app.websocket("/cpanel/ws")
+@app.websocket("/chat/ws")
 async def cpanel_ws(
     websocket: WebSocket,
     role: str = Query("viewer"),

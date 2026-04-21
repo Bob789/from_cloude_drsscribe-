@@ -77,6 +77,9 @@ export default function CpanelPage() {
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult] = useState<any>(null)
   const [_editArticle, _setEditArticle] = useState<any>(null) // reserved for future editor
+  const [languageReviewData, setLanguageReviewData] = useState<any>(null)
+  const [languageReviewLoading, setLanguageReviewLoading] = useState(false)
+  const [languageReviewError, setLanguageReviewError] = useState<string | null>(null)
 
   // Glossary state
   const [glossaryTerms, setGlossaryTerms] = useState<any[]>([])
@@ -118,6 +121,56 @@ export default function CpanelPage() {
   const [captureBusy, setCaptureBusy] = useState(false)
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [captureResult, setCaptureResult] = useState<{ kind: 'png' | 'html'; url: string; filename: string } | null>(null)
+
+  // Agent Chat state
+  const [chatWs, setChatWs] = useState<WebSocket | null>(null)
+  const [chatMsgs, setChatMsgs] = useState<any[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatConnected, setChatConnected] = useState(false)
+  const [chatBridgeOn, setChatBridgeOn] = useState(false)
+  const [chatRoster, setChatRoster] = useState<Record<string, number>>({})
+
+  const chatConnect = useCallback(() => {
+    if (chatWs) { try { chatWs.close() } catch (_) {} }
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const url = `${proto}://${window.location.host}/dev-tools/chat/ws?role=viewer&token=${encodeURIComponent(devToolsToken)}`
+    const ws = new WebSocket(url)
+    ws.onopen = () => setChatConnected(true)
+    ws.onclose = () => { setChatConnected(false); setChatWs(null) }
+    ws.onerror = () => { setChatConnected(false); setChatWs(null) }
+    ws.onmessage = (e) => {
+      try {
+        const m = JSON.parse(e.data)
+        if (m.type === 'roster') { setChatRoster(m.counts || {}); return }
+        setChatMsgs(prev => [...prev.slice(-199), m])
+      } catch (_) {}
+    }
+    setChatWs(ws)
+  }, [chatWs, devToolsToken])
+
+  const chatSend = useCallback(() => {
+    const text = chatInput.trim()
+    if (!text || !chatWs || chatWs.readyState !== 1) return
+    chatWs.send(JSON.stringify({ content: text, target: 'all' }))
+    setChatInput('')
+  }, [chatInput, chatWs])
+
+  const chatToggleBridge = useCallback(async () => {
+    try {
+      await fetch('/dev-tools/agent/status', {
+        method: 'POST',
+        headers: { 'X-Dev-Token': devToolsToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !chatBridgeOn }),
+      })
+      setChatBridgeOn(b => !b)
+    } catch (_) {}
+  }, [chatBridgeOn, devToolsToken])
+
+  useEffect(() => {
+    if (tab !== 'devtools') return
+    fetch('/dev-tools/agent/status', { headers: { 'X-Dev-Token': devToolsToken } })
+      .then(r => r.json()).then(j => setChatBridgeOn(!!j.enabled)).catch(() => {})
+  }, [tab, devToolsToken])
 
   const ensureGoogleOAuth = async (): Promise<any | null> => {
     const w = window as any
@@ -329,6 +382,24 @@ export default function CpanelPage() {
       headers: { Authorization: `Bearer ${token}` },
     })
     fetchContent()
+  }
+
+  const openLanguageReview = async (articleId: string) => {
+    if (!token) return
+    setLanguageReviewLoading(true)
+    setLanguageReviewError(null)
+    setLanguageReviewData(null)
+    try {
+      const res = await fetch(`${API}/admin/articles/${articleId}/language-review`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setLanguageReviewData(await res.json())
+    } catch (e: any) {
+      setLanguageReviewError(e.message || 'שגיאה בטעינת סקירת שפות')
+    } finally {
+      setLanguageReviewLoading(false)
+    }
   }
 
   const handleGoogleLogin = async () => {
@@ -1103,7 +1174,7 @@ export default function CpanelPage() {
 
                         return (
                           <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '10px 14px', fontWeight: 600, maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</td>
+                            <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text)', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</td>
                             <td style={{ padding: '10px 14px', color: 'var(--muted)' }}>{a.category}</td>
                             <td style={{ padding: '10px 14px' }}>
                               <span style={{ padding: '2px 10px', borderRadius: 20, background: sc.bg, color: sc.color, fontSize: 11 }}>{statusLabels[a.status] || a.status}</span>
@@ -1131,6 +1202,7 @@ export default function CpanelPage() {
                                 {a.status === 'draft' && <button onClick={() => changeArticleStatus(a.id, 'published')} className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}>פרסם</button>}
                                 {a.status === 'published' && <button onClick={() => changeArticleStatus(a.id, 'draft')} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>הסתר</button>}
                                 {a.slug && <a href={`/articles/${a.slug}?preview=1`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11, textDecoration: 'none' }}>👁</a>}
+                                <button onClick={() => openLanguageReview(a.id)} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }} title="סקירת כל השפות">🌐</button>
                                 <button onClick={() => deleteArticle(a.id)} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11, color: '#f87171' }}>🗑</button>
                               </div>
                             </td>
@@ -1142,6 +1214,47 @@ export default function CpanelPage() {
                 </div>
               )}
             </div>
+
+            {/* Multi-language review */}
+            {(languageReviewLoading || languageReviewError || languageReviewData) && (
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 15, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>🌐 סקירת מאמר בכל השפות</span>
+                  <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => { setLanguageReviewData(null); setLanguageReviewError(null) }}>סגור</button>
+                </div>
+                <div style={{ padding: '16px 20px' }}>
+                  {languageReviewLoading && <div style={{ color: 'var(--muted)', fontSize: 13 }}>טוען גרסאות שפה...</div>}
+                  {languageReviewError && <div style={{ color: '#f87171', fontSize: 13 }}>✕ {languageReviewError}</div>}
+                  {languageReviewData?.items?.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {languageReviewData.items.map((it: any) => {
+                        const score = it.quality_score
+                        const scoreColor = score >= 90 ? '#34d399' : score >= 70 ? '#facc15' : '#f87171'
+                        return (
+                          <div key={it.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.03)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>{(it.language || 'he').toUpperCase()}</span>
+                                <span style={{ fontWeight: 700, color: 'var(--text)' }}>{it.title}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 800, color: score != null ? scoreColor : 'var(--muted)' }}>{score != null ? `${score}/100` : '—'}</span>
+                                {it.slug && <a href={`/articles/${it.slug}?preview=1`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '3px 10px', fontSize: 11, textDecoration: 'none' }}>👁 פתח</a>}
+                              </div>
+                            </div>
+                            {it.quality_notes && (
+                              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>
+                                {it.quality_notes}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ── Glossary Management ── */}
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1641,6 +1754,49 @@ export default function CpanelPage() {
 # מדריך מלא: docs/DEV_TOOLS_GUIDE.md`}
               </pre>
             </details>
+
+            {/* ── Agent Chat ──────────────────────────────────────────────── */}
+            <div style={{ marginTop: 32, padding: 20, background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>💬 Agent Chat — TCP Real-Time</h3>
+                <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: chatBridgeOn ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: chatBridgeOn ? '#34d399' : '#f87171' }}>
+                  {chatBridgeOn ? '● Bridge פעיל' : '○ Bridge כבוי'}
+                </span>
+                <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 12, background: chatConnected ? 'rgba(59,130,246,0.2)' : 'rgba(100,116,139,0.15)', color: chatConnected ? '#93c5fd' : '#94a3b8' }}>
+                  {chatConnected ? `WS מחובר · local:${chatRoster.local||0} cloud:${chatRoster.cloud||0}` : 'WS מנותק'}
+                </span>
+                <button onClick={chatToggleBridge} style={{ marginLeft: 'auto', padding: '6px 14px', background: chatBridgeOn ? '#dc2626' : '#10b981', color: 'white', border: 'none', borderRadius: 7, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                  {chatBridgeOn ? '⏹ כבה Bridge' : '⚡ הדלק Bridge'}
+                </button>
+                <button onClick={chatConnect} style={{ padding: '6px 14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 7, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                  🔌 התחבר WS
+                </button>
+              </div>
+              <div style={{ height: 280, overflowY: 'auto', background: 'rgba(0,0,0,0.35)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {chatMsgs.length === 0 ? (
+                  <div style={{ color: '#475569', textAlign: 'center', paddingTop: 80, fontSize: 13 }}>אין הודעות — הדלק Bridge והתחבר</div>
+                ) : chatMsgs.map((m, i) => (
+                  <div key={i} style={{ padding: '6px 10px', borderRadius: 7, background: m.role === 'cloud' ? 'rgba(20,83,45,0.7)' : m.type === 'system' ? 'rgba(30,41,59,0.7)' : 'rgba(30,58,138,0.7)', alignSelf: m.type === 'system' ? 'center' : m.role === 'cloud' ? 'flex-start' : 'flex-end', maxWidth: '80%', fontSize: 13, lineHeight: 1.45, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                    {m.type !== 'system' && <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, marginBottom: 2, textTransform: 'uppercase' }}>{m.role}</div>}
+                    <div>{m.content}</div>
+                    <div style={{ fontSize: 10, opacity: 0.4, marginTop: 2 }}>{m.ts}{m.id ? ` #${m.id}` : ''}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && chatSend()}
+                  placeholder="כתוב הודעה ולחץ Enter..."
+                  style={{ flex: 1, padding: '9px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(124,58,237,0.4)', borderRadius: 7, color: '#e2e8f0', fontSize: 14 }}
+                />
+                <button onClick={chatSend} disabled={!chatConnected} style={{ padding: '9px 18px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: 7, fontWeight: 700, cursor: chatConnected ? 'pointer' : 'not-allowed', opacity: chatConnected ? 1 : 0.5 }}>שלח</button>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#475569' }}>
+                סוכן TCP: <code style={{ fontFamily: 'monospace' }}>DEV_TOOLS_TOKEN={devToolsToken} BRIDGE_ROLE=local python scripts/copilot-bridge.py</code>
+              </div>
+            </div>
           </div>
         )}
 
