@@ -31,17 +31,44 @@ docker-compose logs --tail=20 <service>  # אין שגיאות
 ---
 
 ## FIRST — Mandatory Session Start
-**Every session, before doing anything else, read these instruction files:**
-1. `c:\Doctor-Scribe\.github\instructions\safe-fix.instructions.md` — bug fix protocol (including step 11: confirm with user → document → push to GitHub)
-2. `c:\Doctor-Scribe\.github\instructions\lessons-learned.instructions.md` — known bugs and patterns to avoid
-3. `c:\Doctor-Scribe\.github\instructions\backend.instructions.md` — backend conventions
-4. `c:\Doctor-Scribe\.github\instructions\infrastructure.instructions.md` — Docker/env rules
-5. Read the end of `docs/AI_SESSION_LOG.md` to pick up the context from previous chats!
+**Every session, before doing anything else, read these instruction files (in order):**
+1. `c:\Doctor-Scribe\.github\instructions\dev-tools-and-agent-bridge.instructions.md` — **READ FIRST**: Dev Tools, Agent Bridge, collaborative workflow, validation checklist
+2. `c:\Doctor-Scribe\.github\instructions\safe-fix.instructions.md` — bug fix protocol (including step 11: confirm with user → document → push to GitHub)
+3. `c:\Doctor-Scribe\.github\instructions\lessons-learned.instructions.md` — known bugs and patterns to avoid
+4. `c:\Doctor-Scribe\.github\instructions\backend.instructions.md` — backend conventions
+5. `c:\Doctor-Scribe\.github\instructions\infrastructure.instructions.md` — Docker/env rules
+6. Read the end of `docs/AI_SESSION_LOG.md` to pick up the context from previous chats!
+
+## Agent Bridge — Read Messages at Session Start
+**Before starting any task**, check for pending messages from the cloud agent:
+```powershell
+Invoke-WebRequest -Uri 'https://drsscribe.com/dev-tools/agent/messages' `
+  -Headers @{ 'X-Dev-Token'='dev-token-change-me' } -UseBasicParsing `
+  | Select-Object -ExpandProperty Content
+```
+If messages exist — process them before anything else.
+Token: `dev-token-change-me` | UI: `https://drsscribe.com/dev-tools/?token=dev-token-change-me`
+
+## Troubleshooting — Read Before Every Bug Fix
+Before fixing any bug, search the shared troubleshooting knowledge base:
+```powershell
+Select-String -Path 'c:\Doctor-Scribe\docs\troubleshooting\*.md' -Pattern "<symptom keyword>"
+```
+After fixing: document in `docs/troubleshooting/` + write regression test + ask user for confirmation.
 
 ## Mandatory Session Logging (Anti Data-Loss Protocol)
 - Users computer may restart unexpectedly.
 - At the end of EVERY task, or before writing "I am done", you MUST append a brief, clear summary of the current chat session (what was asked, the root cause found, the files changed, and the result) into `docs/AI_SESSION_LOG.md`.
 - **CRITICAL:** DO NOT commit or push `docs/AI_SESSION_LOG.md` to GitHub. It must remain strictly local.
+
+## Mandatory Task-End Framework Validation
+- At the end of every implementation task, you MUST validate the result with a test framework before reporting completion.
+- Use this command pattern:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify_task.ps1 -Framework <framework> -Target <target> -Services <service-list>
+```
+- Default framework is `pytest` unless task requires otherwise.
+- Never mark task done if framework validation failed.
 
 **Bug fix closure rule (from safe-fix step 11):**
 After every bug fix, always ask the user:
